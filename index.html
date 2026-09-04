@@ -286,13 +286,16 @@
         };
 
         function loadData() {
-            const saved = localStorage.getItem('mark1z_data');
-            if (saved) {
-                try { return JSON.parse(saved); } catch(e) { console.error('Ошибка парсинга'); }
-            }
+            try {
+                const saved = localStorage.getItem('mark1z_data');
+                if (saved) return JSON.parse(saved);
+            } catch(e) { console.warn('Не удалось загрузить данные'); }
             return JSON.parse(JSON.stringify(DEFAULT_DATA));
         }
-        function saveData() { localStorage.setItem('mark1z_data', JSON.stringify(appData)); }
+        function saveData() {
+            try { localStorage.setItem('mark1z_data', JSON.stringify(appData)); }
+            catch(e) { console.warn('Не удалось сохранить данные'); }
+        }
         let appData = loadData();
 
         // ================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ TELEGRAM ==================
@@ -428,7 +431,7 @@
             renderOrders();
         }
 
-        // ================== ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ ==================
+        // ================== ПОЛЬЗОВАТЕЛЬСКИЕ ДЕЙСТВИЯ ==================
         function placeOrder(service) {
             if (!window.tg || !window.tg.initDataUnsafe?.user) {
                 console.log('Telegram API недоступен');
@@ -636,7 +639,7 @@
                 });
                 renderAll();
             } else {
-                setTimeout(initTelegram, 300);
+                setTimeout(initTelegram, 500);
             }
         }
 
@@ -658,20 +661,20 @@
                 container.appendChild(star);
             }
         }
-        createStars();
 
-        // Запускаем настройку вкладок и рендер сразу
-        setupTabs();
-        renderAll();
-
-        // Инициализируем Telegram после полной загрузки страницы
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initTelegram);
-        } else {
+        // ================== ЗАПУСК ==================
+        function init() {
+            createStars();
+            setupTabs();
+            renderAll();
             initTelegram();
         }
-        // Дополнительная попытка через 1 секунду
-        setTimeout(initTelegram, 1000);
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
     </script>
 </body>
 </html>
