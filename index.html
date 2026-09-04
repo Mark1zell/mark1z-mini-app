@@ -124,6 +124,37 @@
         .loading-star { position:absolute; background:white; border-radius:50%; opacity:0; animation: loadingTwinkle 2s ease-in-out infinite; }
         @keyframes loadingTwinkle { 0%,100% { opacity:0; transform:scale(0.3); } 50% { opacity:0.8; transform:scale(1); } }
         @media (max-width: 400px) { .categories-grid { grid-template-columns:repeat(2,1fr); } .brand-name { font-size:24px; } .tab-btn { font-size:11px; padding:10px 4px; } .card { padding:18px; } }
+
+        /* Корзина на миниатюрах */
+        .preview-thumb {
+            position: relative;
+            display: inline-block;
+            margin: 5px;
+        }
+        .preview-thumb img {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 1px solid var(--card-border);
+        }
+        .preview-thumb .remove-btn {
+            position: absolute;
+            top: -8px;
+            left: -8px;
+            background: rgba(255, 0, 0, 0.8);
+            color: white;
+            border: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            padding: 0;
+        }
     </style>
 </head>
 <body>
@@ -946,7 +977,7 @@
         function placeOrder(service) {
             if (isOrderProcessing) return; // защита от повторных нажатий
             isOrderProcessing = true;
-            setTimeout(() => { isOrderProcessing = false; }, 2000); // разблокировка через 2 секунды
+            setTimeout(() => { isOrderProcessing = false; }, 2000);
 
             const user = window.currentUser?.username || window.currentUser?.first_name || 'Пользователь';
             const userName = window.currentUser?.first_name || window.currentUser?.username || 'Пользователь';
@@ -1041,8 +1072,19 @@
             const preview = document.getElementById('reviewImagesPreview');
             preview.innerHTML = '';
             tempReviewImages.forEach((img, idx) => {
-                preview.innerHTML += `<img src="${img}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;cursor:pointer;" onclick="tempReviewImages.splice(${idx},1); renderReviewImagesPreview();">`;
+                const thumb = document.createElement('div');
+                thumb.className = 'preview-thumb';
+                thumb.innerHTML = `
+                    <img src="${img}" alt="миниатюра">
+                    <button class="remove-btn" onclick="removeReviewImage(${idx})">×</button>
+                `;
+                preview.appendChild(thumb);
             });
+        }
+
+        function removeReviewImage(index) {
+            tempReviewImages.splice(index, 1);
+            renderReviewImagesPreview();
         }
 
         function compressImage(file, maxSize, quality) {
