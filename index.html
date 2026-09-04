@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Mark1z Design</title>
     <style>
-        /* ========== ОСНОВНЫЕ СТИЛИ ========== */
         :root {
             --bg-start: #0a050d;
             --bg-mid: #100820;
@@ -64,11 +63,7 @@
         }
         .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(124,58,237,0.5); }
         .btn:active { transform: scale(0.96); }
-        .categories-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-        }
+        .categories-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
         .category-card {
             background: rgba(15,7,25,0.8);
             border: 1px solid var(--card-border);
@@ -82,12 +77,7 @@
         .category-card .folder-icon { font-size: 48px; margin-bottom: 10px; }
         .category-card .category-name { font-weight: 600; margin-bottom: 8px; }
         .category-card .work-count { color: var(--text-muted); font-size: 12px; }
-        .works-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            margin-top: 15px;
-        }
+        .works-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 15px; }
         .work-item {
             background: rgba(15,7,25,0.9);
             border: 1px solid var(--card-border);
@@ -95,25 +85,9 @@
             overflow: hidden;
             position: relative;
         }
-        .work-item img {
-            width: 100%;
-            aspect-ratio: 1 / 1;
-            object-fit: cover;
-            display: block;
-        }
-        .work-item .work-info {
-            padding: 8px;
-            font-size: 12px;
-            color: var(--text-muted);
-            text-align: center;
-        }
-        .work-item .work-actions {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            display: flex;
-            gap: 5px;
-        }
+        .work-item img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block; }
+        .work-item .work-info { padding: 8px; font-size: 12px; color: var(--text-muted); text-align: center; }
+        .work-item .work-actions { position: absolute; top: 8px; right: 8px; display: flex; gap: 5px; }
         .work-actions button {
             background: rgba(0,0,0,0.6);
             border: none;
@@ -170,14 +144,7 @@
             color: #fff;
         }
         .modal button { margin-right: 10px; }
-        .modal img.preview {
-            max-width: 100%;
-            max-height: 200px;
-            object-fit: contain;
-            margin-bottom: 10px;
-            border-radius: 10px;
-            display: none;
-        }
+        .modal img.preview { max-width: 100%; max-height: 200px; object-fit: contain; margin-bottom: 10px; border-radius: 10px; display: none; }
         .admin-only { display: none; }
         .admin-mode .admin-only { display: inline-block; }
         .resume-highlight {
@@ -240,7 +207,7 @@
 <body>
     <div class="stars-container" id="starsContainer"></div>
 
-    <div class="app-container" id="app">
+    <div class="app-container">
         <div class="header">
             <div class="logo"><img src="https://i.ibb.co/3y8vZHQz/2026-09-02-025009694.png" alt="Avatar"></div>
             <h1 class="brand-name">Mark1z Design</h1>
@@ -254,7 +221,6 @@
             <button class="tab-btn" data-tab="orders">Заказы</button>
         </nav>
 
-        <!-- Обо мне -->
         <section id="resume" class="section active">
             <div class="card">
                 <h3>👋 Дмитрий Маркизов</h3>
@@ -269,13 +235,11 @@
             </div>
         </section>
 
-        <!-- Портфолио -->
         <section id="portfolio" class="section">
             <div id="portfolioCategories"></div>
             <div id="portfolioWorks" style="display:none;"></div>
         </section>
 
-        <!-- Отзывы -->
         <section id="reviews" class="section">
             <div id="reviewsContainer"></div>
             <div class="admin-only" style="margin-top:10px">
@@ -283,7 +247,6 @@
             </div>
         </section>
 
-        <!-- Заказы -->
         <section id="orders" class="section">
             <div class="order-list" id="ordersList"></div>
             <div id="userOrderButtons"></div>
@@ -295,17 +258,11 @@
         <div class="footer">© Mark1z Design · Дмитрий Маркизов</div>
     </div>
 
-    <!-- Модальное окно -->
     <div class="modal-overlay" id="modalOverlay">
         <div class="modal" id="modalContent"></div>
     </div>
 
     <script>
-        // ================== ПЕРЕМЕННЫЕ TELEGRAM ==================
-        let tg = null;
-        let currentUser = null;
-        let isAdmin = false;
-
         // ================== ДАННЫЕ ==================
         const DEFAULT_DATA = {
             about: {
@@ -338,6 +295,11 @@
         function saveData() { localStorage.setItem('mark1z_data', JSON.stringify(appData)); }
         let appData = loadData();
 
+        // ================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ TELEGRAM ==================
+        window.tg = null;
+        window.currentUser = null;
+        window.isAdmin = false;
+
         // ================== РЕНДЕР ==================
         function renderAbout() {
             document.getElementById('aboutHighlight').textContent = appData.about.highlight;
@@ -362,7 +324,7 @@
                 `;
             });
             html += '</div>';
-            if (isAdmin) {
+            if (window.isAdmin) {
                 html += '<div class="admin-only" style="margin-top:15px"><button class="btn" onclick="addCategory()">➕ Добавить категорию</button></div>';
             }
             html += '</div>';
@@ -390,7 +352,7 @@
                         <div class="work-item">
                             <img src="${item.image}" alt="${item.title}" loading="lazy">
                             <div class="work-info">${item.title}</div>
-                            ${isAdmin ? `
+                            ${window.isAdmin ? `
                             <div class="work-actions">
                                 <button onclick="editWork(${idx})" title="Редактировать">✏️</button>
                                 <button onclick="deleteWork(${idx})" title="Удалить">🗑️</button>
@@ -402,7 +364,7 @@
                     `;
                 });
             }
-            if (isAdmin) {
+            if (window.isAdmin) {
                 html += `<div class="add-work-btn" onclick="addWork()">+</div>`;
             }
             html += '</div></div>';
@@ -421,7 +383,7 @@
                         </div>
                     </div>
                     <p class="review-text">${review.text}</p>
-                    ${isAdmin ? `<div style="margin-top:10px">
+                    ${window.isAdmin ? `<div style="margin-top:10px">
                         <button class="btn" onclick="editReview(${idx})">✏️</button>
                         <button class="btn" onclick="deleteReview(${idx})">🗑️</button>
                     </div>` : ''}
@@ -431,7 +393,7 @@
 
         function renderOrders() {
             const ordersList = document.getElementById('ordersList');
-            if (!isAdmin) {
+            if (!window.isAdmin) {
                 ordersList.innerHTML = '';
                 renderOrderButtons();
                 return;
@@ -468,19 +430,18 @@
 
         // ================== ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ ==================
         function placeOrder(service) {
-            if (!tg || !tg.initDataUnsafe?.user) {
-                console.log('Telegram API недоступен, заказ не отправлен');
+            if (!window.tg || !window.tg.initDataUnsafe?.user) {
+                console.log('Telegram API недоступен');
                 return;
             }
             const order = {
                 service,
-                user: currentUser.username || currentUser.first_name || 'Пользователь',
+                user: window.currentUser?.username || window.currentUser?.first_name || 'Пользователь',
                 time: new Date().toLocaleString()
             };
             appData.orders.push(order);
             saveData();
-            tg.sendData(`Заказ: ${service}`);
-            // tg.close(); // можно раскомментировать для закрытия
+            window.tg.sendData(`Заказ: ${service}`);
             renderOrders();
         }
 
@@ -624,38 +585,7 @@
             document.getElementById('modalOverlay').style.display = 'none';
         }
 
-        // ================== ИНИЦИАЛИЗАЦИЯ TELEGRAM ==================
-        function initTelegram() {
-            tg = window.Telegram?.WebApp || null;
-            if (tg) {
-                tg.ready();
-                tg.expand();
-                tg.setHeaderColor('#0a050d');
-                tg.setBackgroundColor('#0a0012');
-                tg.MainButton.setParams({ text: 'НАПИСАТЬ ДИЗАЙНЕРУ', color: '#7c3aed', text_color: '#ffffff' });
-                currentUser = tg.initDataUnsafe?.user || null;
-                if (currentUser && currentUser.username) {
-                    const username = currentUser.username.toLowerCase().replace('@','');
-                    isAdmin = (username === 'mark1zell');
-                }
-                if (isAdmin) {
-                    document.body.classList.add('admin-mode');
-                }
-                tg.MainButton.onClick(() => {
-                    tg.sendData('Здравствуйте! Хочу обсудить заказ.');
-                    tg.close();
-                });
-                // Переключатель вкладок
-                setupTabs();
-                // Рендер после инициализации
-                renderAll();
-            } else {
-                // Пробуем ещё раз через 200 мс
-                setTimeout(initTelegram, 200);
-            }
-        }
-
-        // Настройка вкладок
+        // ================== НАСТРОЙКА ВКЛАДОК ==================
         function setupTabs() {
             const tabs = document.querySelectorAll('.tab-btn');
             const sections = document.querySelectorAll('.section');
@@ -667,19 +597,50 @@
                     sections.forEach(s => s.classList.remove('active'));
                     document.getElementById(target).classList.add('active');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
-                    if (tg) {
-                        if (target === 'orders' && !isAdmin) {
-                            tg.MainButton.show();
+                    if (target === 'portfolio') renderPortfolioCategories();
+                    if (window.tg) {
+                        if (target === 'orders' && !window.isAdmin) {
+                            window.tg.MainButton.show();
                         } else {
-                            tg.MainButton.hide();
+                            window.tg.MainButton.hide();
                         }
                     }
-                    if (target === 'portfolio') renderPortfolioCategories();
                 });
             });
         }
 
-        // Генерация звёзд
+        // ================== ИНИЦИАЛИЗАЦИЯ TELEGRAM ==================
+        function initTelegram() {
+            const tg = window.Telegram?.WebApp;
+            if (tg) {
+                tg.ready();
+                tg.expand();
+                tg.setHeaderColor('#0a050d');
+                tg.setBackgroundColor('#0a0012');
+                tg.MainButton.setParams({ text: 'НАПИСАТЬ ДИЗАЙНЕРУ', color: '#7c3aed', text_color: '#ffffff' });
+                const user = tg.initDataUnsafe?.user;
+                let isAdmin = false;
+                if (user && user.username) {
+                    const username = user.username.toLowerCase().replace('@','');
+                    isAdmin = (username === 'mark1zell');
+                }
+                window.tg = tg;
+                window.currentUser = user;
+                window.isAdmin = isAdmin;
+                if (isAdmin) {
+                    document.body.classList.add('admin-mode');
+                }
+                tg.MainButton.onClick(() => {
+                    tg.sendData('Здравствуйте! Хочу обсудить заказ.');
+                    tg.close();
+                });
+                renderAll();
+            } else {
+                setTimeout(initTelegram, 300);
+            }
+        }
+
+        // ================== ЗВЁЗДЫ ==================
         function createStars() {
             const container = document.getElementById('starsContainer');
             for (let i = 0; i < 45; i++) {
@@ -699,14 +660,18 @@
         }
         createStars();
 
-        // Запускаем инициализацию после загрузки страницы
-        document.addEventListener('DOMContentLoaded', initTelegram);
-        // На случай, если DOM уже загружен
+        // Запускаем настройку вкладок и рендер сразу
+        setupTabs();
+        renderAll();
+
+        // Инициализируем Telegram после полной загрузки страницы
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', initTelegram);
         } else {
             initTelegram();
         }
+        // Дополнительная попытка через 1 секунду
+        setTimeout(initTelegram, 1000);
     </script>
 </body>
 </html>
