@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mark1z Design</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        /* ========== ОСНОВНЫЕ СТИЛИ (адаптированы из прошлой версии) ========== */
+        :root {
+            --bg-start: #0a050d;
+            --bg-mid: #100820;
+            --bg-end: #0a0012;
+            --primary: #7c3aed;
+            --secondary: #be185d;
+            --accent: #9d174d;
+            --text: #f5f3ff;
+            --text-muted: rgba(245, 243, 255, 0.5);
+            --card-bg: rgba(18, 8, 30, 0.8);
+            --card-border: rgba(124, 58, 237, 0.3);
+            --shadow: 0 6px 20px rgba(0,0,0,0.5);
+            --radius: 20px;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(145deg, var(--bg-start), var(--bg-mid), var(--bg-end));
+            color: var(--text);
+            min-height: 100vh;
+            padding: 16px 16px 80px;
+            overflow-x: hidden;
+            letter-spacing: 0.02em;
+        }
+        .stars-container, .bg-glow { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0; }
+        .star { position:absolute; background:rgba(255,255,255,0.7); border-radius:50%; opacity:0; animation: twinkle var(--duration) ease-in-out infinite; animation-delay: var(--delay); }
+        @keyframes twinkle { 0%,100%{opacity:0; transform:scale(0.3)} 50%{opacity:0.3; transform:scale(1)} }
+        .glow-spot { position:absolute; border-radius:50%; background:radial-gradient(circle, rgba(124,58,237,0.08) 0%, transparent 70%); filter:blur(40px); animation: spotPulse 12s ease-in-out infinite alternate; }
+        @keyframes spotPulse { 0%{opacity:0.2} 100%{opacity:0.5} }
+        .app-container { position:relative; z-index:1; max-width:600px; margin:0 auto; }
+        .header { text-align:center; padding:30px 0 20px; }
+        .logo { width:100px; height:100px; margin:0 auto 16px; border-radius:28px; overflow:hidden; box-shadow:0 4px 15px rgba(124,58,237,0.3); }
+        .logo img { width:100%; height:100%; object-fit:cover; }
+        .brand-name { font-size:30px; font-weight:800; background:linear-gradient(to right, #a78bfa, #c084fc, #a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; animation: brandGlow 6s ease-in-out infinite; }
+        @keyframes brandGlow { 0%,100%{filter:drop-shadow(0 0 4px rgba(124,58,237,0.3))} 50%{filter:drop-shadow(0 0 8px rgba(124,58,237,0.5))} }
+        .tagline { color:var(--text-muted); font-size:13px; letter-spacing:2px; text-transform:uppercase; }
+        .tabs { display:flex; background:rgba(10,5,18,0.8); backdrop-filter:blur(20px); border:1px solid var(--card-border); border-radius:40px; padding:6px; margin:25px 0; }
+        .tab-btn { flex:1; padding:12px 6px; background:transparent; border:none; color:var(--text-muted); font-weight:600; border-radius:32px; cursor:pointer; transition:all 0.3s; }
+        .tab-btn.active { background:linear-gradient(135deg, rgba(124,58,237,0.7), rgba(190,24,93,0.7)); color:#fff; }
+        .section { display:none; animation: fadeIn 0.4s; }
+        .section.active { display:block; }
+        @keyframes fadeIn { from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none} }
+        .card { background:var(--card-bg); backdrop-filter:blur(10px); border:1px solid var(--card-border); border-radius:var(--radius); padding:24px; margin-bottom:16px; box-shadow:var(--shadow); }
+        .card h3 { font-size:21px; font-weight:700; margin-bottom:12px; color:#e9d5ff; }
+        .portfolio-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+        .portfolio-item { aspect-ratio:1/1; background:rgba(15,7,25,0.8); border-radius:var(--radius); display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:36px; border:1px solid var(--card-border); transition:border-color 0.3s; }
+        .portfolio-item:hover { border-color:var(--primary); }
+        .portfolio-label { font-size:12px; color:var(--text-muted); margin-top:8px; text-align:center; }
+        .review-card { padding:20px; }
+        .review-author { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+        .review-avatar { width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg, #7c3aed, #be185d); display:flex; align-items:center; justify-content:center; font-weight:700; }
+        .review-text { color:var(--text-muted); font-size:14px; line-height:1.6; }
+        .stars { color:#fbbf24; }
+        .order-list { display:flex; flex-direction:column; gap:12px; }
+        .order-item { display:flex; align-items:center; justify-content:space-between; padding:16px 18px; background:rgba(15,7,25,0.8); border:1px solid var(--card-border); border-radius:16px; }
+        .order-btn { background:linear-gradient(135deg, #7c3aed, #be185d); color:#fff; border:none; padding:10px 18px; border-radius:20px; font-weight:600; cursor:pointer; }
+        /* Админ-кнопки */
+        .admin-buttons { display:none; margin-top:10px; }
+        .admin-mode .admin-buttons { display:flex; flex-wrap:wrap; gap:8px; }
+        .admin-buttons button { background:rgba(124,58,237,0.2); border:1px solid rgba(124,58,237,0.4); color:#ddd6fe; padding:8px 12px; border-radius:20px; cursor:pointer; }
+        /* Модальное окно */
+        .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; z-index:100; }
+        .modal { background:#1a0b2e; border:1px solid var(--card-border); border-radius:var(--radius); padding:24px; width:90%; max-width:400px; }
+        .modal input, .modal textarea { width:100%; padding:10px; margin-bottom:10px; background:rgba(255,255,255,0.05); border:1px solid var(--card-border); border-radius:10px; color:#fff; }
+        .modal button { margin-right:10px; }
+        @media (max-width:400px) { .portfolio-grid { grid-template-columns:1fr; } }
+    </style>
+</head>
+<body>
+    <div class="stars-container" id="starsContainer"></div>
+    <div class="bg-glow">
+        <div class="glow-spot" style="width:400px;height:400px;top:-15%;left:-10%"></div>
+        <div class="glow-spot" style="width:350px;height:350px;top:30%;left:75%"></div>
+        <div class="glow-spot" style="width:300px;height:300px;top:75%;left:15%"></div>
+    </div>
+
+    <div class="app-container" id="app">
+        <div class="header">
+            <div class="logo"><img src="https://i.ibb.co/3y8vZHQz/2026-09-02-025009694.png" alt="Avatar"></div>
+            <h1 class="brand-name">Mark1z Design</h1>
+            <p class="tagline">ДИЗАЙН, КОТОРЫЙ РАБОТАЕТ НА ВАС</p>
+        </div>
+
+        <nav class="tabs" id="tabs">
+            <button class="tab-btn active" data-tab="resume">Обо мне</button>
+            <button class="tab-btn" data-tab="portfolio">Портфолио</button>
+            <button class="tab-btn" data-tab="reviews">Отзывы</button>
+            <button class="tab-btn" data-tab="orders">Заказы</button>
+        </nav>
+
+        <!-- Обо мне -->
+        <section id="resume" class="section active">
+            <div class="card">
+                <h3>👋 Дмитрий Маркизов</h3>
+                <p>19 лет · Опыт 6 лет</p>
+                <div id="aboutHighlight" class="resume-highlight">«Каждый проект делаю как собственный — поэтому он работает на вас»</div>
+                <p id="aboutText1">Специализируюсь на UX/UI, графическом, веб- и киберспортивном дизайне. Создаю продукты, которые не только красивы, но и удобны.</p>
+                <p id="aboutText2">В настоящий момент углубляюсь в искусство моушн-дизайна.</p>
+                <div class="skills-list" id="skillsList">
+                    <span class="skill-badge">UX/UI</span>
+                    <span class="skill-badge">Графический дизайн</span>
+                    <span class="skill-badge">Веб-дизайн</span>
+                </div>
+                <!-- Админ-кнопки для "Обо мне" -->
+                <div class="admin-buttons" id="adminAbout">
+                    <button onclick="editAbout()">Редактировать</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Портфолио -->
+        <section id="portfolio" class="section">
+            <div class="card">
+                <h3>🖼️ Избранные работы</h3>
+                <div class="portfolio-grid" id="portfolioGrid"></div>
+                <div class="admin-buttons" id="adminPortfolio">
+                    <button onclick="addPortfolioItem()">Добавить работу</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Отзывы -->
+        <section id="reviews" class="section">
+            <div id="reviewsContainer"></div>
+            <div class="admin-buttons" id="adminReviews">
+                <button onclick="addReview()">Добавить отзыв</button>
+            </div>
+        </section>
+
+        <!-- Заказы -->
+        <section id="orders" class="section">
+            <div class="order-list" id="ordersList"></div>
+            <!-- Для пользователей: здесь просто кнопки заказа, они будут генерироваться из списка услуг -->
+            <div id="userOrderButtons"></div>
+            <div class="admin-buttons" id="adminOrders">
+                <button onclick="clearOrders()">Очистить заказы</button>
+            </div>
+        </section>
+
+        <div class="footer">© Mark1z Design · Дмитрий Маркизов</div>
+    </div>
+
+    <!-- Модальное окно -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal" id="modalContent"></div>
+    </div>
+
+    <script>
+        // ================== ИНИЦИАЛИЗАЦИЯ TELEGRAM ==================
+        let tg = window.Telegram?.WebApp;
+        let currentUser = tg?.initDataUnsafe?.user || null;
+        let isAdmin = currentUser?.username === 'Mark1zell';
+
+        if (tg) {
+            tg.ready();
+            tg.expand();
+            tg.setHeaderColor('#0a050d');
+            tg.setBackgroundColor('#0a0012');
+        }
+
+        // Если админ – добавляем класс для показа кнопок
+        if (isAdmin) {
+            document.body.classList.add('admin-mode');
+        }
+
+        // ================== ДАННЫЕ (localStorage) ==================
+        const DEFAULT_DATA = {
+            about: {
+                highlight: '«Каждый проект делаю как собственный — поэтому он работает на вас»',
+                text1: 'Специализируюсь на UX/UI, графическом, веб- и киберспортивном дизайне. Создаю продукты, которые не только красивы, но и удобны.',
+                text2: 'В настоящий момент углубляюсь в искусство моушн-дизайна.'
+            },
+            skills: ['UX/UI', 'Графический дизайн', 'Веб-дизайн', 'Киберспорт', 'Моушн (изучаю)'],
+            portfolio: [
+                { emoji: '🎮', label: 'Киберспорт' },
+                { emoji: '🛒', label: 'Карточка WB' },
+                { emoji: '📱', label: 'UI для приложения' },
+                { emoji: '🌐', label: 'Веб-дизайн' },
+                { emoji: '💼', label: 'Брендинг' },
+                { emoji: '📢', label: 'Баннер' },
+                { emoji: '📦', label: 'Дизайн упаковки' },
+                { emoji: '🖥️', label: 'Пользовательские интерфейсы' },
+                { emoji: '📰', label: 'Дизайн публикаций' }
+            ],
+            reviews: [
+                { author: 'Алексей', stars: 5, text: '«Дмитрий сделал логотип для моего киберспортивного клуба. Получилось круче, чем ожидал!»' },
+                { author: 'Мария', stars: 5, text: '«Заказывала оформление группы ВК и карточки для Wildberries. Всё в едином стиле, продажи выросли. Рекомендую!»' },
+                { author: 'Игорь', stars: 5, text: '«UX/UI для мобильного приложения был на высоте. Дмитрий учёл все пожелания.»' }
+            ],
+            orders: [] // заказы будут храниться здесь
+        };
+
+        function loadData() {
+            const saved = localStorage.getItem('mark1z_data');
+            if (saved) {
+                try {
+                    return JSON.parse(saved);
+                } catch(e) {
+                    console.error('Ошибка парсинга данных, использую дефолтные');
+                }
+            }
+            return JSON.parse(JSON.stringify(DEFAULT_DATA));
+        }
+
+        function saveData() {
+            localStorage.setItem('mark1z_data', JSON.stringify(appData));
+        }
+
+        let appData = loadData();
+
+        // ================== РЕНДЕР КОНТЕНТА ==================
+        function renderAbout() {
+            document.getElementById('aboutHighlight').textContent = appData.about.highlight;
+            document.getElementById('aboutText1').textContent = appData.about.text1;
+            document.getElementById('aboutText2').textContent = appData.about.text2;
+            const skillsList = document.getElementById('skillsList');
+            skillsList.innerHTML = appData.skills.map(skill => `<span class="skill-badge">${skill}</span>`).join('');
+        }
+
+        function renderPortfolio() {
+            const grid = document.getElementById('portfolioGrid');
+            grid.innerHTML = appData.portfolio.map((item, index) => `
+                <div class="portfolio-item" data-index="${index}">
+                    ${item.emoji}
+                    <span class="portfolio-label">${item.label}</span>
+                    ${isAdmin ? `<div style="margin-top:5px">
+                        <button onclick="editPortfolioItem(${index})" style="font-size:10px">✏️</button>
+                        <button onclick="deletePortfolioItem(${index})" style="font-size:10px">🗑️</button>
+                    </div>` : ''}
+                </div>
+            `).join('');
+        }
+
+        function renderReviews() {
+            const container = document.getElementById('reviewsContainer');
+            container.innerHTML = appData.reviews.map((review, index) => `
+                <div class="card review-card">
+                    <div class="review-author">
+                        <div class="review-avatar">${review.author.charAt(0)}</div>
+                        <div>
+                            <strong>${review.author}</strong>
+                            <div class="stars">${'★'.repeat(review.stars)}</div>
+                        </div>
+                    </div>
+                    <p class="review-text">${review.text}</p>
+                    ${isAdmin ? `<div style="margin-top:10px">
+                        <button onclick="editReview(${index})">✏️</button>
+                        <button onclick="deleteReview(${index})">🗑️</button>
+                    </div>` : ''}
+                </div>
+            `).join('');
+        }
+
+        function renderOrders() {
+            const ordersList = document.getElementById('ordersList');
+            if (!isAdmin) {
+                ordersList.innerHTML = ''; // обычный пользователь не видит заказы, только кнопки услуг
+                renderOrderButtons();
+                return;
+            }
+            // Админ видит заказы
+            if (appData.orders.length === 0) {
+                ordersList.innerHTML = '<p style="color:var(--text-muted)">Нет заказов</p>';
+            } else {
+                ordersList.innerHTML = appData.orders.map((order, index) => `
+                    <div class="order-item">
+                        <div class="order-info">
+                            <h4>${order.service}</h4>
+                            <p>От: ${order.user || 'Неизвестно'}</p>
+                            <p>${order.time || ''}</p>
+                        </div>
+                        <button onclick="deleteOrder(${index})">🗑️</button>
+                    </div>
+                `).join('');
+            }
+            // Кнопки заказа для админа не нужны
+            document.getElementById('userOrderButtons').innerHTML = '';
+        }
+
+        function renderOrderButtons() {
+            const container = document.getElementById('userOrderButtons');
+            const services = appData.portfolio.map(item => item.label); // используем портфолио как услуги
+            container.innerHTML = '<h3>Заказать услугу</h3>' + services.map(service => `
+                <button class="order-btn" onclick="placeOrder('${service}')">${service}</button>
+            `).join('');
+        }
+
+        function renderAll() {
+            renderAbout();
+            renderPortfolio();
+            renderReviews();
+            renderOrders();
+        }
+
+        // ================== ФУНКЦИИ ДЛЯ ПОЛЬЗОВАТЕЛЕЙ ==================
+        function placeOrder(service) {
+            if (!tg?.initDataUnsafe?.user) {
+                alert('Работает только внутри Telegram');
+                return;
+            }
+            const order = {
+                service: service,
+                user: currentUser.username || currentUser.first_name || 'Пользователь',
+                time: new Date().toLocaleString()
+            };
+            appData.orders.push(order);
+            saveData();
+            // Отправляем данные боту
+            if (tg) {
+                tg.sendData(`Заказ: ${service}`);
+                tg.close();
+            }
+            alert('Заказ отправлен!');
+            renderOrders();
+        }
+
+        // ================== АДМИН-ФУНКЦИИ ==================
+        function editAbout() {
+            const newHighlight = prompt('Введите новый статус:', appData.about.highlight);
+            if (newHighlight !== null) {
+                appData.about.highlight = newHighlight;
+            }
+            const newText1 = prompt('Введите первый абзац:', appData.about.text1);
+            if (newText1 !== null) {
+                appData.about.text1 = newText1;
+            }
+            const newText2 = prompt('Введите второй абзац:', appData.about.text2);
+            if (newText2 !== null) {
+                appData.about.text2 = newText2;
+            }
+            saveData();
+            renderAbout();
+        }
+
+        function addPortfolioItem() {
+            const emoji = prompt('Введите эмодзи:');
+            const label = prompt('Введите название работы:');
+            if (emoji && label) {
+                appData.portfolio.push({ emoji, label });
+                saveData();
+                renderPortfolio();
+            }
+        }
+
+        function editPortfolioItem(index) {
+            const item = appData.portfolio[index];
+            const newEmoji = prompt('Эмодзи:', item.emoji);
+            const newLabel = prompt('Название:', item.label);
+            if (newEmoji !== null) item.emoji = newEmoji;
+            if (newLabel !== null) item.label = newLabel;
+            saveData();
+            renderPortfolio();
+        }
+
+        function deletePortfolioItem(index) {
+            if (confirm('Удалить эту работу?')) {
+                appData.portfolio.splice(index, 1);
+                saveData();
+                renderPortfolio();
+            }
+        }
+
+        function addReview() {
+            const author = prompt('Имя автора:');
+            const stars = parseInt(prompt('Оценка (1-5):') || '5');
+            const text = prompt('Текст отзыва:');
+            if (author && text) {
+                appData.reviews.push({ author, stars, text });
+                saveData();
+                renderReviews();
+            }
+        }
+
+        function editReview(index) {
+            const review = appData.reviews[index];
+            const newAuthor = prompt('Имя:', review.author);
+            const newStars = parseInt(prompt('Оценка (1-5):', review.stars) || review.stars);
+            const newText = prompt('Текст:', review.text);
+            if (newAuthor !== null) review.author = newAuthor;
+            if (newStars) review.stars = newStars;
+            if (newText !== null) review.text = newText;
+            saveData();
+            renderReviews();
+        }
+
+        function deleteReview(index) {
+            if (confirm('Удалить отзыв?')) {
+                appData.reviews.splice(index, 1);
+                saveData();
+                renderReviews();
+            }
+        }
+
+        function deleteOrder(index) {
+            if (confirm('Удалить заказ?')) {
+                appData.orders.splice(index, 1);
+                saveData();
+                renderOrders();
+            }
+        }
+
+        function clearOrders() {
+            if (confirm('Очистить все заказы?')) {
+                appData.orders = [];
+                saveData();
+                renderOrders();
+            }
+        }
+
+        // ================== НАВИГАЦИЯ ==================
+        const tabs = document.querySelectorAll('.tab-btn');
+        const sections = document.querySelectorAll('.section');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const target = tab.dataset.tab;
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                sections.forEach(s => s.classList.remove('active'));
+                document.getElementById(target).classList.add('active');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                if (tg) {
+                    if (target === 'orders' && !isAdmin) {
+                        tg.MainButton.show();
+                    } else {
+                        tg.MainButton.hide();
+                    }
+                }
+            });
+        });
+
+        // Генерация звёзд
+        function createStars() {
+            const container = document.getElementById('starsContainer');
+            for (let i = 0; i < 45; i++) {
+                const star = document.createElement('div');
+                star.classList.add('star');
+                const size = Math.random() * 2 + 1;
+                star.style.width = size + 'px';
+                star.style.height = size + 'px';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                const duration = Math.random() * 4 + 3;
+                const delay = Math.random() * 6;
+                star.style.setProperty('--duration', duration + 's');
+                star.style.setProperty('--delay', delay + 's');
+                container.appendChild(star);
+            }
+        }
+        createStars();
+
+        // Первичный рендер
+        renderAll();
+
+        // Обработка MainButton
+        if (tg) {
+            tg.MainButton.setParams({
+                text: 'НАПИСАТЬ ДИЗАЙНЕРУ',
+                color: '#7c3aed',
+                text_color: '#ffffff'
+            });
+            tg.MainButton.onClick(() => {
+                tg.sendData('Здравствуйте! Хочу обсудить заказ.');
+                tg.close();
+            });
+        }
+
+        console.log('Запущено. Админ:', isAdmin);
+    </script>
+</body>
+</html>
