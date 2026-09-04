@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Mark1z Design</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         /* ========== ОСНОВНЫЕ СТИЛИ ========== */
         :root {
@@ -49,8 +48,6 @@
         @keyframes fadeIn { from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none} }
         .card { background:var(--card-bg); backdrop-filter:blur(10px); border:1px solid var(--card-border); border-radius:var(--radius); padding:24px; margin-bottom:16px; box-shadow:var(--shadow); }
         .card h3 { font-size:21px; font-weight:700; margin-bottom:12px; color:#e9d5ff; }
-
-        /* Кнопки и элементы */
         .btn {
             background: linear-gradient(135deg, var(--primary), var(--secondary));
             color: #fff;
@@ -67,8 +64,6 @@
         }
         .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(124,58,237,0.5); }
         .btn:active { transform: scale(0.96); }
-
-        /* Портфолио: категории (папки) */
         .categories-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -87,8 +82,6 @@
         .category-card .folder-icon { font-size: 48px; margin-bottom: 10px; }
         .category-card .category-name { font-weight: 600; margin-bottom: 8px; }
         .category-card .work-count { color: var(--text-muted); font-size: 12px; }
-
-        /* Внутри категории: сетка работ */
         .works-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -134,8 +127,6 @@
             justify-content: center;
             font-size: 14px;
         }
-
-        /* Кнопка добавления работы */
         .add-work-btn {
             display: flex;
             align-items: center;
@@ -150,8 +141,6 @@
             transition: background 0.3s;
         }
         .add-work-btn:hover { background: rgba(124,58,237,0.3); }
-
-        /* Модальное окно */
         .modal-overlay {
             position: fixed;
             inset: 0;
@@ -189,11 +178,57 @@
             border-radius: 10px;
             display: none;
         }
-
-        /* Админ-кнопки */
         .admin-only { display: none; }
         .admin-mode .admin-only { display: inline-block; }
-
+        .resume-highlight {
+            font-size: 16px;
+            font-weight: 600;
+            font-style: italic;
+            color: #e9d5ff;
+            margin: 12px 0;
+            padding: 14px 16px;
+            background: rgba(124,58,237,0.15);
+            border-left: 3px solid var(--primary);
+            border-radius: 12px;
+        }
+        .skills-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+        .skill-badge {
+            background: rgba(124,58,237,0.2);
+            border: 1px solid rgba(124,58,237,0.3);
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #ddd6fe;
+        }
+        .review-card { padding: 20px; }
+        .review-author { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .review-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #7c3aed, #be185d);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: white;
+        }
+        .review-text { color: var(--text-muted); font-size: 14px; line-height: 1.6; }
+        .stars { color: #fbbf24; letter-spacing: 2px; }
+        .order-list { display: flex; flex-direction: column; gap: 12px; }
+        .order-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 18px;
+            background: rgba(15,7,25,0.8);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+        }
+        .order-info h4 { font-size: 16px; font-weight: 600; }
+        .order-info p { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+        .footer { text-align:center; margin-top:30px; padding:10px; color:var(--text-muted); font-size:12px; opacity:0.5; }
         @media (max-width: 400px) {
             .categories-grid, .works-grid { grid-template-columns: 1fr; }
             .brand-name { font-size: 24px; }
@@ -237,7 +272,6 @@
         <!-- Портфолио -->
         <section id="portfolio" class="section">
             <div id="portfolioCategories"></div>
-            <!-- Сюда будет рендериться внутренность категории или список категорий -->
             <div id="portfolioWorks" style="display:none;"></div>
         </section>
 
@@ -267,18 +301,29 @@
     </div>
 
     <script>
-        // ================== TELEGRAM INIT ==================
-        let tg = window.Telegram?.WebApp;
-        let currentUser = tg?.initDataUnsafe?.user || null;
-        let isAdmin = currentUser?.username === 'Mark1zell';
+        // ================== ИНИЦИАЛИЗАЦИЯ TELEGRAM ==================
+        let tg = window.Telegram?.WebApp || null;
+        let currentUser = null;
+        let isAdmin = false;
+
         if (tg) {
             tg.ready();
             tg.expand();
             tg.setHeaderColor('#0a050d');
             tg.setBackgroundColor('#0a0012');
             tg.MainButton.setParams({ text: 'НАПИСАТЬ ДИЗАЙНЕРУ', color: '#7c3aed', text_color: '#ffffff' });
+            currentUser = tg.initDataUnsafe?.user || null;
+            if (currentUser && currentUser.username) {
+                const username = currentUser.username.toLowerCase().replace('@','');
+                isAdmin = (username === 'mark1zell');
+            }
+        } else {
+            alert('Это приложение работает только внутри Telegram. Откройте его через бота.');
         }
-        if (isAdmin) document.body.classList.add('admin-mode');
+
+        if (isAdmin) {
+            document.body.classList.add('admin-mode');
+        }
 
         // ================== ДАННЫЕ ==================
         const DEFAULT_DATA = {
@@ -289,26 +334,10 @@
             },
             skills: ['UX/UI', 'Графический дизайн', 'Веб-дизайн', 'Киберспорт', 'Моушн (изучаю)'],
             portfolioCategories: [
-                {
-                    name: 'Киберспорт',
-                    icon: '🎮',
-                    items: []
-                },
-                {
-                    name: 'Брендинг',
-                    icon: '💼',
-                    items: []
-                },
-                {
-                    name: 'Дизайн упаковки',
-                    icon: '📦',
-                    items: []
-                },
-                {
-                    name: 'Пользовательские интерфейсы',
-                    icon: '🖥️',
-                    items: []
-                }
+                { name: 'Киберспорт', icon: '🎮', items: [] },
+                { name: 'Брендинг', icon: '💼', items: [] },
+                { name: 'Дизайн упаковки', icon: '📦', items: [] },
+                { name: 'Пользовательские интерфейсы', icon: '🖥️', items: [] }
             ],
             reviews: [
                 { author: 'Алексей', stars: 5, text: '«Дмитрий сделал логотип для моего киберспортивного клуба. Получилось круче, чем ожидал!»' },
@@ -328,11 +357,6 @@
         function saveData() { localStorage.setItem('mark1z_data', JSON.stringify(appData)); }
         let appData = loadData();
 
-        // ================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==================
-        function getCategoryIndexByName(name) {
-            return appData.portfolioCategories.findIndex(cat => cat.name === name);
-        }
-
         // ================== РЕНДЕР ==================
         function renderAbout() {
             document.getElementById('aboutHighlight').textContent = appData.about.highlight;
@@ -341,7 +365,6 @@
             document.getElementById('skillsList').innerHTML = appData.skills.map(s => `<span class="skill-badge">${s}</span>`).join('');
         }
 
-        // Портфолио: показываем категории
         function renderPortfolioCategories() {
             const container = document.getElementById('portfolioCategories');
             container.style.display = 'block';
@@ -358,7 +381,6 @@
                 `;
             });
             html += '</div>';
-            // Кнопка добавления категории для админа
             if (isAdmin) {
                 html += '<div class="admin-only" style="margin-top:15px"><button class="btn" onclick="addCategory()">➕ Добавить категорию</button></div>';
             }
@@ -366,7 +388,6 @@
             container.innerHTML = html;
         }
 
-        // Открыть категорию: показать работы
         let currentCategoryIndex = null;
         function openCategory(index) {
             currentCategoryIndex = index;
@@ -400,7 +421,6 @@
                     `;
                 });
             }
-            // Кнопка добавления работы для админа
             if (isAdmin) {
                 html += `<div class="add-work-btn" onclick="addWork()">+</div>`;
             }
@@ -467,7 +487,7 @@
 
         // ================== ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ ==================
         function placeOrder(service) {
-            if (!tg?.initDataUnsafe?.user) { alert('Работает только в Telegram'); return; }
+            if (!tg || !tg.initDataUnsafe?.user) { alert('Работает только в Telegram'); return; }
             const order = {
                 service,
                 user: currentUser.username || currentUser.first_name || 'Пользователь',
@@ -556,7 +576,6 @@
             const work = category.items[index];
             const newTitle = prompt('Название:', work.title);
             if (newTitle !== null) work.title = newTitle;
-            // Для смены изображения можно вызвать addWork с предзаполнением, но упростим
             saveData();
             openCategory(currentCategoryIndex);
         }
@@ -643,7 +662,7 @@
             });
         });
 
-        // ================== ИНИЦИАЛИЗАЦИЯ ==================
+        // ================== ЗВЁЗДЫ ==================
         function createStars() {
             const container = document.getElementById('starsContainer');
             for (let i = 0; i < 45; i++) {
