@@ -80,11 +80,34 @@
             text-align: center;
             cursor: pointer;
             transition: transform 0.3s, border-color 0.3s;
+            position: relative;
+            overflow: hidden;
         }
         .category-card:hover { transform: scale(1.02); border-color: var(--primary); }
         .category-card .folder-icon { font-size: 48px; margin-bottom: 10px; }
         .category-card .category-name { font-weight: 600; margin-bottom: 8px; }
         .category-card .work-count { color: var(--text-muted); font-size: 12px; }
+        .category-card .cover-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            opacity: 0.15;
+            pointer-events: none;
+        }
+        .category-card .admin-actions {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            display: none;
+            gap: 3px;
+        }
+        .admin-mode .category-card .admin-actions {
+            display: flex;
+        }
         .works-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 15px; }
         .work-item {
             background: rgba(15,7,25,0.9);
@@ -273,6 +296,16 @@
             justify-content: center;
             z-index: 2001;
         }
+        .drag-handle {
+            cursor: grab;
+            user-select: none;
+            font-size: 18px;
+            color: var(--text-muted);
+            display: none;
+        }
+        .admin-mode .drag-handle {
+            display: inline-block;
+        }
         @media (max-width: 400px) {
             .categories-grid, .works-grid { grid-template-columns: 1fr; }
             .brand-name { font-size: 24px; }
@@ -367,12 +400,12 @@
         let tempReviewImages = [];
         let tempWorkImage = null;
         let currentViewImageSrc = null;
-        let currentViewImageBlobUrl = null;
         let scale = 1;
         let startDistance = 0;
         let startScale = 1;
         let servicesData = [];
-        let adminOrdersMode = 'services'; // 'services' или 'orders'
+        let portfolioCategoriesData = [];
+        let adminOrdersMode = 'services';
 
         // ================== TELEGRAM INIT ==================
         function initTelegram() {
@@ -396,10 +429,6 @@
                     tg.close();
                 });
                 updateDebugInfo();
-                // Подписка на отзывы
-                db.collection('reviews').orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
-                    renderReviews(snapshot);
-                });
             } else {
                 setTimeout(initTelegram, 500);
             }
@@ -410,7 +439,29 @@
             document.getElementById('debugInfo').textContent = info;
         }
 
-        // ================== ЗАГРУЗКА ДАННЫХ ==================
+        // ================== ИНИЦИАЛИЗАЦИЯ ДАННЫХ ==================
+        async function initDefaultServices() {
+            const snapshot = await db.collection('services').get();
+            if (snapshot.empty) {
+                const defaultServices = [
+                    { emoji: '🎯', name: 'Баннер', desc: 'Рекламный или оформительский', price: null },
+                    { emoji: '💼', name: 'Брендинг', desc: 'Фирменный стиль, айдентика', price: null },
+                    { emoji: '📦', name: 'Дизайн упаковки', desc: 'Коробки, этикетки, пакеты', price: null },
+                    { emoji: '🖥️', name: 'Пользовательские интерфейсы', desc: 'UI/UX для приложений и сайтов', price: null },
+                    { emoji: '📰', name: 'Дизайн публикаций', desc: 'Посты, презентации, документы', price: null },
+                    { emoji: '📱', name: 'Оформление группы', desc: 'Шапки, посты, обложки', price: null },
+                    { emoji: '💻', name: 'Дизайн приложения', desc: 'UI/UX, интерфейсы', price: null },
+                    { emoji: '🌐', name: 'Дизайн сайта', desc: 'Лендинги, многостраничники', price: null },
+                    { emoji: '🛍️', name: 'Карточки WB/OZON/Авито', desc: 'Инфографика, продающие карточки', price: null },
+                    { emoji: '👤', name: 'Аватарка', desc: 'Для соцсетей и мессенджеров', price: null },
+                    { emoji: '✨', name: 'Другое', desc: 'Любая дизайн-задача', price: null }
+                ];
+                for (const s of defaultServices) {
+                    await db.collection('services').add(s);
+                }
+            }
+        }
+
         function setupRealTimeListeners() {
             db.collection('about').doc('main').onSnapshot((doc) => {
                 if (doc.exists) {
@@ -430,7 +481,10 @@
             });
 
             db.collection('portfolioCategories').onSnapshot((snapshot) => {
-                renderPortfolioCategories(snapshot);
+                const cats = [];
+                snapshot.forEach(doc => cats.push({ id: doc.id, ...doc.data() }));
+                portfolioCategoriesData = cats;
+                renderPortfolioCategories(cats);
             });
 
             db.collection('services').onSnapshot((snapshot) => {
@@ -443,32 +497,108 @@
             });
 
             db.collection('orders').orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
-                renderOrdersList(snapshot);
+                if (adminOrdersMode === 'orders') {
+                    renderOrdersList(snapshot);
+                }
             });
         }
 
-        function renderPortfolioCategories(snapshot) {
+        // ================== ПОРТФОЛИО ==================
+        function renderPortfolioCategories(cats) {
             const container = document.getElementById('portfolioCategories');
             if (!container || container.style.display === 'none') return;
-            const cats = [];
-            snapshot.forEach(doc => cats.push({ id: doc.id, ...doc.data() }));
-            let html = '<div class="card"><h3>📁 Категории портфолио</h3><div class="categories-grid">';
-            cats.forEach((cat) => {
-                const count = cat.items ? cat.items.length : 0;
+            let html = '<div class="card"><h3>📁 Категории портфолио</h3><div class="categories-grid" id="categoriesGrid">';
+            cats.forEach((cat, idx) => {
+                const coverStyle = cat.coverImage ? `style="background-image:url('${cat.coverImage}');"` : '';
                 html += `
-                    <div class="category-card" onclick="openCategory('${cat.id}')">
+                    <div class="category-card" draggable="${window.isAdmin}" data-id="${cat.id}" data-index="${idx}">
+                        <div class="cover-bg" ${coverStyle}></div>
                         <div class="folder-icon">${cat.icon}</div>
                         <div class="category-name">${cat.name}</div>
-                        <div class="work-count">${count} работ(ы)</div>
+                        <div class="work-count">${cat.items ? cat.items.length : 0} работ(ы)</div>
+                        <div class="admin-actions">
+                            <button class="btn" style="padding:5px 8px; font-size:12px;" onclick="event.stopPropagation(); changeCover('${cat.id}')">🖼️</button>
+                        </div>
+                        <span class="drag-handle" style="position:absolute; right:5px; bottom:5px;">☰</span>
                     </div>
                 `;
             });
             html += '</div>';
             if (window.isAdmin) {
-                html += '<div class="admin-only" style="margin-top:15px"><button class="btn" onclick="addCategory()">➕ Добавить категорию</button></div>';
+                html += '<div style="margin-top:15px"><button class="btn" onclick="addCategory()">➕ Добавить категорию</button></div>';
             }
             html += '</div>';
             container.innerHTML = html;
+            setupDragAndDrop('categoriesGrid', 'portfolioCategories');
+        }
+
+        function setupDragAndDrop(containerId, collectionName) {
+            if (!window.isAdmin) return;
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            let draggedElement = null;
+            container.querySelectorAll('.category-card, .order-item').forEach(el => {
+                el.addEventListener('dragstart', (e) => {
+                    draggedElement = el;
+                    e.dataTransfer.setData('text/plain', el.dataset.id);
+                });
+                el.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                });
+                el.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    const targetId = e.dataTransfer.getData('text/plain');
+                    const targetIndex = [...container.children].indexOf(el);
+                    const draggedIndex = [...container.children].indexOf(draggedElement);
+                    if (draggedIndex !== targetIndex) {
+                        const items = [...container.children];
+                        const [movedItem] = items.splice(draggedIndex, 1);
+                        items.splice(targetIndex, 0, movedItem);
+                        container.innerHTML = '';
+                        items.forEach(item => container.appendChild(item));
+                        updateOrder(collectionName, items);
+                    }
+                });
+            });
+        }
+
+        async function updateOrder(collectionName, items) {
+            const batch = db.batch();
+            items.forEach((item, index) => {
+                const ref = db.collection(collectionName).doc(item.dataset.id);
+                batch.update(ref, { order: index });
+            });
+            await batch.commit();
+        }
+
+        async function changeCover(categoryId) {
+            const modal = document.getElementById('modalOverlay');
+            const content = document.getElementById('modalContent');
+            content.innerHTML = `
+                <h3>Изменить обложку</h3>
+                <input type="file" id="coverImageInput" accept="image/*" onchange="previewCoverImage(event)">
+                <img id="coverPreview" class="preview" src="" alt="Предпросмотр">
+                <button class="btn" onclick="saveCover('${categoryId}')">Сохранить</button>
+                <button class="btn" onclick="closeModal()">Отмена</button>
+            `;
+            modal.style.display = 'flex';
+            window.tempCoverImage = null;
+        }
+
+        function previewCoverImage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            compressImage(file, 800, 0.7).then(dataUrl => {
+                window.tempCoverImage = dataUrl;
+                document.getElementById('coverPreview').src = dataUrl;
+                document.getElementById('coverPreview').style.display = 'block';
+            });
+        }
+
+        async function saveCover(categoryId) {
+            if (!window.tempCoverImage) { alert('Загрузите изображение'); return; }
+            await db.collection('portfolioCategories').doc(categoryId).update({ coverImage: window.tempCoverImage });
+            closeModal();
         }
 
         async function openCategory(categoryId) {
@@ -483,7 +613,7 @@
                 <div class="card">
                     <button class="btn" onclick="showPortfolioCategories()" style="margin-bottom:15px;">← Назад</button>
                     <h3>${cat.icon} ${cat.name}</h3>
-                    <div class="works-grid">
+                    <div class="works-grid" id="worksGrid">
             `;
             const items = cat.items || [];
             if (items.length === 0) {
@@ -491,7 +621,7 @@
             } else {
                 items.forEach((item, idx) => {
                     html += `
-                        <div class="work-item">
+                        <div class="work-item" draggable="${window.isAdmin}" data-index="${idx}">
                             <img src="${item.image}" alt="${item.title}" onclick="viewImage('${item.image}', '${item.title}', true)" loading="lazy">
                             <div class="work-info">${item.title}</div>
                             <div class="work-actions" style="left:8px; right:auto;">
@@ -502,6 +632,7 @@
                                 <button onclick="editWork(${idx})">✏️</button>
                                 <button onclick="deleteWork(${idx})">🗑️</button>
                             </div>` : ''}
+                            ${window.isAdmin ? `<span class="drag-handle" style="position:absolute; right:5px; bottom:5px;">☰</span>` : ''}
                         </div>
                     `;
                 });
@@ -511,6 +642,43 @@
             }
             html += '</div></div>';
             worksContainer.innerHTML = html;
+            setupWorkDragDrop();
+        }
+
+        function setupWorkDragDrop() {
+            if (!window.isAdmin) return;
+            const grid = document.getElementById('worksGrid');
+            if (!grid) return;
+            let draggedElement = null;
+            grid.querySelectorAll('.work-item').forEach(el => {
+                el.addEventListener('dragstart', (e) => {
+                    draggedElement = el;
+                    e.dataTransfer.setData('text/plain', el.dataset.index);
+                });
+                el.addEventListener('dragover', (e) => e.preventDefault());
+                el.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+                    const toIndex = [...grid.children].indexOf(el);
+                    if (fromIndex !== toIndex) {
+                        const items = [...grid.children];
+                        const [moved] = items.splice(fromIndex, 1);
+                        items.splice(toIndex, 0, moved);
+                        grid.innerHTML = '';
+                        items.forEach(item => grid.appendChild(item));
+                        updateWorksOrder(fromIndex, toIndex);
+                    }
+                });
+            });
+        }
+
+        async function updateWorksOrder(fromIndex, toIndex) {
+            const catRef = db.collection('portfolioCategories').doc(currentCategoryId);
+            const catDoc = await catRef.get();
+            const items = catDoc.data().items || [];
+            const [moved] = items.splice(fromIndex, 1);
+            items.splice(toIndex, 0, moved);
+            await catRef.update({ items });
         }
 
         function showPortfolioCategories() {
@@ -518,59 +686,11 @@
             document.getElementById('portfolioCategories').style.display = 'block';
         }
 
-        function renderReviews(snapshot) {
-            const container = document.getElementById('reviewsContainer');
-            if (!container) return;
-            let html = '';
-            snapshot.forEach(doc => {
-                const review = doc.data();
-                const authorName = review.authorName || review.author || 'Пользователь';
-                const authorUsername = review.authorUsername || null;
-                const isAuthor = window.currentUser && (window.currentUser.id === review.authorId || window.currentUser.username === review.authorUsername);
-                let avatarHtml = `<div class="review-avatar">${(review.authorName && review.authorName !== 'Пользователь') ? review.authorName.charAt(0) : '👤'}</div>`;
-                if (review.photoUrl) {
-                    avatarHtml = `<div class="review-avatar"><img src="${review.photoUrl}" alt="avatar"></div>`;
-                }
-                let imagesHtml = '';
-                if (review.images && review.images.length > 0) {
-                    imagesHtml = '<div class="review-images">';
-                    review.images.forEach(img => {
-                        imagesHtml += `<img src="${img}" alt="отзыв" onclick="viewImage('${img}', 'Отзыв', false)">`;
-                    });
-                    imagesHtml += '</div>';
-                }
-                let actionsHtml = '';
-                if (window.isAdmin) {
-                    actionsHtml += `<button class="btn" onclick="editReview('${doc.id}')">✏️</button>`;
-                    actionsHtml += `<button class="btn" onclick="deleteReview('${doc.id}')">🗑️</button>`;
-                } else if (isAuthor) {
-                    actionsHtml += `<button class="btn" onclick="deleteReview('${doc.id}')">🗑️ Удалить</button>`;
-                }
-                html += `
-                    <div class="card review-card">
-                        <div class="review-author">
-                            ${avatarHtml}
-                            <div>
-                                <strong>${authorName}</strong>
-                                ${authorUsername ? `<div style="font-size:12px; color:var(--text-muted);">@${authorUsername}</div>` : ''}
-                                <div class="stars">${'★'.repeat(review.stars)}${'☆'.repeat(5 - review.stars)}</div>
-                            </div>
-                        </div>
-                        <p class="review-text">${review.text}</p>
-                        ${imagesHtml}
-                        ${actionsHtml ? `<div style="margin-top:10px">${actionsHtml}</div>` : ''}
-                    </div>
-                `;
-            });
-            container.innerHTML = html;
-        }
-
-        // ================== РАЗДЕЛ "ЗАКАЗЫ" ==================
+        // ================== РАЗДЕЛ ЗАКАЗЫ ==================
         function renderOrdersSection() {
             const container = document.getElementById('ordersContent');
             if (!container) return;
             if (window.isAdmin) {
-                // Админ: показываем переключатель и соответствующий контент
                 let html = `
                     <div style="display:flex; gap:10px; margin-bottom:15px;">
                         <button class="btn ${adminOrdersMode === 'services' ? 'active' : ''}" onclick="switchAdminMode('services')">Услуги</button>
@@ -584,13 +704,11 @@
                 }
                 container.innerHTML = html;
                 if (adminOrdersMode === 'orders') {
-                    // Перерисуем список заказов (он подтянется из подписки)
                     db.collection('orders').orderBy('timestamp', 'desc').get().then(snapshot => {
                         renderOrdersList(snapshot);
                     });
                 }
             } else {
-                // Обычный пользователь: показываем услуги и кнопку "Написать дизайнеру"
                 let html = '<h3 style="margin-bottom:15px;">Наши услуги</h3>';
                 html += renderServicesForUser();
                 html += `<div style="margin-top:20px;">
@@ -622,16 +740,17 @@
         }
 
         function renderServicesForAdmin() {
-            let html = '<div class="order-list" style="display:flex; flex-direction:column; gap:12px;">';
+            let html = '<div class="order-list" id="servicesList" style="display:flex; flex-direction:column; gap:12px;">';
             servicesData.forEach(s => {
                 html += `
-                    <div class="order-item">
+                    <div class="order-item" draggable="true" data-id="${s.id}">
                         <div class="order-info">
                             <h4>${s.emoji} ${s.name}</h4>
                             <p>${s.desc}</p>
                             ${s.price ? `<p style="color:var(--accent); font-weight:600;">${s.price} ₽</p>` : '<p style="color:var(--text-muted);">Цена не указана</p>'}
                         </div>
                         <div style="display:flex; gap:5px;">
+                            <span class="drag-handle">☰</span>
                             <button class="btn" onclick="editService('${s.id}')">✏️</button>
                             <button class="btn" onclick="deleteService('${s.id}')">🗑️</button>
                         </div>
@@ -752,7 +871,6 @@
         function closeImageViewer() {
             document.getElementById('imageViewer').style.display = 'none';
             currentViewImageSrc = null;
-            currentViewImageBlobUrl = null;
             scale = 1;
         }
 
@@ -788,7 +906,7 @@
         document.getElementById('imageViewerSaveBtn').addEventListener('click', saveCurrentImage);
         document.getElementById('imageViewerClose').addEventListener('click', closeImageViewer);
 
-        // Зум (pinch)
+        // Зум
         const imageViewer = document.getElementById('imageViewer');
         const imageViewerImg = document.getElementById('imageViewerImg');
         imageViewer.addEventListener('touchstart', (e) => {
@@ -1144,6 +1262,7 @@
         function init() {
             createStars();
             setupTabs();
+            initDefaultServices();
             setupRealTimeListeners();
             initTelegram();
             renderOrdersSection();
