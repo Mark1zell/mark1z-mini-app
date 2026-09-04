@@ -5,14 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Mark1z Design</title>
 
-    <!-- Подключаем Telegram WebApp JS -->
+    <!-- Telegram WebApp JS -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
-    <!-- SortableJS для перетаскивания -->
+    <!-- SortableJS -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
     <style>
@@ -43,25 +43,12 @@
         .stars-container { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0; }
         .star { position:absolute; background:rgba(255,255,255,0.7); border-radius:50%; opacity:0; animation: twinkle var(--duration) ease-in-out infinite; animation-delay: var(--delay); }
         @keyframes twinkle { 0%,100%{opacity:0; transform:scale(0.3)} 50%{opacity:0.3; transform:scale(1)} }
-        .asteroid-container {
-            position: fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0; overflow:hidden;
-        }
-        .asteroid {
-            position:absolute; background: radial-gradient(circle, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 70%);
-            border-radius:50%; width:4px; height:4px; opacity:0; animation: flyAsteroid linear infinite;
-        }
-        @keyframes flyAsteroid {
-            0% { transform: translate(0,0) scale(0.5); opacity:0; }
-            10% { opacity:0.6; }
-            90% { opacity:0.6; }
-            100% { transform: translate(var(--tx), var(--ty)) scale(1.5); opacity:0; }
-        }
+        .asteroid-container { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0; overflow:hidden; }
+        .asteroid { position:absolute; background: radial-gradient(circle, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 70%); border-radius:50%; width:4px; height:4px; opacity:0; animation: flyAsteroid linear infinite; }
+        @keyframes flyAsteroid { 0% { transform: translate(0,0) scale(0.5); opacity:0; } 10% { opacity:0.6; } 90% { opacity:0.6; } 100% { transform: translate(var(--tx), var(--ty)) scale(1.5); opacity:0; } }
         .app-container { position:relative; z-index:1; max-width:600px; margin:0 auto; }
         .header { text-align:center; padding:30px 0 20px; position: relative; }
-        .header .faq-button {
-            position:absolute; top:20px; right:20px; background: rgba(124,58,237,0.3); border:1px solid var(--card-border);
-            color:#fff; width:40px; height:40px; border-radius:50%; font-size:20px; cursor:pointer; transition:all 0.3s;
-        }
+        .header .faq-button { position:absolute; top:20px; right:20px; background: rgba(124,58,237,0.3); border:1px solid var(--card-border); color:#fff; width:40px; height:40px; border-radius:50%; font-size:20px; cursor:pointer; transition:all 0.3s; }
         .header .faq-button:hover { background: rgba(124,58,237,0.6); }
         .logo { width:100px; height:100px; margin:0 auto 16px; border-radius:28px; overflow:hidden; box-shadow:0 4px 15px rgba(124,58,237,0.3); position:relative; }
         .logo img { width:100%; height:100%; object-fit:cover; }
@@ -76,136 +63,66 @@
         @keyframes fadeIn { from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none} }
         .card { background:var(--card-bg); backdrop-filter:blur(10px); border:1px solid var(--card-border); border-radius:var(--radius); padding:24px; margin-bottom:16px; box-shadow:var(--shadow); }
         .card h3 { font-size:21px; font-weight:700; margin-bottom:12px; color:#e9d5ff; }
-        .btn {
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            color:#fff; border:none; padding:10px 20px; border-radius:20px; font-weight:600; cursor:pointer;
-            transition: transform 0.2s, box-shadow 0.2s; display:inline-block; margin:5px; text-decoration:none; font-size:14px;
-        }
+        .btn { background: linear-gradient(135deg, var(--primary), var(--secondary)); color:#fff; border:none; padding:10px 20px; border-radius:20px; font-weight:600; cursor:pointer; transition: transform 0.2s, box-shadow 0.2s; display:inline-block; margin:5px; text-decoration:none; font-size:14px; }
         .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(124,58,237,0.5); }
         .btn:active { transform: scale(0.96); }
         .categories-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
-        .category-card {
-            background: rgba(15,7,25,0.8); border:1px solid var(--card-border); border-radius:var(--radius);
-            padding:20px; text-align:center; cursor:pointer; transition: transform 0.3s, border-color 0.3s; position:relative; overflow:hidden;
-        }
+        .category-card { background: rgba(15,7,25,0.8); border:1px solid var(--card-border); border-radius:var(--radius); padding:20px; text-align:center; cursor:pointer; transition: transform 0.3s, border-color 0.3s; position:relative; overflow:hidden; }
         .category-card:hover { transform: scale(1.02); border-color: var(--primary); }
         .category-card .folder-icon { font-size:48px; margin-bottom:10px; position:relative; z-index:1; }
         .category-card .category-name { font-weight:600; margin-bottom:8px; position:relative; z-index:1; }
         .category-card .work-count { color:var(--text-muted); font-size:12px; position:relative; z-index:1; }
-        .category-card .cover-bg {
-            position:absolute; top:0; left:0; width:100%; height:100%; background-size:cover; background-position:center;
-            opacity:0.15; pointer-events:none; z-index:0;
-        }
+        .category-card .cover-bg { position:absolute; top:0; left:0; width:100%; height:100%; background-size:cover; background-position:center; opacity:0.15; pointer-events:none; z-index:0; }
         .category-card .admin-actions { position:absolute; top:5px; right:5px; display:none; gap:3px; z-index:2; }
         .admin-mode .category-card .admin-actions { display:flex; }
         .works-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-top:15px; }
-        .work-item {
-            background: rgba(15,7,25,0.9); border:1px solid var(--card-border); border-radius:var(--radius);
-            overflow:hidden; position:relative;
-        }
+        .work-item { background: rgba(15,7,25,0.9); border:1px solid var(--card-border); border-radius:var(--radius); overflow:hidden; position:relative; }
         .work-item img { width:100%; aspect-ratio:1/1; object-fit:cover; display:block; cursor:pointer; }
         .work-item .work-info { padding:8px; font-size:12px; color:var(--text-muted); text-align:center; }
         .work-item .work-actions { position:absolute; top:8px; right:8px; display:flex; gap:5px; }
-        .work-actions button {
-            background: rgba(0,0,0,0.6); border:none; color:white; border-radius:50%; width:30px; height:30px;
-            cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:14px;
-        }
-        .add-work-btn {
-            display:flex; align-items:center; justify-content:center; aspect-ratio:1/1;
-            background: rgba(124,58,237,0.2); border:2px dashed var(--primary); border-radius:var(--radius);
-            cursor:pointer; font-size:32px; color:var(--primary); transition: background 0.3s;
-        }
+        .work-actions button { background: rgba(0,0,0,0.6); border:none; color:white; border-radius:50%; width:30px; height:30px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:14px; }
+        .add-work-btn { display:flex; align-items:center; justify-content:center; aspect-ratio:1/1; background: rgba(124,58,237,0.2); border:2px dashed var(--primary); border-radius:var(--radius); cursor:pointer; font-size:32px; color:var(--primary); transition: background 0.3s; }
         .add-work-btn:hover { background: rgba(124,58,237,0.3); }
-        .modal-overlay {
-            position:fixed; inset:0; background: rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; z-index:1000;
-        }
-        .modal {
-            background:#1a0b2e; border:1px solid var(--card-border); border-radius:var(--radius);
-            padding:24px; width:90%; max-width:400px; max-height:80vh; overflow-y:auto; position:relative;
-        }
-        .modal input, .modal textarea {
-            width:100%; padding:10px; margin-bottom:10px; background:rgba(255,255,255,0.05);
-            border:1px solid var(--card-border); border-radius:10px; color:#fff;
-        }
+        .modal-overlay { position:fixed; inset:0; background: rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; z-index:1000; }
+        .modal { background:#1a0b2e; border:1px solid var(--card-border); border-radius:var(--radius); padding:24px; width:90%; max-width:400px; max-height:80vh; overflow-y:auto; position:relative; }
+        .modal input, .modal textarea { width:100%; padding:10px; margin-bottom:10px; background:rgba(255,255,255,0.05); border:1px solid var(--card-border); border-radius:10px; color:#fff; }
         .modal button { margin-right:10px; }
         .modal img.preview { max-width:100%; max-height:200px; object-fit:contain; margin-bottom:10px; border-radius:10px; display:none; }
         .admin-only { display:none; }
         .admin-mode .admin-only { display:inline-block; }
-        .resume-highlight {
-            font-size:16px; font-weight:600; font-style:italic; color:#e9d5ff; margin:12px 0; padding:14px 16px;
-            background: rgba(124,58,237,0.15); border-left:3px solid var(--primary); border-radius:12px;
-        }
+        .resume-highlight { font-size:16px; font-weight:600; font-style:italic; color:#e9d5ff; margin:12px 0; padding:14px 16px; background: rgba(124,58,237,0.15); border-left:3px solid var(--primary); border-radius:12px; }
         .skills-list { display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
-        .skill-badge {
-            background: rgba(124,58,237,0.2); border:1px solid rgba(124,58,237,0.3); padding:8px 14px;
-            border-radius:20px; font-size:13px; font-weight:500; color:#ddd6fe;
-        }
-        .experience-badge {
-            display:inline-block; background:linear-gradient(135deg, var(--primary), var(--secondary));
-            padding:6px 14px; border-radius:20px; font-weight:700; color:#fff; font-size:14px; margin-left:8px;
-        }
+        .skill-badge { background: rgba(124,58,237,0.2); border:1px solid rgba(124,58,237,0.3); padding:8px 14px; border-radius:20px; font-size:13px; font-weight:500; color:#ddd6fe; }
+        .experience-badge { display:inline-block; background:linear-gradient(135deg, var(--primary), var(--secondary)); padding:6px 14px; border-radius:20px; font-weight:700; color:#fff; font-size:14px; margin-left:8px; }
         .review-card { padding:20px; }
         .review-author { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
-        .review-avatar {
-            width:40px; height:40px; border-radius:50%; background: linear-gradient(135deg, #7c3aed, #be185d);
-            display:flex; align-items:center; justify-content:center; font-weight:700; color:white; overflow:hidden;
-        }
+        .review-avatar { width:40px; height:40px; border-radius:50%; background: linear-gradient(135deg, #7c3aed, #be185d); display:flex; align-items:center; justify-content:center; font-weight:700; color:white; overflow:hidden; }
         .review-avatar img { width:100%; height:100%; object-fit:cover; }
         .review-text { color:var(--text-muted); font-size:14px; line-height:1.6; }
         .review-images { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
-        .review-images img {
-            width:60px; height:60px; object-fit:cover; border-radius:8px; cursor:pointer; border:1px solid var(--card-border);
-        }
-        .review-images img.single {
-            width:100%; height:auto; max-height:300px; object-fit:contain;
-        }
+        .review-images img { width:60px; height:60px; object-fit:cover; border-radius:8px; cursor:pointer; border:1px solid var(--card-border); }
+        .review-images img.single { width:100%; height:auto; max-height:300px; object-fit:contain; }
         .stars { color:#fbbf24; letter-spacing:2px; }
         .order-list { display:flex; flex-direction:column; gap:12px; }
-        .order-item {
-            display:flex; align-items:center; justify-content:space-between; padding:16px 18px;
-            background: rgba(15,7,25,0.8); border:1px solid var(--card-border); border-radius:16px;
-            cursor: grab;
-        }
+        .order-item { display:flex; align-items:center; justify-content:space-between; padding:16px 18px; background: rgba(15,7,25,0.8); border:1px solid var(--card-border); border-radius:16px; cursor: grab; }
         .order-info h4 { font-size:16px; font-weight:600; }
         .order-info p { font-size:12px; color:var(--text-muted); margin-top:4px; }
         .order-info a { color:var(--accent); text-decoration:none; }
         .footer { text-align:center; margin-top:30px; padding:10px; color:var(--text-muted); font-size:12px; opacity:0.5; }
-        #imageViewer {
-            position:fixed; inset:0; background:rgba(0,0,0,0.9); display:none; align-items:center; justify-content:center;
-            z-index:2000; flex-direction:column; overflow:hidden; touch-action:none;
-        }
-        #imageViewer img {
-            max-width:95%; max-height:85%; object-fit:contain; transition: transform 0.2s; transform-origin:center;
-            position:relative;
-        }
+        #imageViewer { position:fixed; inset:0; background:rgba(0,0,0,0.9); display:none; align-items:center; justify-content:center; z-index:2000; flex-direction:column; overflow:hidden; touch-action:none; }
+        #imageViewer img { max-width:95%; max-height:85%; object-fit:contain; transition: transform 0.2s; transform-origin:center; position:relative; }
         #imageViewer .save-btn { margin-top:15px; }
-        #imageViewerClose {
-            position:absolute; top:20px; right:20px; background:rgba(0,0,0,0.6); border:none; color:white; font-size:28px;
-            width:40px; height:40px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:2001;
-        }
-        #loadingScreen {
-            position:fixed; top:0; left:0; width:100%; height:100%;
-            background: radial-gradient(ellipse at center, #1a0b2e 0%, #0a0012 100%);
-            display:flex; align-items:center; justify-content:center; z-index:9999;
-            transition: opacity 0.5s ease, visibility 0.5s ease; overflow:hidden;
-        }
+        #imageViewerClose { position:absolute; top:20px; right:20px; background:rgba(0,0,0,0.6); border:none; color:white; font-size:28px; width:40px; height:40px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:2001; }
+        #loadingScreen { position:fixed; top:0; left:0; width:100%; height:100%; background: radial-gradient(ellipse at center, #1a0b2e 0%, #0a0012 100%); display:flex; align-items:center; justify-content:center; z-index:9999; transition: opacity 0.5s ease, visibility 0.5s ease; overflow:hidden; }
         #loadingScreen.hidden { opacity:0; visibility:hidden; pointer-events:none; }
-        .loader {
-            width:80px; height:80px; border-radius:50%; border:4px solid rgba(124,58,237,0.2);
-            border-top-color: var(--primary); animation: spin 1s linear infinite;
-        }
+        .loader { width:80px; height:80px; border-radius:50%; border:4px solid rgba(124,58,237,0.2); border-top-color: var(--primary); animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
         .loading-logo { font-size:48px; margin-bottom:20px; animation: pulse 1.5s ease-in-out infinite; }
         @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.2); } }
         .loading-stars { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; }
         .loading-star { position:absolute; background:white; border-radius:50%; opacity:0; animation: loadingTwinkle 2s ease-in-out infinite; }
         @keyframes loadingTwinkle { 0%,100% { opacity:0; transform:scale(0.3); } 50% { opacity:0.8; transform:scale(1); } }
-        @media (max-width: 400px) {
-            .categories-grid { grid-template-columns:repeat(2,1fr); }
-            .brand-name { font-size:24px; }
-            .tab-btn { font-size:11px; padding:10px 4px; }
-            .card { padding:18px; }
-        }
+        @media (max-width: 400px) { .categories-grid { grid-template-columns:repeat(2,1fr); } .brand-name { font-size:24px; } .tab-btn { font-size:11px; padding:10px 4px; } .card { padding:18px; } }
     </style>
 </head>
 <body>
@@ -392,6 +309,25 @@
             }
         }
 
+        async function removeDuplicateServices() {
+            const snapshot = await db.collection('services').get();
+            const servicesMap = new Map();
+            const duplicates = [];
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                const name = (data.name || '').toLowerCase().trim();
+                if (!name) return;
+                if (servicesMap.has(name)) {
+                    duplicates.push(doc.id);
+                } else {
+                    servicesMap.set(name, doc.id);
+                }
+            });
+            for (const id of duplicates) {
+                await db.collection('services').doc(id).delete();
+            }
+        }
+
         function setupRealTimeListeners() {
             db.collection('about').doc('main').onSnapshot((doc) => {
                 if (doc.exists) {
@@ -426,6 +362,7 @@
                 services.sort((a,b) => (a.order ?? 0) - (b.order ?? 0));
                 servicesData = services;
                 renderOrdersSection();
+                removeDuplicateServices();
             });
 
             db.collection('orders').orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
@@ -478,9 +415,7 @@
         function setupSortableForCategories() {
             const grid = document.getElementById('categoriesGrid');
             if (!grid || !window.isAdmin) return;
-            if (sortableInstances.categories) {
-                sortableInstances.categories.destroy();
-            }
+            if (sortableInstances.categories) sortableInstances.categories.destroy();
             sortableInstances.categories = new Sortable(grid, {
                 animation: 150,
                 delay: 200,
@@ -495,9 +430,7 @@
         function setupSortableForWorks() {
             const grid = document.getElementById('worksGrid');
             if (!grid || !window.isAdmin) return;
-            if (sortableInstances.works) {
-                sortableInstances.works.destroy();
-            }
+            if (sortableInstances.works) sortableInstances.works.destroy();
             sortableInstances.works = new Sortable(grid, {
                 animation: 150,
                 delay: 200,
@@ -513,9 +446,7 @@
         function setupSortableForServices() {
             const list = document.getElementById('servicesList');
             if (!list || !window.isAdmin) return;
-            if (sortableInstances.services) {
-                sortableInstances.services.destroy();
-            }
+            if (sortableInstances.services) sortableInstances.services.destroy();
             sortableInstances.services = new Sortable(list, {
                 animation: 150,
                 delay: 200,
@@ -615,9 +546,7 @@
             }
             html += '</div></div>';
             worksContainer.innerHTML = html;
-            if (window.isAdmin) {
-                setupSortableForWorks();
-            }
+            if (window.isAdmin) setupSortableForWorks();
         }
 
         function showPortfolioCategories() {
@@ -647,9 +576,7 @@
                         renderOrdersList(snapshot);
                     });
                 }
-                if (adminOrdersMode === 'services') {
-                    setupSortableForServices();
-                }
+                if (adminOrdersMode === 'services') setupSortableForServices();
             } else {
                 let html = '<h3 style="margin-bottom:15px;">Наши услуги</h3>';
                 html += renderServicesForUser();
@@ -735,7 +662,7 @@
             container.innerHTML = html;
         }
 
-        // ================== УПРАВЛЕНИЕ УСЛУГАМИ (админ) ==================
+        // ================== УПРАВЛЕНИЕ УСЛУГАМИ ==================
         function addService() {
             const modal = document.getElementById('modalOverlay');
             const content = document.getElementById('modalContent');
@@ -873,7 +800,7 @@
         document.getElementById('imageViewerSaveBtn').addEventListener('click', saveCurrentImage);
         document.getElementById('imageViewerClose').addEventListener('click', closeImageViewer);
 
-        // Зум и панорамирование с ограничениями
+        // Зум и панорамирование
         const imageViewer = document.getElementById('imageViewer');
         const imageViewerImg = document.getElementById('imageViewerImg');
         let panX = 0, panY = 0;
@@ -901,7 +828,6 @@
                     imageViewerImg.style.left = '0px';
                     imageViewerImg.style.top = '0px';
                 } else {
-                    // Ограничиваем панорамирование при увеличении
                     const maxX = (imageViewerImg.offsetWidth * scale - imageViewerImg.offsetWidth) / 2;
                     const maxY = (imageViewerImg.offsetHeight * scale - imageViewerImg.offsetHeight) / 2;
                     panX = Math.max(-maxX, Math.min(maxX, panX));
@@ -921,9 +847,7 @@
                 imageViewerImg.style.top = panY + 'px';
             }
         });
-        imageViewer.addEventListener('touchend', () => {
-            isPanning = false;
-        });
+        imageViewer.addEventListener('touchend', () => { isPanning = false; });
         imageViewer.addEventListener('dblclick', () => {
             scale = scale === 1 ? 2 : 1;
             imageViewerImg.style.transform = `scale(${scale})`;
@@ -955,8 +879,6 @@
             db.collection('orders').add(order);
             
             const paymentUrl = 'https://your-payment-link.com/pay?service=' + encodeURIComponent(service);
-            
-            // Открываем чат с ботом с готовым сообщением
             const chatText = encodeURIComponent(`Я оплатил услугу: ${service}, хочу обговорить детали работы.`);
             if (window.telegramAvailable && window.tg) {
                 window.tg.openTelegramLink(`https://t.me/Mark1zDesign_bot?text=${chatText}`);
@@ -1060,8 +982,6 @@
                         canvas.width = width;
                         canvas.height = height;
                         const ctx = canvas.getContext('2d');
-
-                        // Если файл PNG, сохраняем как PNG для сохранения прозрачности и отсутствия чёрного фона
                         if (file.type === 'image/png') {
                             ctx.drawImage(img, 0, 0, width, height);
                             const dataUrl = canvas.toDataURL('image/png');
