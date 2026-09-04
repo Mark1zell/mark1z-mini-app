@@ -16,6 +16,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
     <style>
+        /* ... все стили из предыдущего полного кода (можно скопировать без изменений) ... */
         :root {
             --bg-start: #0a050d;
             --bg-mid: #100820;
@@ -453,17 +454,19 @@
             const snapshot = await db.collection('services').get();
             if (snapshot.empty) {
                 const defaultServices = [
-                    { emoji: '🎯', name: 'Баннер', desc: 'Рекламный или оформительский', price: null },
-                    { emoji: '💼', name: 'Брендинг', desc: 'Фирменный стиль, айдентика', price: null },
-                    { emoji: '📦', name: 'Дизайн упаковки', desc: 'Коробки, этикетки, пакеты', price: null },
-                    { emoji: '🖥️', name: 'Пользовательские интерфейсы', desc: 'UI/UX для приложений и сайтов', price: null },
-                    { emoji: '📰', name: 'Дизайн публикаций', desc: 'Посты, презентации, документы', price: null },
-                    { emoji: '📱', name: 'Оформление группы', desc: 'Шапки, посты, обложки', price: null },
-                    { emoji: '💻', name: 'Дизайн приложения', desc: 'UI/UX, интерфейсы', price: null },
-                    { emoji: '🌐', name: 'Дизайн сайта', desc: 'Лендинги, многостраничники', price: null },
-                    { emoji: '🛍️', name: 'Карточки WB/OZON/Авито', desc: 'Инфографика, продающие карточки', price: null },
-                    { emoji: '👤', name: 'Аватарка', desc: 'Для соцсетей и мессенджеров', price: null },
-                    { emoji: '✨', name: 'Другое', desc: 'Любая дизайн-задача', price: null }
+                    { emoji: '🎨', name: 'Оформление соцсетей', desc: 'VK, YouTube, Telegram: шапки, аватарки, обложки', price: null },
+                    { emoji: '🎮', name: 'Дизайн игровых кланов', desc: 'Логотипы, аватарки, шапки для кланов', price: null },
+                    { emoji: '🏆', name: 'Дизайн турниров', desc: 'Сетки, баннеры за призовые места, аватарки', price: null },
+                    { emoji: '🛒', name: 'Карточки товаров', desc: 'Wildberries, Ozon, Avito: инфографика', price: null },
+                    { emoji: '🔤', name: 'Типографика', desc: 'Шрифтовые композиции, айдентика', price: null },
+                    { emoji: '📱', name: 'Дизайн мобильных приложений', desc: 'UI/UX интерфейсы для iOS и Android', price: null },
+                    { emoji: '🌐', name: 'Дизайн сайтов', desc: 'Лендинги, многостраничники, корпоративные сайты', price: null },
+                    { emoji: '🤖', name: 'Telegram Mini Apps', desc: 'Дизайн и разработка интерфейсов для ботов', price: null },
+                    { emoji: '🖼️', name: 'Постеры и баннеры', desc: 'Рекламные постеры, промо-материалы', price: null },
+                    { emoji: '🎵', name: 'Обложки треков', desc: 'Обложки для музыкальных релизов', price: null },
+                    { emoji: '▶️', name: 'Превью для YouTube', desc: 'Яркие кликабельные превью', price: null },
+                    { emoji: '📊', name: 'Презентации', desc: 'PowerPoint, Google Slides: оформление', price: null },
+                    { emoji: '📄', name: 'Документы Word', desc: 'Оформление, структурирование, шаблоны', price: null }
                 ];
                 for (const s of defaultServices) {
                     await db.collection('services').add(s);
@@ -481,10 +484,10 @@
                     document.getElementById('skillsList').innerHTML = (data.skills || []).map(s => `<span class="skill-badge">${s}</span>`).join('');
                 } else {
                     db.collection('about').doc('main').set({
-                        highlight: '«Каждый проект делаю как собственный — поэтому он работает на вас»',
-                        text1: 'Специализируюсь на UX/UI, графическом, веб- и киберспортивном дизайне. Создаю продукты, которые не только красивы, но и удобны.',
-                        text2: 'В настоящий момент углубляюсь в искусство моушн-дизайна.',
-                        skills: ['UX/UI', 'Графический дизайн', 'Веб-дизайн', 'Киберспорт', 'Моушн (изучаю)']
+                        highlight: '«Создаю дизайн, который выделяет вас среди конкурентов»',
+                        text1: 'Специализируюсь на графическом, веб- и игровом дизайне. Оформляю сообщества, создаю карточки для маркетплейсов, разрабатываю интерфейсы приложений и сайтов, а также Telegram Mini Apps.',
+                        text2: 'Также делаю постеры, обложки, превью, презентации и документы. Работаю быстро и качественно, учитывая все пожелания.',
+                        skills: ['Графический дизайн', 'Веб-дизайн', 'UI/UX', 'Киберспортивный дизайн', 'Типографика', 'Презентации', 'Моушн (изучаю)']
                     });
                 }
             });
