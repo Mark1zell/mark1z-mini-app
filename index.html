@@ -12,6 +12,9 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
+    <!-- SortableJS для перетаскивания -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
     <style>
         :root {
             --bg-start: #0a050d;
@@ -84,9 +87,9 @@
             overflow: hidden;
         }
         .category-card:hover { transform: scale(1.02); border-color: var(--primary); }
-        .category-card .folder-icon { font-size: 48px; margin-bottom: 10px; }
-        .category-card .category-name { font-weight: 600; margin-bottom: 8px; }
-        .category-card .work-count { color: var(--text-muted); font-size: 12px; }
+        .category-card .folder-icon { font-size: 48px; margin-bottom: 10px; position: relative; z-index: 1; }
+        .category-card .category-name { font-weight: 600; margin-bottom: 8px; position: relative; z-index: 1; }
+        .category-card .work-count { color: var(--text-muted); font-size: 12px; position: relative; z-index: 1; }
         .category-card .cover-bg {
             position: absolute;
             top: 0;
@@ -97,6 +100,7 @@
             background-position: center;
             opacity: 0.15;
             pointer-events: none;
+            z-index: 0;
         }
         .category-card .admin-actions {
             position: absolute;
@@ -104,6 +108,7 @@
             right: 5px;
             display: none;
             gap: 3px;
+            z-index: 2;
         }
         .admin-mode .category-card .admin-actions {
             display: flex;
@@ -302,12 +307,16 @@
             font-size: 18px;
             color: var(--text-muted);
             display: none;
+            position: absolute;
+            right: 5px;
+            bottom: 5px;
+            z-index: 2;
         }
-        .admin-mode .drag-handle {
+        .show-handle .drag-handle {
             display: inline-block;
         }
         @media (max-width: 400px) {
-            .categories-grid, .works-grid { grid-template-columns: 1fr; }
+            .categories-grid { grid-template-columns: repeat(2, 1fr); }
             .brand-name { font-size: 24px; }
             .tab-btn { font-size: 11px; padding: 10px 4px; }
             .card { padding: 18px; }
@@ -529,36 +538,48 @@
             }
             html += '</div>';
             container.innerHTML = html;
-            setupDragAndDrop('categoriesGrid', 'portfolioCategories');
+            if (window.isAdmin) {
+                setupSortableForCategories();
+            }
         }
 
-        function setupDragAndDrop(containerId, collectionName) {
-            if (!window.isAdmin) return;
-            const container = document.getElementById(containerId);
-            if (!container) return;
-            let draggedElement = null;
-            container.querySelectorAll('.category-card, .order-item').forEach(el => {
-                el.addEventListener('dragstart', (e) => {
-                    draggedElement = el;
-                    e.dataTransfer.setData('text/plain', el.dataset.id);
-                });
-                el.addEventListener('dragover', (e) => {
-                    e.preventDefault();
-                });
-                el.addEventListener('drop', (e) => {
-                    e.preventDefault();
-                    const targetId = e.dataTransfer.getData('text/plain');
-                    const targetIndex = [...container.children].indexOf(el);
-                    const draggedIndex = [...container.children].indexOf(draggedElement);
-                    if (draggedIndex !== targetIndex) {
-                        const items = [...container.children];
-                        const [movedItem] = items.splice(draggedIndex, 1);
-                        items.splice(targetIndex, 0, movedItem);
-                        container.innerHTML = '';
-                        items.forEach(item => container.appendChild(item));
-                        updateOrder(collectionName, items);
-                    }
-                });
+        function setupSortableForCategories() {
+            const grid = document.getElementById('categoriesGrid');
+            if (!grid || !window.isAdmin) return;
+            new Sortable(grid, {
+                handle: '.drag-handle',
+                animation: 150,
+                onEnd: function(evt) {
+                    const items = [...grid.children];
+                    updateOrder('portfolioCategories', items);
+                }
+            });
+        }
+
+        function setupSortableForWorks() {
+            const grid = document.getElementById('worksGrid');
+            if (!grid || !window.isAdmin) return;
+            new Sortable(grid, {
+                handle: '.drag-handle',
+                animation: 150,
+                onEnd: function(evt) {
+                    const fromIndex = evt.oldIndex;
+                    const toIndex = evt.newIndex;
+                    updateWorksOrder(fromIndex, toIndex);
+                }
+            });
+        }
+
+        function setupSortableForServices() {
+            const list = document.getElementById('servicesList');
+            if (!list || !window.isAdmin) return;
+            new Sortable(list, {
+                handle: '.drag-handle',
+                animation: 150,
+                onEnd: function(evt) {
+                    const items = [...list.children];
+                    updateOrder('services', items);
+                }
             });
         }
 
@@ -642,34 +663,9 @@
             }
             html += '</div></div>';
             worksContainer.innerHTML = html;
-            setupWorkDragDrop();
-        }
-
-        function setupWorkDragDrop() {
-            if (!window.isAdmin) return;
-            const grid = document.getElementById('worksGrid');
-            if (!grid) return;
-            let draggedElement = null;
-            grid.querySelectorAll('.work-item').forEach(el => {
-                el.addEventListener('dragstart', (e) => {
-                    draggedElement = el;
-                    e.dataTransfer.setData('text/plain', el.dataset.index);
-                });
-                el.addEventListener('dragover', (e) => e.preventDefault());
-                el.addEventListener('drop', (e) => {
-                    e.preventDefault();
-                    const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
-                    const toIndex = [...grid.children].indexOf(el);
-                    if (fromIndex !== toIndex) {
-                        const items = [...grid.children];
-                        const [moved] = items.splice(fromIndex, 1);
-                        items.splice(toIndex, 0, moved);
-                        grid.innerHTML = '';
-                        items.forEach(item => grid.appendChild(item));
-                        updateWorksOrder(fromIndex, toIndex);
-                    }
-                });
-            });
+            if (window.isAdmin) {
+                setupSortableForWorks();
+            }
         }
 
         async function updateWorksOrder(fromIndex, toIndex) {
@@ -749,7 +745,7 @@
                             <p>${s.desc}</p>
                             ${s.price ? `<p style="color:var(--accent); font-weight:600;">${s.price} ₽</p>` : '<p style="color:var(--text-muted);">Цена не указана</p>'}
                         </div>
-                        <div style="display:flex; gap:5px;">
+                        <div style="display:flex; gap:5px; align-items:center;">
                             <span class="drag-handle">☰</span>
                             <button class="btn" onclick="editService('${s.id}')">✏️</button>
                             <button class="btn" onclick="deleteService('${s.id}')">🗑️</button>
@@ -1257,6 +1253,15 @@
                 container.appendChild(star);
             }
         }
+
+        // ================== ГЛОБАЛЬНЫЙ ОБРАБОТЧИК КЛИКОВ ДЛЯ КАТЕГОРИЙ ==================
+        document.addEventListener('click', function(e) {
+            const categoryCard = e.target.closest('.category-card');
+            if (categoryCard) {
+                const categoryId = categoryCard.dataset.id;
+                openCategory(categoryId);
+            }
+        });
 
         // ================== ЗАПУСК ==================
         function init() {
