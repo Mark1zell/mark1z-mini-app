@@ -13,7 +13,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
     <style>
-        /* ... стили как в предыдущем коде, с добавлением зума и кнопки дизайнера ... */
         :root {
             --bg-start: #0a050d;
             --bg-mid: #100820;
@@ -290,7 +289,6 @@
             <div class="logo"><img src="https://i.ibb.co/3y8vZHQz/2026-09-02-025009694.png" alt="Avatar"></div>
             <h1 class="brand-name">Mark1z Design</h1>
             <p class="tagline">ДИЗАЙН, КОТОРЫЙ РАБОТАЕТ НА ВАС</p>
-            <button class="btn" onclick="openContactModal()">📩 Написать дизайнеру</button>
         </div>
 
         <nav class="tabs" id="tabs">
@@ -327,11 +325,7 @@
         </section>
 
         <section id="orders" class="section">
-            <div class="order-list" id="ordersList"></div>
-            <div id="userOrderButtons"></div>
-            <div class="admin-only" style="margin-top:10px">
-                <button class="btn" onclick="clearOrders()">Очистить заказы</button>
-            </div>
+            <div id="ordersContent"></div>
         </section>
 
         <div class="footer">© Mark1z Design · Дмитрий Маркизов</div>
@@ -377,6 +371,8 @@
         let scale = 1;
         let startDistance = 0;
         let startScale = 1;
+        let servicesData = [];
+        let adminOrdersMode = 'services'; // 'services' или 'orders'
 
         // ================== TELEGRAM INIT ==================
         function initTelegram() {
@@ -437,8 +433,17 @@
                 renderPortfolioCategories(snapshot);
             });
 
+            db.collection('services').onSnapshot((snapshot) => {
+                const services = [];
+                snapshot.forEach(doc => {
+                    services.push({ id: doc.id, ...doc.data() });
+                });
+                servicesData = services;
+                renderOrdersSection();
+            });
+
             db.collection('orders').orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
-                renderOrders(snapshot);
+                renderOrdersList(snapshot);
             });
         }
 
@@ -560,14 +565,93 @@
             container.innerHTML = html;
         }
 
-        function renderOrders(snapshot) {
-            const ordersList = document.getElementById('ordersList');
-            if (!ordersList) return;
-            if (!window.isAdmin) {
-                ordersList.innerHTML = '';
-                renderOrderButtons();
-                return;
+        // ================== РАЗДЕЛ "ЗАКАЗЫ" ==================
+        function renderOrdersSection() {
+            const container = document.getElementById('ordersContent');
+            if (!container) return;
+            if (window.isAdmin) {
+                // Админ: показываем переключатель и соответствующий контент
+                let html = `
+                    <div style="display:flex; gap:10px; margin-bottom:15px;">
+                        <button class="btn ${adminOrdersMode === 'services' ? 'active' : ''}" onclick="switchAdminMode('services')">Услуги</button>
+                        <button class="btn ${adminOrdersMode === 'orders' ? 'active' : ''}" onclick="switchAdminMode('orders')">Заказы</button>
+                    </div>
+                `;
+                if (adminOrdersMode === 'services') {
+                    html += renderServicesForAdmin();
+                } else {
+                    html += '<div id="adminOrdersList"></div>';
+                }
+                container.innerHTML = html;
+                if (adminOrdersMode === 'orders') {
+                    // Перерисуем список заказов (он подтянется из подписки)
+                    db.collection('orders').orderBy('timestamp', 'desc').get().then(snapshot => {
+                        renderOrdersList(snapshot);
+                    });
+                }
+            } else {
+                // Обычный пользователь: показываем услуги и кнопку "Написать дизайнеру"
+                let html = '<h3 style="margin-bottom:15px;">Наши услуги</h3>';
+                html += renderServicesForUser();
+                html += `<div style="margin-top:20px;">
+                    <button class="btn" onclick="openContactModal()">📩 Написать дизайнеру</button>
+                </div>`;
+                container.innerHTML = html;
             }
+        }
+
+        function renderServicesForUser() {
+            if (servicesData.length === 0) {
+                return '<p style="color:var(--text-muted)">Услуги пока не добавлены</p>';
+            }
+            let html = '<div class="order-list" style="display:flex; flex-direction:column; gap:12px;">';
+            servicesData.forEach(s => {
+                html += `
+                    <div class="order-item" style="cursor:pointer;" onclick="placeOrder('${s.name}')">
+                        <div class="order-info">
+                            <h4>${s.emoji} ${s.name}</h4>
+                            <p>${s.desc}</p>
+                            ${s.price ? `<p style="color:var(--accent); font-weight:600;">${s.price} ₽</p>` : ''}
+                        </div>
+                        <span style="font-size:24px;">➔</span>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            return html;
+        }
+
+        function renderServicesForAdmin() {
+            let html = '<div class="order-list" style="display:flex; flex-direction:column; gap:12px;">';
+            servicesData.forEach(s => {
+                html += `
+                    <div class="order-item">
+                        <div class="order-info">
+                            <h4>${s.emoji} ${s.name}</h4>
+                            <p>${s.desc}</p>
+                            ${s.price ? `<p style="color:var(--accent); font-weight:600;">${s.price} ₽</p>` : '<p style="color:var(--text-muted);">Цена не указана</p>'}
+                        </div>
+                        <div style="display:flex; gap:5px;">
+                            <button class="btn" onclick="editService('${s.id}')">✏️</button>
+                            <button class="btn" onclick="deleteService('${s.id}')">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            html += `<div style="margin-top:15px;"><button class="btn" onclick="addService()">➕ Добавить услугу</button></div>`;
+            return html;
+        }
+
+        function switchAdminMode(mode) {
+            adminOrdersMode = mode;
+            renderOrdersSection();
+        }
+
+        function renderOrdersList(snapshot) {
+            if (!window.isAdmin) return;
+            const container = document.getElementById('adminOrdersList');
+            if (!container) return;
             let html = '';
             if (snapshot.empty) {
                 html = '<p style="color:var(--text-muted)">Нет заказов</p>';
@@ -588,39 +672,67 @@
                     `;
                 });
             }
-            ordersList.innerHTML = html;
-            document.getElementById('userOrderButtons').innerHTML = '';
+            container.innerHTML = html;
         }
 
-        function renderOrderButtons() {
-            const container = document.getElementById('userOrderButtons');
-            const services = [
-                { name: 'Баннер', emoji: '🎯', desc: 'Рекламный или оформительский' },
-                { name: 'Брендинг', emoji: '💼', desc: 'Фирменный стиль, айдентика' },
-                { name: 'Дизайн упаковки', emoji: '📦', desc: 'Коробки, этикетки, пакеты' },
-                { name: 'Пользовательские интерфейсы', emoji: '🖥️', desc: 'UI/UX для приложений и сайтов' },
-                { name: 'Дизайн публикаций', emoji: '📰', desc: 'Посты, презентации, документы' },
-                { name: 'Оформление группы', emoji: '📱', desc: 'Шапки, посты, обложки' },
-                { name: 'Дизайн приложения', emoji: '💻', desc: 'UI/UX, интерфейсы' },
-                { name: 'Дизайн сайта', emoji: '🌐', desc: 'Лендинги, многостраничники' },
-                { name: 'Карточки WB/OZON/Авито', emoji: '🛍️', desc: 'Инфографика, продающие карточки' },
-                { name: 'Аватарка', emoji: '👤', desc: 'Для соцсетей и мессенджеров' },
-                { name: 'Другое', emoji: '✨', desc: 'Любая дизайн-задача' }
-            ];
-            let html = '<div class="order-list" style="display:flex; flex-direction:column; gap:12px;">';
-            services.forEach(s => {
-                html += `
-                    <div class="order-item" style="cursor:pointer;" onclick="placeOrder('${s.name}')">
-                        <div class="order-info">
-                            <h4>${s.emoji} ${s.name}</h4>
-                            <p>${s.desc}</p>
-                        </div>
-                        <span style="font-size:24px;">➔</span>
-                    </div>
-                `;
-            });
-            html += '</div>';
-            container.innerHTML = html;
+        // ================== УПРАВЛЕНИЕ УСЛУГАМИ (админ) ==================
+        function addService() {
+            const modal = document.getElementById('modalOverlay');
+            const content = document.getElementById('modalContent');
+            content.innerHTML = `
+                <h3>Добавить услугу</h3>
+                <input type="text" id="serviceEmoji" placeholder="Эмодзи (например, 🎨)">
+                <input type="text" id="serviceName" placeholder="Название услуги">
+                <input type="text" id="serviceDesc" placeholder="Описание">
+                <input type="number" id="servicePrice" placeholder="Цена (₽)">
+                <button class="btn" onclick="saveNewService()">Сохранить</button>
+                <button class="btn" onclick="closeModal()">Отмена</button>
+            `;
+            modal.style.display = 'flex';
+        }
+
+        async function saveNewService() {
+            const emoji = document.getElementById('serviceEmoji').value.trim() || '✨';
+            const name = document.getElementById('serviceName').value.trim();
+            const desc = document.getElementById('serviceDesc').value.trim();
+            const price = document.getElementById('servicePrice').value.trim();
+            if (!name) { alert('Введите название услуги'); return; }
+            await db.collection('services').add({ emoji, name, desc, price: price || null });
+            closeModal();
+        }
+
+        async function editService(id) {
+            const doc = await db.collection('services').doc(id).get();
+            if (!doc.exists) return;
+            const s = doc.data();
+            const modal = document.getElementById('modalOverlay');
+            const content = document.getElementById('modalContent');
+            content.innerHTML = `
+                <h3>Редактировать услугу</h3>
+                <input type="text" id="serviceEmoji" placeholder="Эмодзи" value="${s.emoji}">
+                <input type="text" id="serviceName" placeholder="Название услуги" value="${s.name}">
+                <input type="text" id="serviceDesc" placeholder="Описание" value="${s.desc}">
+                <input type="number" id="servicePrice" placeholder="Цена (₽)" value="${s.price || ''}">
+                <button class="btn" onclick="saveServiceChanges('${id}')">Сохранить</button>
+                <button class="btn" onclick="closeModal()">Отмена</button>
+            `;
+            modal.style.display = 'flex';
+        }
+
+        async function saveServiceChanges(id) {
+            const emoji = document.getElementById('serviceEmoji').value.trim() || '✨';
+            const name = document.getElementById('serviceName').value.trim();
+            const desc = document.getElementById('serviceDesc').value.trim();
+            const price = document.getElementById('servicePrice').value.trim();
+            if (!name) { alert('Введите название услуги'); return; }
+            await db.collection('services').doc(id).update({ emoji, name, desc, price: price || null });
+            closeModal();
+        }
+
+        async function deleteService(id) {
+            if (confirm('Удалить услугу?')) {
+                await db.collection('services').doc(id).delete();
+            }
         }
 
         // ================== ПОЛНОЭКРАННЫЙ ПРОСМОТР ==================
@@ -633,7 +745,6 @@
             img.alt = title || 'Изображение';
             saveBtn.style.display = 'inline-block';
             viewer.style.display = 'flex';
-            // Сброс зума
             scale = 1;
             img.style.transform = 'scale(1)';
         }
@@ -645,10 +756,8 @@
             scale = 1;
         }
 
-        // Сохранение через Blob
         function saveCurrentImage() {
             if (!currentViewImageSrc) return;
-            // Если src — dataURL, создаём Blob
             if (currentViewImageSrc.startsWith('data:')) {
                 const base64 = currentViewImageSrc.split(',')[1];
                 const byteChars = atob(base64);
@@ -667,7 +776,6 @@
                 document.body.removeChild(a);
                 setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
             } else {
-                // Если это обычная ссылка (например, https), пробуем скачать как есть
                 const a = document.createElement('a');
                 a.href = currentViewImageSrc;
                 a.download = 'image.jpg';
@@ -678,7 +786,6 @@
         }
 
         document.getElementById('imageViewerSaveBtn').addEventListener('click', saveCurrentImage);
-
         document.getElementById('imageViewerClose').addEventListener('click', closeImageViewer);
 
         // Зум (pinch)
@@ -723,7 +830,6 @@
             };
             db.collection('orders').add(order);
             
-            // ================== ВАЖНО: ЗАМЕНИТЕ НА ВАШУ РЕАЛЬНУЮ ССЫЛКУ ОПЛАТЫ ==================
             const paymentUrl = 'https://your-payment-link.com/pay?service=' + encodeURIComponent(service);
             
             if (window.telegramAvailable && window.tg) {
@@ -797,7 +903,7 @@
             }
             for (const file of files) {
                 if (tempReviewImages.length >= 3) break;
-                const dataUrl = await compressImage(file, 1200, 0.8); // улучшенное качество
+                const dataUrl = await compressImage(file, 1200, 0.8);
                 if (dataUrl) {
                     tempReviewImages.push(dataUrl);
                 }
@@ -1001,6 +1107,9 @@
                     sections.forEach(s => s.classList.remove('active'));
                     document.getElementById(target).classList.add('active');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
+                    if (target === 'orders') {
+                        renderOrdersSection();
+                    }
                     if (window.telegramAvailable && window.tg) {
                         if (target === 'orders' && !window.isAdmin) {
                             window.tg.MainButton.show();
@@ -1037,6 +1146,7 @@
             setupTabs();
             setupRealTimeListeners();
             initTelegram();
+            renderOrdersSection();
         }
 
         if (document.readyState === 'loading') {
