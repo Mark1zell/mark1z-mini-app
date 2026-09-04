@@ -636,32 +636,20 @@
 
         // ================== ИНИЦИАЛИЗАЦИЯ TELEGRAM ==================
         function initTelegram() {
-            const tg = window.Telegram?.WebApp;
-            if (tg) {
-                tg.ready();
-                tg.expand();
-                tg.setHeaderColor('#0a050d');
-                tg.setBackgroundColor('#0a0012');
-                tg.MainButton.setParams({ text: 'НАПИСАТЬ ДИЗАЙНЕРУ', color: '#7c3aed', text_color: '#ffffff' });
-                const user = tg.initDataUnsafe?.user;
-                let isAdmin = false;
-                if (user && user.username) {
-                    const username = user.username.toLowerCase().replace('@','');
-                    isAdmin = (username === 'mark1zell');
-                }
-                window.tg = tg;
-                window.currentUser = user;
-                window.isAdmin = isAdmin;
-                if (isAdmin) {
-                    document.body.classList.add('admin-mode');
-                }
-                tg.MainButton.onClick(() => {
-                    tg.sendData('Здравствуйте! Хочу обсудить заказ.');
-                    tg.close();
+            if (window.Telegram?.WebApp) {
+                window.tg = window.Telegram.WebApp;
+                window.currentUser = window.tg.initDataUnsafe?.user;
+                window.isAdmin = window.currentUser?.username?.toLowerCase() === 'mark1zell';
+                if (window.isAdmin) document.body.classList.add('admin-mode');
+                window.tg.ready();
+                window.tg.expand();
+                window.tg.MainButton.setParams({ text: 'НАПИСАТЬ ДИЗАЙНЕРУ', color: '#7c3aed', text_color: '#ffffff' });
+                window.tg.MainButton.onClick(() => {
+                    window.tg.sendData('Здравствуйте! Хочу обсудить заказ.');
+                    window.tg.close();
                 });
                 renderAll();
             } else {
-                // Обновляем диагностику и пробуем снова через 1 секунду
                 updateDebugInfo();
                 setTimeout(initTelegram, 1000);
             }
