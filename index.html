@@ -16,7 +16,6 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
     <style>
-        /* ... все стили из предыдущего полного кода (можно скопировать без изменений) ... */
         :root {
             --bg-start: #0a050d;
             --bg-mid: #100820;
@@ -45,7 +44,22 @@
         .star { position:absolute; background:rgba(255,255,255,0.7); border-radius:50%; opacity:0; animation: twinkle var(--duration) ease-in-out infinite; animation-delay: var(--delay); }
         @keyframes twinkle { 0%,100%{opacity:0; transform:scale(0.3)} 50%{opacity:0.3; transform:scale(1)} }
         .app-container { position:relative; z-index:1; max-width:600px; margin:0 auto; }
-        .header { text-align:center; padding:30px 0 20px; }
+        .header { text-align:center; padding:30px 0 20px; position: relative; }
+        .header .faq-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(124,58,237,0.3);
+            border: 1px solid var(--card-border);
+            color: #fff;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .header .faq-button:hover { background: rgba(124,58,237,0.6); }
         .logo { width:100px; height:100px; margin:0 auto 16px; border-radius:28px; overflow:hidden; box-shadow:0 4px 15px rgba(124,58,237,0.3); }
         .logo img { width:100%; height:100%; object-fit:cover; }
         .brand-name { font-size:30px; font-weight:800; background:linear-gradient(to right, #a78bfa, #c084fc, #a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; animation: brandGlow 6s ease-in-out infinite; }
@@ -170,6 +184,7 @@
             max-width: 400px;
             max-height: 80vh;
             overflow-y: auto;
+            position: relative;
         }
         .modal input, .modal textarea {
             width: 100%;
@@ -322,13 +337,62 @@
             .tab-btn { font-size: 11px; padding: 10px 4px; }
             .card { padding: 18px; }
         }
+
+        /* Загрузочный экран */
+        #loadingScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(145deg, var(--bg-start), var(--bg-mid), var(--bg-end));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+        #loadingScreen.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+        .loader {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 4px solid rgba(124,58,237,0.2);
+            border-top-color: var(--primary);
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .loading-logo {
+            font-size: 48px;
+            margin-bottom: 20px;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
     </style>
 </head>
 <body>
+    <!-- Загрузочный экран -->
+    <div id="loadingScreen">
+        <div style="text-align: center;">
+            <div class="loading-logo">🎨</div>
+            <div class="loader"></div>
+        </div>
+    </div>
+
     <div class="stars-container" id="starsContainer"></div>
 
     <div class="app-container">
         <div class="header">
+            <button class="faq-button" onclick="openFaqModal()">?</button>
             <div class="logo"><img src="https://i.ibb.co/3y8vZHQz/2026-09-02-025009694.png" alt="Avatar"></div>
             <h1 class="brand-name">Mark1z Design</h1>
             <p class="tagline">ДИЗАЙН, КОТОРЫЙ РАБОТАЕТ НА ВАС</p>
@@ -447,6 +511,28 @@
         function updateDebugInfo() {
             let info = `TG: ${window.telegramAvailable ? 'есть' : 'нет'} | User: ${window.currentUser ? (window.currentUser.username || window.currentUser.first_name) : 'нет'} | Admin: ${window.isAdmin}`;
             document.getElementById('debugInfo').textContent = info;
+        }
+
+        // ================== FAQ ==================
+        function openFaqModal() {
+            const modal = document.getElementById('modalOverlay');
+            const content = document.getElementById('modalContent');
+            content.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3>FAQ</h3>
+                    <button class="btn" onclick="closeModal()" style="margin:0;">×</button>
+                </div>
+                <div style="line-height: 1.6;">
+                    <p><strong>1.</strong> Работаю по 100% предоплате.</p>
+                    <p><strong>2.</strong> Деньги возврату не подлежат.</p>
+                    <p><strong>3.</strong> Поправки в работе: 2 поправки бесплатно, последующие — 50 рублей за 2 поправки.</p>
+                    <p><strong>4.</strong> Сроки выполнения зависят от сложности задачи и оговариваются индивидуально.</p>
+                    <p><strong>5.</strong> Все исходники передаются после полной оплаты.</p>
+                    <p><strong>6.</strong> При заказе нескольких услуг предоставляется скидка.</p>
+                    <p><strong>7.</strong> Для срочных заказов возможна доплата за приоритет.</p>
+                </div>
+            `;
+            modal.style.display = 'flex';
         }
 
         // ================== ИНИЦИАЛИЗАЦИЯ ДАННЫХ ==================
@@ -1274,6 +1360,11 @@
             setupRealTimeListeners();
             initTelegram();
             renderOrdersSection();
+
+            // Скрываем загрузочный экран после небольшой задержки
+            setTimeout(() => {
+                document.getElementById('loadingScreen').classList.add('hidden');
+            }, 800);
         }
 
         if (document.readyState === 'loading') {
