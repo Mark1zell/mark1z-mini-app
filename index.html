@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Mark1z Design</title>
 
-    <!-- Обязательно подключаем Telegram WebApp JS -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
     <style>
         :root {
@@ -242,9 +243,9 @@
             <div class="card">
                 <h3>👋 Дмитрий Маркизов</h3>
                 <p>19 лет · Опыт 6 лет</p>
-                <div id="aboutHighlight" class="resume-highlight">«Каждый проект делаю как собственный — поэтому он работает на вас»</div>
-                <p id="aboutText1">Специализируюсь на UX/UI, графическом, веб- и киберспортивном дизайне. Создаю продукты, которые не только красивы, но и удобны.</p>
-                <p id="aboutText2">В настоящий момент углубляюсь в искусство моушн-дизайна.</p>
+                <div id="aboutHighlight" class="resume-highlight"></div>
+                <p id="aboutText1"></p>
+                <p id="aboutText2"></p>
                 <div class="skills-list" id="skillsList"></div>
                 <div class="admin-only" style="margin-top:10px">
                     <button class="btn" onclick="editAbout()">Редактировать</button>
@@ -259,8 +260,8 @@
 
         <section id="reviews" class="section">
             <div id="reviewsContainer"></div>
-            <div class="admin-only" style="margin-top:10px">
-                <button class="btn" onclick="addReview()">Добавить отзыв</button>
+            <div style="margin-top:10px">
+                <button class="btn" onclick="openReviewModal()">Добавить отзыв</button>
             </div>
         </section>
 
@@ -282,79 +283,107 @@
     <div id="debugInfo"></div>
 
     <script>
-        // Перехват ошибок
-        window.onerror = function(message, source, lineno, colno, error) {
-            const debug = document.getElementById('debugInfo');
-            if (debug) {
-                debug.textContent = `Ошибка: ${message} (${source}:${lineno})`;
-            }
-            return false;
+        // ================== FIREBASE ==================
+        const firebaseConfig = {
+            apiKey: "AIzaSyAFFzb5zZ_n1NCcBn7hET3KIA5lxTgr6as",
+            authDomain: "mark1z-design.firebaseapp.com",
+            projectId: "mark1z-design",
+            storageBucket: "mark1z-design.firebasestorage.app",
+            messagingSenderId: "975398534199",
+            appId: "1:975398534199:web:ad263dd9071e37591453b2",
+            measurementId: "G-C8K8SGFY9H"
         };
-
-        // ================== ДАННЫЕ ==================
-        const DEFAULT_DATA = {
-            about: {
-                highlight: '«Каждый проект делаю как собственный — поэтому он работает на вас»',
-                text1: 'Специализируюсь на UX/UI, графическом, веб- и киберспортивном дизайне. Создаю продукты, которые не только красивы, но и удобны.',
-                text2: 'В настоящий момент углубляюсь в искусство моушн-дизайна.'
-            },
-            skills: ['UX/UI', 'Графический дизайн', 'Веб-дизайн', 'Киберспорт', 'Моушн (изучаю)'],
-            portfolioCategories: [
-                { name: 'Киберспорт', icon: '🎮', items: [] },
-                { name: 'Брендинг', icon: '💼', items: [] },
-                { name: 'Дизайн упаковки', icon: '📦', items: [] },
-                { name: 'Пользовательские интерфейсы', icon: '🖥️', items: [] }
-            ],
-            reviews: [
-                { author: 'Алексей', stars: 5, text: '«Дмитрий сделал логотип для моего киберспортивного клуба. Получилось круче, чем ожидал!»' },
-                { author: 'Мария', stars: 5, text: '«Заказывала оформление группы ВК и карточки для Wildberries. Всё в едином стиле, продажи выросли. Рекомендую!»' },
-                { author: 'Игорь', stars: 5, text: '«UX/UI для мобильного приложения был на высоте. Дмитрий учёл все пожелания.»' }
-            ],
-            orders: []
-        };
-
-        function loadData() {
-            try {
-                const saved = localStorage.getItem('mark1z_data');
-                if (saved) return JSON.parse(saved);
-            } catch(e) { console.warn('Не удалось загрузить данные'); }
-            return JSON.parse(JSON.stringify(DEFAULT_DATA));
-        }
-        function saveData() {
-            try { localStorage.setItem('mark1z_data', JSON.stringify(appData)); }
-            catch(e) { console.warn('Не удалось сохранить данные'); }
-        }
-        let appData = loadData();
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
 
         // ================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==================
         window.tg = null;
         window.currentUser = null;
         window.isAdmin = false;
         window.telegramAvailable = false;
+        let currentCategoryId = null;
+        let selectedRating = 0;
 
-        // ================== ДИАГНОСТИКА ==================
+        // ================== TELEGRAM INIT ==================
+        function initTelegram() {
+            const tg = window.Telegram?.WebApp;
+            if (tg) {
+                window.telegramAvailable = true;
+                window.tg = tg;
+                tg.ready();
+                tg.expand();
+                tg.setHeaderColor('#0a050d');
+                tg.setBackgroundColor('#0a0012');
+                tg.MainButton.setParams({ text: 'НАПИСАТЬ ДИЗАЙНЕРУ', color: '#7c3aed', text_color: '#ffffff' });
+                const user = tg.initDataUnsafe?.user;
+                window.currentUser = user;
+                if (user?.username?.toLowerCase() === 'mark1zell') {
+                    window.isAdmin = true;
+                    document.body.classList.add('admin-mode');
+                }
+                tg.MainButton.onClick(() => {
+                    tg.sendData('Здравствуйте! Хочу обсудить заказ.');
+                    tg.close();
+                });
+            } else {
+                window.telegramAvailable = false;
+                window.tg = null;
+                window.isAdmin = false;
+            }
+            updateDebugInfo();
+        }
+
         function updateDebugInfo() {
             let info = `TG: ${window.telegramAvailable ? 'есть' : 'нет'} | User: ${window.currentUser ? (window.currentUser.username || window.currentUser.first_name) : 'нет'} | Admin: ${window.isAdmin}`;
             document.getElementById('debugInfo').textContent = info;
         }
 
-        // ================== РЕНДЕР ==================
-        function renderAbout() {
-            document.getElementById('aboutHighlight').textContent = appData.about.highlight;
-            document.getElementById('aboutText1').textContent = appData.about.text1;
-            document.getElementById('aboutText2').textContent = appData.about.text2;
-            document.getElementById('skillsList').innerHTML = appData.skills.map(s => `<span class="skill-badge">${s}</span>`).join('');
+        // ================== ЗАГРУЗКА ДАННЫХ В РЕАЛЬНОМ ВРЕМЕНИ ==================
+        function setupRealTimeListeners() {
+            // Обо мне
+            db.collection('about').doc('main').onSnapshot((doc) => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    document.getElementById('aboutHighlight').textContent = data.highlight || '';
+                    document.getElementById('aboutText1').textContent = data.text1 || '';
+                    document.getElementById('aboutText2').textContent = data.text2 || '';
+                    document.getElementById('skillsList').innerHTML = (data.skills || []).map(s => `<span class="skill-badge">${s}</span>`).join('');
+                } else {
+                    db.collection('about').doc('main').set({
+                        highlight: '«Каждый проект делаю как собственный — поэтому он работает на вас»',
+                        text1: 'Специализируюсь на UX/UI, графическом, веб- и киберспортивном дизайне. Создаю продукты, которые не только красивы, но и удобны.',
+                        text2: 'В настоящий момент углубляюсь в искусство моушн-дизайна.',
+                        skills: ['UX/UI', 'Графический дизайн', 'Веб-дизайн', 'Киберспорт', 'Моушн (изучаю)']
+                    });
+                }
+            });
+
+            // Портфолио категории
+            db.collection('portfolioCategories').onSnapshot((snapshot) => {
+                renderPortfolioCategories(snapshot);
+            });
+
+            // Отзывы
+            db.collection('reviews').orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
+                renderReviews(snapshot);
+            });
+
+            // Заказы
+            db.collection('orders').orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
+                renderOrders(snapshot);
+            });
         }
 
-        function renderPortfolioCategories() {
+        function renderPortfolioCategories(snapshot) {
             const container = document.getElementById('portfolioCategories');
-            container.style.display = 'block';
-            document.getElementById('portfolioWorks').style.display = 'none';
+            if (!container || container.style.display === 'none') return; // если открыта категория, не трогаем
+            const cats = [];
+            snapshot.forEach(doc => cats.push({ id: doc.id, ...doc.data() }));
             let html = '<div class="card"><h3>📁 Категории портфолио</h3><div class="categories-grid">';
-            appData.portfolioCategories.forEach((cat, idx) => {
-                const count = cat.items.length;
+            cats.forEach((cat) => {
+                const count = cat.items ? cat.items.length : 0;
                 html += `
-                    <div class="category-card" onclick="openCategory(${idx})">
+                    <div class="category-card" onclick="openCategory('${cat.id}')">
                         <div class="folder-icon">${cat.icon}</div>
                         <div class="category-name">${cat.name}</div>
                         <div class="work-count">${count} работ(ы)</div>
@@ -369,34 +398,36 @@
             container.innerHTML = html;
         }
 
-        let currentCategoryIndex = null;
-        function openCategory(index) {
-            currentCategoryIndex = index;
-            const category = appData.portfolioCategories[index];
+        async function openCategory(categoryId) {
+            currentCategoryId = categoryId;
+            const catDoc = await db.collection('portfolioCategories').doc(categoryId).get();
+            if (!catDoc.exists) return;
+            const cat = catDoc.data();
             document.getElementById('portfolioCategories').style.display = 'none';
             const worksContainer = document.getElementById('portfolioWorks');
             worksContainer.style.display = 'block';
             let html = `
                 <div class="card">
-                    <button class="btn" onclick="renderPortfolioCategories()" style="margin-bottom:15px;">← Назад</button>
-                    <h3>${category.icon} ${category.name}</h3>
+                    <button class="btn" onclick="showPortfolioCategories()" style="margin-bottom:15px;">← Назад</button>
+                    <h3>${cat.icon} ${cat.name}</h3>
                     <div class="works-grid">
             `;
-            if (category.items.length === 0) {
+            const items = cat.items || [];
+            if (items.length === 0) {
                 html += '<p style="color:var(--text-muted)">Нет работ</p>';
             } else {
-                category.items.forEach((item, idx) => {
+                items.forEach((item, idx) => {
                     html += `
                         <div class="work-item">
                             <img src="${item.image}" alt="${item.title}" loading="lazy">
                             <div class="work-info">${item.title}</div>
                             ${window.isAdmin ? `
                             <div class="work-actions">
-                                <button onclick="editWork(${idx})" title="Редактировать">✏️</button>
-                                <button onclick="deleteWork(${idx})" title="Удалить">🗑️</button>
+                                <button onclick="editWork(${idx})">✏️</button>
+                                <button onclick="deleteWork(${idx})">🗑️</button>
                             </div>` : ''}
                             <div class="work-actions" style="left:8px; right:auto;">
-                                <button onclick="downloadWork('${item.image}', '${item.title}')" title="Скачать">⬇️</button>
+                                <button onclick="downloadWork('${item.image}', '${item.title}')">⬇️</button>
                             </div>
                         </div>
                     `;
@@ -409,45 +440,68 @@
             worksContainer.innerHTML = html;
         }
 
-        function renderReviews() {
-            const container = document.getElementById('reviewsContainer');
-            container.innerHTML = appData.reviews.map((review, idx) => `
-                <div class="card review-card">
-                    <div class="review-author">
-                        <div class="review-avatar">${review.author.charAt(0)}</div>
-                        <div>
-                            <strong>${review.author}</strong>
-                            <div class="stars">${'★'.repeat(review.stars)}</div>
-                        </div>
-                    </div>
-                    <p class="review-text">${review.text}</p>
-                    ${window.isAdmin ? `<div style="margin-top:10px">
-                        <button class="btn" onclick="editReview(${idx})">✏️</button>
-                        <button class="btn" onclick="deleteReview(${idx})">🗑️</button>
-                    </div>` : ''}
-                </div>
-            `).join('');
+        function showPortfolioCategories() {
+            document.getElementById('portfolioWorks').style.display = 'none';
+            document.getElementById('portfolioCategories').style.display = 'block';
+            // Перезагрузим категории (уже подписаны, можно не трогать, но обновим на всякий случай)
+            db.collection('portfolioCategories').onSnapshot((snapshot) => {
+                renderPortfolioCategories(snapshot);
+            });
         }
 
-        function renderOrders() {
+        function renderReviews(snapshot) {
+            const container = document.getElementById('reviewsContainer');
+            if (!container) return;
+            let html = '';
+            snapshot.forEach(doc => {
+                const review = doc.data();
+                html += `
+                    <div class="card review-card">
+                        <div class="review-author">
+                            <div class="review-avatar">${review.author.charAt(0)}</div>
+                            <div>
+                                <strong>${review.author}</strong>
+                                <div class="stars">${'★'.repeat(review.stars)}${'☆'.repeat(5 - review.stars)}</div>
+                            </div>
+                        </div>
+                        <p class="review-text">${review.text}</p>
+                        ${window.isAdmin ? `<div style="margin-top:10px">
+                            <button class="btn" onclick="editReview('${doc.id}')">✏️</button>
+                            <button class="btn" onclick="deleteReview('${doc.id}')">🗑️</button>
+                        </div>` : ''}
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function renderOrders(snapshot) {
             const ordersList = document.getElementById('ordersList');
+            if (!ordersList) return;
             if (!window.isAdmin) {
                 ordersList.innerHTML = '';
                 renderOrderButtons();
                 return;
             }
-            ordersList.innerHTML = appData.orders.length === 0 
-                ? '<p style="color:var(--text-muted)">Нет заказов</p>'
-                : appData.orders.map((order, idx) => `
-                    <div class="order-item">
-                        <div class="order-info">
-                            <h4>${order.service}</h4>
-                            <p>От: ${order.user}</p>
-                            <p>${order.time}</p>
+            let html = '';
+            if (snapshot.empty) {
+                html = '<p style="color:var(--text-muted)">Нет заказов</p>';
+            } else {
+                snapshot.forEach(doc => {
+                    const order = doc.data();
+                    html += `
+                        <div class="order-item">
+                            <div class="order-info">
+                                <h4>${order.service}</h4>
+                                <p>От: ${order.user}</p>
+                                <p>${order.time}</p>
+                            </div>
+                            <button class="btn" onclick="deleteOrder('${doc.id}')">🗑️</button>
                         </div>
-                        <button class="btn" onclick="deleteOrder(${idx})">🗑️</button>
-                    </div>
-                `).join('');
+                    `;
+                });
+            }
+            ordersList.innerHTML = html;
             document.getElementById('userOrderButtons').innerHTML = '';
         }
 
@@ -459,29 +513,19 @@
             `).join('');
         }
 
-        function renderAll() {
-            renderAbout();
-            renderPortfolioCategories();
-            renderReviews();
-            renderOrders();
-            updateDebugInfo();
-        }
-
-        // ================== ПОЛЬЗОВАТЕЛЬСКИЕ ДЕЙСТВИЯ ==================
+        // ================== ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ ==================
         function placeOrder(service) {
-            if (window.telegramAvailable && window.tg?.initDataUnsafe?.user) {
-                // Используем tg.sendData
-                const order = {
-                    service,
-                    user: window.currentUser?.username || window.currentUser?.first_name || 'Пользователь',
-                    time: new Date().toLocaleString()
-                };
-                appData.orders.push(order);
-                saveData();
+            const user = window.currentUser?.username || window.currentUser?.first_name || 'Пользователь';
+            const order = {
+                service,
+                user: user,
+                time: new Date().toLocaleString(),
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            db.collection('orders').add(order);
+            if (window.telegramAvailable && window.tg) {
                 window.tg.sendData(`Заказ: ${service}`);
-                renderOrders();
             } else {
-                // Открываем чат с ботом через ссылку
                 const text = encodeURIComponent(`Здравствуйте! Хочу заказать: ${service}`);
                 window.open(`https://t.me/Mark1zDesign_bot?text=${text}`, '_blank');
             }
@@ -496,16 +540,67 @@
             document.body.removeChild(a);
         }
 
+        function openReviewModal() {
+            const modal = document.getElementById('modalOverlay');
+            const content = document.getElementById('modalContent');
+            content.innerHTML = `
+                <h3>Оставьте отзыв</h3>
+                <div id="starRating" style="font-size: 30px; cursor: pointer;">
+                    <span data-value="1">☆</span>
+                    <span data-value="2">☆</span>
+                    <span data-value="3">☆</span>
+                    <span data-value="4">☆</span>
+                    <span data-value="5">☆</span>
+                </div>
+                <textarea id="reviewText" placeholder="Напишите ваш отзыв..." style="height:100px;"></textarea>
+                <button class="btn" onclick="submitReview()">Опубликовать</button>
+                <button class="btn" onclick="closeModal()">Отмена</button>
+            `;
+            modal.style.display = 'flex';
+
+            document.querySelectorAll('#starRating span').forEach(star => {
+                star.addEventListener('click', () => {
+                    const value = parseInt(star.dataset.value);
+                    selectedRating = value;
+                    updateStarRating(value);
+                });
+            });
+        }
+
+        function updateStarRating(value) {
+            document.querySelectorAll('#starRating span').forEach(star => {
+                const starValue = parseInt(star.dataset.value);
+                star.textContent = starValue <= value ? '★' : '☆';
+                star.style.color = starValue <= value ? '#fbbf24' : 'inherit';
+            });
+        }
+
+        async function submitReview() {
+            const text = document.getElementById('reviewText').value.trim();
+            if (!text) { alert('Введите текст отзыва'); return; }
+            if (!selectedRating) { alert('Поставьте оценку'); return; }
+
+            const author = window.currentUser?.username || window.currentUser?.first_name || 'Пользователь';
+            await db.collection('reviews').add({
+                author: author,
+                stars: selectedRating,
+                text: text,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            closeModal();
+        }
+
         // ================== АДМИН-ФУНКЦИИ ==================
-        function editAbout() {
-            const newHighlight = prompt('Статус:', appData.about.highlight);
-            if (newHighlight !== null) appData.about.highlight = newHighlight;
-            const newText1 = prompt('Текст 1:', appData.about.text1);
-            if (newText1 !== null) appData.about.text1 = newText1;
-            const newText2 = prompt('Текст 2:', appData.about.text2);
-            if (newText2 !== null) appData.about.text2 = newText2;
-            saveData();
-            renderAbout();
+        async function editAbout() {
+            const doc = await db.collection('about').doc('main').get();
+            if (!doc.exists) return;
+            const data = doc.data();
+            const newHighlight = prompt('Статус:', data.highlight);
+            if (newHighlight !== null) await db.collection('about').doc('main').update({ highlight: newHighlight });
+            const newText1 = prompt('Текст 1:', data.text1);
+            if (newText1 !== null) await db.collection('about').doc('main').update({ text1: newText1 });
+            const newText2 = prompt('Текст 2:', data.text2);
+            if (newText2 !== null) await db.collection('about').doc('main').update({ text2: newText2 });
         }
 
         function addCategory() {
@@ -513,13 +608,11 @@
             if (!name) return;
             const icon = prompt('Эмодзи-иконка:');
             if (!icon) return;
-            appData.portfolioCategories.push({ name, icon, items: [] });
-            saveData();
-            renderPortfolioCategories();
+            db.collection('portfolioCategories').add({ name, icon, items: [] });
         }
 
-        function addWork() {
-            if (currentCategoryIndex === null) return;
+        async function addWork() {
+            if (!currentCategoryId) return;
             const modal = document.getElementById('modalOverlay');
             const content = document.getElementById('modalContent');
             content.innerHTML = `
@@ -546,80 +639,51 @@
             reader.readAsDataURL(file);
         }
 
-        function saveWork() {
+        async function saveWork() {
             const title = document.getElementById('workTitleInput').value.trim();
             const imageData = window.tempImageData;
             if (!title || !imageData) { alert('Заполните все поля'); return; }
-            const category = appData.portfolioCategories[currentCategoryIndex];
-            category.items.push({ title, image: imageData });
-            saveData();
+            const catRef = db.collection('portfolioCategories').doc(currentCategoryId);
+            const catDoc = await catRef.get();
+            const items = catDoc.data().items || [];
+            items.push({ title, image: imageData });
+            await catRef.update({ items });
             closeModal();
-            openCategory(currentCategoryIndex);
-            renderPortfolioCategories();
         }
 
-        function editWork(index) {
-            const category = appData.portfolioCategories[currentCategoryIndex];
-            const work = category.items[index];
-            const newTitle = prompt('Название:', work.title);
-            if (newTitle !== null) work.title = newTitle;
-            saveData();
-            openCategory(currentCategoryIndex);
+        async function deleteWork(index) {
+            const catRef = db.collection('portfolioCategories').doc(currentCategoryId);
+            const catDoc = await catRef.get();
+            const items = catDoc.data().items || [];
+            items.splice(index, 1);
+            await catRef.update({ items });
         }
 
-        function deleteWork(index) {
-            if (!confirm('Удалить работу?')) return;
-            const category = appData.portfolioCategories[currentCategoryIndex];
-            category.items.splice(index, 1);
-            saveData();
-            openCategory(currentCategoryIndex);
-            renderPortfolioCategories();
-        }
-
-        function addReview() {
-            const author = prompt('Имя автора:');
-            if (!author) return;
-            const stars = parseInt(prompt('Оценка (1-5):', '5') || '5');
-            const text = prompt('Текст отзыва:');
-            if (!text) return;
-            appData.reviews.push({ author, stars, text });
-            saveData();
-            renderReviews();
-        }
-
-        function editReview(index) {
-            const review = appData.reviews[index];
-            const newAuthor = prompt('Имя:', review.author);
-            if (newAuthor !== null) review.author = newAuthor;
-            const newStars = parseInt(prompt('Оценка (1-5):', review.stars) || review.stars);
-            if (newStars) review.stars = newStars;
-            const newText = prompt('Текст:', review.text);
-            if (newText !== null) review.text = newText;
-            saveData();
-            renderReviews();
-        }
-
-        function deleteReview(index) {
-            if (confirm('Удалить отзыв?')) {
-                appData.reviews.splice(index, 1);
-                saveData();
-                renderReviews();
+        function editReview(id) {
+            // Можно реализовать через prompt
+            const newText = prompt('Новый текст отзыва:');
+            if (newText !== null) {
+                db.collection('reviews').doc(id).update({ text: newText });
             }
         }
 
-        function deleteOrder(index) {
+        function deleteReview(id) {
+            if (confirm('Удалить отзыв?')) {
+                db.collection('reviews').doc(id).delete();
+            }
+        }
+
+        function deleteOrder(id) {
             if (confirm('Удалить заказ?')) {
-                appData.orders.splice(index, 1);
-                saveData();
-                renderOrders();
+                db.collection('orders').doc(id).delete();
             }
         }
 
         function clearOrders() {
             if (confirm('Очистить все заказы?')) {
-                appData.orders = [];
-                saveData();
-                renderOrders();
+                db.collection('orders').get().then(snapshot => {
+                    snapshot.forEach(doc => doc.ref.delete());
+                });
             }
         }
 
@@ -627,7 +691,7 @@
             document.getElementById('modalOverlay').style.display = 'none';
         }
 
-        // ================== НАСТРОЙКА ВКЛАДОК ==================
+        // ================== ВКЛАДКИ ==================
         function setupTabs() {
             const tabs = document.querySelectorAll('.tab-btn');
             const sections = document.querySelectorAll('.section');
@@ -639,7 +703,6 @@
                     sections.forEach(s => s.classList.remove('active'));
                     document.getElementById(target).classList.add('active');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
-                    if (target === 'portfolio') renderPortfolioCategories();
                     if (window.telegramAvailable && window.tg) {
                         if (target === 'orders' && !window.isAdmin) {
                             window.tg.MainButton.show();
@@ -649,37 +712,6 @@
                     }
                 });
             });
-        }
-
-        // ================== ИНИЦИАЛИЗАЦИЯ TELEGRAM ==================
-        function initTelegram() {
-            const tg = window.Telegram?.WebApp;
-            if (tg) {
-                window.telegramAvailable = true;
-                window.tg = tg;
-                tg.ready();
-                tg.expand();
-                tg.setHeaderColor('#0a050d');
-                tg.setBackgroundColor('#0a0012');
-                tg.MainButton.setParams({ text: 'НАПИСАТЬ ДИЗАЙНЕРУ', color: '#7c3aed', text_color: '#ffffff' });
-
-                const user = tg.initDataUnsafe?.user;
-                window.currentUser = user;
-                if (user?.username?.toLowerCase() === 'mark1zell') {
-                    window.isAdmin = true;
-                    document.body.classList.add('admin-mode');
-                }
-
-                tg.MainButton.onClick(() => {
-                    tg.sendData('Здравствуйте! Хочу обсудить заказ.');
-                    tg.close();
-                });
-            } else {
-                window.telegramAvailable = false;
-                window.tg = null;
-                window.isAdmin = false;
-            }
-            renderAll();
         }
 
         // ================== ЗВЁЗДЫ ==================
@@ -705,7 +737,7 @@
         function init() {
             createStars();
             setupTabs();
-            renderAll();
+            setupRealTimeListeners();
             initTelegram();
         }
 
