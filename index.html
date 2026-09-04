@@ -188,7 +188,9 @@
             justify-content: center;
             font-weight: 700;
             color: white;
+            overflow: hidden;
         }
+        .review-avatar img { width: 100%; height: 100%; object-fit: cover; }
         .review-text { color: var(--text-muted); font-size: 14px; line-height: 1.6; }
         .review-images {
             display: flex;
@@ -231,7 +233,6 @@
             z-index: 9999;
             pointer-events: none;
         }
-        /* Полноэкранный просмотр изображения */
         #imageViewer {
             position: fixed;
             inset: 0;
@@ -241,11 +242,15 @@
             justify-content: center;
             z-index: 2000;
             cursor: pointer;
+            flex-direction: column;
         }
         #imageViewer img {
             max-width: 95%;
-            max-height: 95%;
+            max-height: 85%;
             object-fit: contain;
+        }
+        #imageViewer .save-btn {
+            margin-top: 15px;
         }
         @media (max-width: 400px) {
             .categories-grid, .works-grid { grid-template-columns: 1fr; }
@@ -313,8 +318,9 @@
         <div class="modal" id="modalContent"></div>
     </div>
 
-    <div id="imageViewer" onclick="closeImageViewer()">
+    <div id="imageViewer">
         <img id="imageViewerImg" src="" alt="Просмотр">
+        <button class="btn save-btn" id="imageViewerSaveBtn">Сохранить</button>
     </div>
 
     <div id="debugInfo"></div>
@@ -340,7 +346,9 @@
         window.telegramAvailable = false;
         let currentCategoryId = null;
         let selectedRating = 0;
-        let tempReviewImages = []; // массив dataURL для отзыва
+        let tempReviewImages = [];
+        let tempWorkImage = null;
+        let currentViewImageSrc = null;
 
         // ================== TELEGRAM INIT ==================
         function initTelegram() {
@@ -451,8 +459,11 @@
                 items.forEach((item, idx) => {
                     html += `
                         <div class="work-item">
-                            <img src="${item.image}" alt="${item.title}" onclick="viewImage('${item.image}', '${item.title}')" loading="lazy">
+                            <img src="${item.image}" alt="${item.title}" onclick="viewImage('${item.image}', '${item.title}', true)" loading="lazy">
                             <div class="work-info">${item.title}</div>
+                            <div class="work-actions" style="left:8px; right:auto;">
+                                <button onclick="event.stopPropagation(); downloadWork('${item.image}', '${item.title}')" title="Скачать">⬇️</button>
+                            </div>
                             ${window.isAdmin ? `
                             <div class="work-actions">
                                 <button onclick="editWork(${idx})">✏️</button>
@@ -481,19 +492,22 @@
             snapshot.forEach(doc => {
                 const review = doc.data();
                 const authorName = review.author || 'Пользователь';
-                const avatarLetter = (review.author && review.author !== 'Пользователь') ? review.author.charAt(0) : '👤';
+                let avatarHtml = `<div class="review-avatar">${(review.author && review.author !== 'Пользователь') ? review.author.charAt(0) : '👤'}</div>`;
+                if (review.photoUrl) {
+                    avatarHtml = `<div class="review-avatar"><img src="${review.photoUrl}" alt="avatar"></div>`;
+                }
                 let imagesHtml = '';
                 if (review.images && review.images.length > 0) {
                     imagesHtml = '<div class="review-images">';
                     review.images.forEach(img => {
-                        imagesHtml += `<img src="${img}" alt="отзыв" onclick="viewImage('${img}', 'Отзыв')">`;
+                        imagesHtml += `<img src="${img}" alt="отзыв" onclick="viewImage('${img}', 'Отзыв', false)">`;
                     });
                     imagesHtml += '</div>';
                 }
                 html += `
                     <div class="card review-card">
                         <div class="review-author">
-                            <div class="review-avatar">${avatarLetter}</div>
+                            ${avatarHtml}
                             <div>
                                 <strong>${authorName}</strong>
                                 <div class="stars">${'★'.repeat(review.stars)}${'☆'.repeat(5 - review.stars)}</div>
@@ -550,17 +564,33 @@
         }
 
         // ================== ПОЛНОЭКРАННЫЙ ПРОСМОТР ==================
-        function viewImage(src, title) {
+        function viewImage(src, title, allowSave = false) {
+            currentViewImageSrc = src;
             const viewer = document.getElementById('imageViewer');
             const img = document.getElementById('imageViewerImg');
+            const saveBtn = document.getElementById('imageViewerSaveBtn');
             img.src = src;
             img.alt = title || 'Изображение';
+            saveBtn.style.display = 'inline-block'; // всегда показываем
             viewer.style.display = 'flex';
         }
 
         function closeImageViewer() {
             document.getElementById('imageViewer').style.display = 'none';
+            currentViewImageSrc = null;
         }
+
+        document.getElementById('imageViewerSaveBtn').addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (currentViewImageSrc) {
+                const a = document.createElement('a');
+                a.href = currentViewImageSrc;
+                a.download = 'image.jpg';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+        });
 
         // ================== ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ ==================
         function placeOrder(service) {
@@ -572,23 +602,35 @@
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             };
             db.collection('orders').add(order);
+            
+            // ================== ВАЖНО: ЗАМЕНИТЕ НА ВАШУ РЕАЛЬНУЮ ССЫЛКУ ОПЛАТЫ ==================
+            // Например, ссылка из Robokassa: https://auth.robokassa.ru/...
+            // Или динамическая ссылка, если вы используете API
+            const paymentUrl = 'https://your-payment-link.com/pay?service=' + encodeURIComponent(service);
+            
+            // Открываем чат с ботом с текстом о заказе
             if (window.telegramAvailable && window.tg) {
-                window.tg.sendData(`Заказ: ${service}`);
+                const chatText = encodeURIComponent(`Здравствуйте, хочу заказать ${service}, чек оплаты скину ниже`);
+                window.tg.openTelegramLink(`https://t.me/Mark1zDesign_bot?text=${chatText}`);
+                // Открываем страницу оплаты
+                window.tg.openLink(paymentUrl);
             } else {
-                const text = encodeURIComponent(`Здравствуйте! Хочу заказать: ${service}`);
+                const text = encodeURIComponent(`Здравствуйте, хочу заказать ${service}, чек оплаты скину ниже`);
                 window.open(`https://t.me/Mark1zDesign_bot?text=${text}`, '_blank');
+                window.open(paymentUrl, '_blank');
             }
         }
 
         function downloadWork(imageData, title) {
             const a = document.createElement('a');
             a.href = imageData;
-            a.download = title + '.png';
+            a.download = title + '.jpg';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
         }
 
+        // ================== ОТЗЫВЫ ==================
         function openReviewModal() {
             const modal = document.getElementById('modalOverlay');
             const content = document.getElementById('modalContent');
@@ -612,6 +654,7 @@
             `;
             modal.style.display = 'flex';
             tempReviewImages = [];
+            selectedRating = 0;
             document.querySelectorAll('#starRating span').forEach(star => {
                 star.addEventListener('click', () => {
                     const value = parseInt(star.dataset.value);
@@ -638,7 +681,7 @@
             }
             for (const file of files) {
                 if (tempReviewImages.length >= 3) break;
-                const dataUrl = await compressImage(file, 300, 0.6);
+                const dataUrl = await compressImage(file, 600, 0.6);
                 if (dataUrl) {
                     tempReviewImages.push(dataUrl);
                 }
@@ -690,8 +733,10 @@
             if (!selectedRating) { alert('Поставьте оценку'); return; }
 
             const author = window.currentUser?.username || window.currentUser?.first_name || 'Пользователь';
+            const photoUrl = window.currentUser?.photo_url || null;
             await db.collection('reviews').add({
                 author: author,
+                photoUrl: photoUrl,
                 stars: selectedRating,
                 text: text,
                 images: tempReviewImages,
@@ -737,9 +782,8 @@
                 <button class="btn" onclick="closeModal()">Отмена</button>
             `;
             modal.style.display = 'flex';
+            tempWorkImage = null;
         }
-
-        let tempWorkImage = null;
 
         function previewWorkImage(event) {
             const file = event.target.files[0];
