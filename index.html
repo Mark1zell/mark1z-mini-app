@@ -219,6 +219,7 @@
         }
         .order-info h4 { font-size: 16px; font-weight: 600; }
         .order-info p { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+        .order-info a { color: var(--accent); text-decoration: none; }
         .footer { text-align:center; margin-top:30px; padding:10px; color:var(--text-muted); font-size:12px; opacity:0.5; }
         #debugInfo {
             position: fixed;
@@ -509,8 +510,9 @@
             let html = '';
             snapshot.forEach(doc => {
                 const review = doc.data();
-                const authorName = review.author || 'Пользователь';
-                let avatarHtml = `<div class="review-avatar">${(review.author && review.author !== 'Пользователь') ? review.author.charAt(0) : '👤'}</div>`;
+                const authorName = review.authorName || review.author || 'Пользователь';
+                const authorUsername = review.authorUsername || null;
+                let avatarHtml = `<div class="review-avatar">${(review.authorName && review.authorName !== 'Пользователь') ? review.authorName.charAt(0) : '👤'}</div>`;
                 if (review.photoUrl) {
                     avatarHtml = `<div class="review-avatar"><img src="${review.photoUrl}" alt="avatar"></div>`;
                 }
@@ -528,6 +530,7 @@
                             ${avatarHtml}
                             <div>
                                 <strong>${authorName}</strong>
+                                ${authorUsername ? `<div style="font-size:12px; color:var(--text-muted);">@${authorUsername}</div>` : ''}
                                 <div class="stars">${'★'.repeat(review.stars)}${'☆'.repeat(5 - review.stars)}</div>
                             </div>
                         </div>
@@ -557,11 +560,13 @@
             } else {
                 snapshot.forEach(doc => {
                     const order = doc.data();
+                    const userName = order.userName || order.user || 'Пользователь';
+                    const userUsername = order.userUsername || null;
                     html += `
                         <div class="order-item">
                             <div class="order-info">
                                 <h4>${order.service}</h4>
-                                <p>От: ${order.user}</p>
+                                <p>От: ${userName} ${userUsername ? `(<a href="https://t.me/${userUsername}" target="_blank">@${userUsername}</a>)` : ''}</p>
                                 <p>${order.time}</p>
                             </div>
                             <button class="btn" onclick="deleteOrder('${doc.id}')">🗑️</button>
@@ -641,9 +646,12 @@
         // ================== ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ ==================
         function placeOrder(service) {
             const user = window.currentUser?.username || window.currentUser?.first_name || 'Пользователь';
+            const userName = window.currentUser?.first_name || window.currentUser?.username || 'Пользователь';
+            const userUsername = window.currentUser?.username || null;
             const order = {
                 service,
-                user: user,
+                userName: userName,
+                userUsername: userUsername,
                 time: new Date().toLocaleString(),
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             };
@@ -774,10 +782,12 @@
             if (!text) { alert('Введите текст отзыва'); return; }
             if (!selectedRating) { alert('Поставьте оценку'); return; }
 
-            const author = window.currentUser?.username || window.currentUser?.first_name || 'Пользователь';
+            const authorName = window.currentUser?.first_name || window.currentUser?.username || 'Пользователь';
+            const authorUsername = window.currentUser?.username || null;
             const photoUrl = window.currentUser?.photo_url || null;
             await db.collection('reviews').add({
-                author: author,
+                authorName: authorName,
+                authorUsername: authorUsername,
                 photoUrl: photoUrl,
                 stars: selectedRating,
                 text: text,
