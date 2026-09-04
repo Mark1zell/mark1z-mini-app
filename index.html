@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Mark1z Design</title>
     <style>
-        /* ========== СТИЛИ ========== */
         :root {
             --bg-start: #0a050d;
             --bg-mid: #100820;
@@ -197,7 +196,6 @@
         .order-info h4 { font-size: 16px; font-weight: 600; }
         .order-info p { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
         .footer { text-align:center; margin-top:30px; padding:10px; color:var(--text-muted); font-size:12px; opacity:0.5; }
-        /* Диагностика */
         #debugInfo {
             position: fixed;
             bottom: 0;
@@ -277,7 +275,6 @@
         <div class="modal" id="modalContent"></div>
     </div>
 
-    <!-- Диагностическая панель (видна всегда, убрать после отладки) -->
     <div id="debugInfo"></div>
 
     <script>
@@ -649,7 +646,6 @@
                 const user = tg.initDataUnsafe?.user;
                 let isAdmin = false;
                 if (user && user.username) {
-                    // Сравниваем без учёта регистра и без @
                     const username = user.username.toLowerCase().replace('@','');
                     isAdmin = (username === 'mark1zell');
                 }
@@ -663,10 +659,11 @@
                     tg.sendData('Здравствуйте! Хочу обсудить заказ.');
                     tg.close();
                 });
-                renderAll(); // перерисовываем с учётом админа
+                renderAll();
             } else {
-                // Telegram API не найден, пробуем ещё раз
-                setTimeout(initTelegram, 500);
+                // Обновляем диагностику и пробуем снова через 1 секунду
+                updateDebugInfo();
+                setTimeout(initTelegram, 1000);
             }
         }
 
@@ -693,8 +690,8 @@
         function init() {
             createStars();
             setupTabs();
-            renderAll(); // рендерим сразу, даже без Telegram
-            initTelegram(); // пытаемся подключить Telegram
+            renderAll();
+            initTelegram();
         }
 
         if (document.readyState === 'loading') {
