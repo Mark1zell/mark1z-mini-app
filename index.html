@@ -164,6 +164,7 @@
         .order-item {
             display:flex; align-items:center; justify-content:space-between; padding:16px 18px;
             background: rgba(15,7,25,0.8); border:1px solid var(--card-border); border-radius:16px;
+            cursor: grab;
         }
         .order-info h4 { font-size:16px; font-weight:600; }
         .order-info p { font-size:12px; color:var(--text-muted); margin-top:4px; }
@@ -182,10 +183,6 @@
             position:absolute; top:20px; right:20px; background:rgba(0,0,0,0.6); border:none; color:white; font-size:28px;
             width:40px; height:40px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:2001;
         }
-        .drag-handle {
-            cursor: grab; user-select:none; font-size:18px; color:var(--text-muted); display:none; position:absolute; right:5px; bottom:5px; z-index:2;
-        }
-        .show-handle .drag-handle { display:inline-block; }
         #loadingScreen {
             position:fixed; top:0; left:0; width:100%; height:100%;
             background: radial-gradient(ellipse at center, #1a0b2e 0%, #0a0012 100%);
@@ -318,6 +315,7 @@
         let servicesData = [];
         let portfolioCategoriesData = [];
         let adminOrdersMode = 'services';
+        let sortableInstances = {};
 
         // ================== TELEGRAM INIT ==================
         function initTelegram() {
@@ -363,6 +361,7 @@
                     <p><strong>6.</strong> При заказе нескольких услуг предоставляется скидка.</p>
                     <p><strong>7.</strong> Для срочных заказов возможна доплата за приоритет.</p>
                 </div>
+                <button class="btn" style="width:100%; margin-top:20px;" onclick="window.open('https://t.me/mark1zell', '_blank')">Связаться с Дизайнером лично</button>
             `;
             modal.style.display = 'flex';
         }
@@ -372,19 +371,19 @@
             const snapshot = await db.collection('services').get();
             if (snapshot.empty) {
                 const defaultServices = [
-                    { emoji: '🎨', name: 'Оформление соцсетей', desc: 'VK, YouTube, Telegram: шапки, аватарки, обложки', price: null },
-                    { emoji: '🎮', name: 'Дизайн игровых кланов', desc: 'Логотипы, аватарки, шапки для кланов', price: null },
-                    { emoji: '🏆', name: 'Дизайн турниров', desc: 'Сетки, баннеры за призовые места, аватарки', price: null },
-                    { emoji: '🛒', name: 'Карточки товаров', desc: 'Wildberries, Ozon, Avito: инфографика', price: null },
-                    { emoji: '🔤', name: 'Типографика', desc: 'Шрифтовые композиции, айдентика', price: null },
-                    { emoji: '📱', name: 'Дизайн мобильных приложений', desc: 'UI/UX интерфейсы для iOS и Android', price: null },
-                    { emoji: '🌐', name: 'Дизайн сайтов', desc: 'Лендинги, многостраничники, корпоративные сайты', price: null },
-                    { emoji: '🤖', name: 'Telegram Mini Apps', desc: 'Дизайн и разработка интерфейсов для ботов', price: null },
-                    { emoji: '🖼️', name: 'Постеры и баннеры', desc: 'Рекламные постеры, промо-материалы', price: null },
-                    { emoji: '🎵', name: 'Обложки треков', desc: 'Обложки для музыкальных релизов', price: null },
-                    { emoji: '▶️', name: 'Превью для YouTube', desc: 'Яркие кликабельные превью', price: null },
-                    { emoji: '📊', name: 'Презентации', desc: 'PowerPoint, Google Slides: оформление', price: null },
-                    { emoji: '📄', name: 'Документы Word', desc: 'Оформление, структурирование, шаблоны', price: null }
+                    { emoji: '🎨', name: 'Оформление соцсетей', desc: 'VK, YouTube, Telegram: шапки, аватарки, обложки', price: null, priceTo: null },
+                    { emoji: '🎮', name: 'Дизайн игровых кланов', desc: 'Логотипы, аватарки, шапки для кланов', price: null, priceTo: null },
+                    { emoji: '🏆', name: 'Дизайн турниров', desc: 'Сетки, баннеры за призовые места, аватарки', price: null, priceTo: null },
+                    { emoji: '🛒', name: 'Карточки товаров', desc: 'Wildberries, Ozon, Avito: инфографика', price: null, priceTo: null },
+                    { emoji: '🔤', name: 'Типографика', desc: 'Шрифтовые композиции, айдентика', price: null, priceTo: null },
+                    { emoji: '📱', name: 'Дизайн мобильных приложений', desc: 'UI/UX интерфейсы для iOS и Android', price: null, priceTo: null },
+                    { emoji: '🌐', name: 'Дизайн сайтов', desc: 'Лендинги, многостраничники, корпоративные сайты', price: null, priceTo: null },
+                    { emoji: '🤖', name: 'Telegram Mini Apps', desc: 'Дизайн и разработка интерфейсов для ботов', price: null, priceTo: null },
+                    { emoji: '🖼️', name: 'Постеры и баннеры', desc: 'Рекламные постеры, промо-материалы', price: null, priceTo: null },
+                    { emoji: '🎵', name: 'Обложки треков', desc: 'Обложки для музыкальных релизов', price: null, priceTo: null },
+                    { emoji: '▶️', name: 'Превью для YouTube', desc: 'Яркие кликабельные превью', price: null, priceTo: null },
+                    { emoji: '📊', name: 'Презентации', desc: 'PowerPoint, Google Slides: оформление', price: null, priceTo: null },
+                    { emoji: '📄', name: 'Документы Word', desc: 'Оформление, структурирование, шаблоны', price: null, priceTo: null }
                 ];
                 let orderIndex = 0;
                 for (const s of defaultServices) {
@@ -454,7 +453,7 @@
             cats.forEach((cat, idx) => {
                 const coverStyle = cat.coverImage ? `style="background-image:url('${cat.coverImage}');"` : '';
                 html += `
-                    <div class="category-card" data-id="${cat.id}" data-index="${idx}">
+                    <div class="category-card" data-id="${cat.id}" data-index="${idx}" onclick="openCategory('${cat.id}')">
                         <div class="cover-bg" ${coverStyle}></div>
                         <div class="folder-icon">${cat.icon}</div>
                         <div class="category-name">${cat.name}</div>
@@ -479,7 +478,10 @@
         function setupSortableForCategories() {
             const grid = document.getElementById('categoriesGrid');
             if (!grid || !window.isAdmin) return;
-            new Sortable(grid, {
+            if (sortableInstances.categories) {
+                sortableInstances.categories.destroy();
+            }
+            sortableInstances.categories = new Sortable(grid, {
                 animation: 150,
                 delay: 200,
                 delayOnTouchOnly: true,
@@ -493,7 +495,10 @@
         function setupSortableForWorks() {
             const grid = document.getElementById('worksGrid');
             if (!grid || !window.isAdmin) return;
-            new Sortable(grid, {
+            if (sortableInstances.works) {
+                sortableInstances.works.destroy();
+            }
+            sortableInstances.works = new Sortable(grid, {
                 animation: 150,
                 delay: 200,
                 delayOnTouchOnly: true,
@@ -508,7 +513,10 @@
         function setupSortableForServices() {
             const list = document.getElementById('servicesList');
             if (!list || !window.isAdmin) return;
-            new Sortable(list, {
+            if (sortableInstances.services) {
+                sortableInstances.services.destroy();
+            }
+            sortableInstances.services = new Sortable(list, {
                 animation: 150,
                 delay: 200,
                 delayOnTouchOnly: true,
@@ -554,7 +562,7 @@
         function previewCoverImage(event) {
             const file = event.target.files[0];
             if (!file) return;
-            compressImage(file, 800, 0.7).then(dataUrl => {
+            compressImage(file, 800, 0.9).then(dataUrl => {
                 window.tempCoverImage = dataUrl;
                 document.getElementById('coverPreview').src = dataUrl;
                 document.getElementById('coverPreview').style.display = 'block';
@@ -656,12 +664,13 @@
             if (servicesData.length === 0) return '<p style="color:var(--text-muted)">Услуги пока не добавлены</p>';
             let html = '<div class="order-list" style="display:flex; flex-direction:column; gap:12px;">';
             servicesData.forEach(s => {
+                const priceText = s.priceTo ? `от ${s.price} до ${s.priceTo} ₽` : (s.price ? `${s.price} ₽` : 'Цена не указана');
                 html += `
                     <div class="order-item" style="cursor:pointer;" onclick="placeOrder('${s.name}')">
                         <div class="order-info">
                             <h4>${s.emoji} ${s.name}</h4>
                             <p>${s.desc}</p>
-                            ${s.price ? `<p style="color:var(--accent); font-weight:600;">${s.price} ₽</p>` : ''}
+                            <p style="color:var(--accent); font-weight:600;">${priceText}</p>
                         </div>
                         <span style="font-size:24px;">➔</span>
                     </div>
@@ -674,12 +683,13 @@
         function renderServicesForAdmin() {
             let html = '<div class="order-list" id="servicesList" style="display:flex; flex-direction:column; gap:12px;">';
             servicesData.forEach(s => {
+                const priceText = s.priceTo ? `от ${s.price} до ${s.priceTo} ₽` : (s.price ? `${s.price} ₽` : 'Цена не указана');
                 html += `
-                    <div class="order-item" data-id="${s.id}">
+                    <div class="order-item" data-id="${s.id}" style="cursor: grab;">
                         <div class="order-info">
                             <h4>${s.emoji} ${s.name}</h4>
                             <p>${s.desc}</p>
-                            ${s.price ? `<p style="color:var(--accent); font-weight:600;">${s.price} ₽</p>` : '<p style="color:var(--text-muted);">Цена не указана</p>'}
+                            <p style="color:var(--accent); font-weight:600;">${priceText}</p>
                         </div>
                         <div style="display:flex; gap:5px; align-items:center;">
                             <button class="btn" onclick="editService('${s.id}')">✏️</button>
@@ -734,7 +744,8 @@
                 <input type="text" id="serviceEmoji" placeholder="Эмодзи (например, 🎨)">
                 <input type="text" id="serviceName" placeholder="Название услуги">
                 <input type="text" id="serviceDesc" placeholder="Описание">
-                <input type="number" id="servicePrice" placeholder="Цена (₽)">
+                <input type="number" id="servicePriceFrom" placeholder="Цена от (₽)">
+                <input type="number" id="servicePriceTo" placeholder="Цена до (₽) (необязательно)">
                 <button class="btn" onclick="saveNewService()">Сохранить</button>
                 <button class="btn" onclick="closeModal()">Отмена</button>
             `;
@@ -745,18 +756,25 @@
             const emoji = document.getElementById('serviceEmoji').value.trim() || '✨';
             const name = document.getElementById('serviceName').value.trim();
             const desc = document.getElementById('serviceDesc').value.trim();
-            const price = document.getElementById('servicePrice').value.trim();
+            const priceFrom = document.getElementById('servicePriceFrom').value.trim();
+            const priceTo = document.getElementById('servicePriceTo').value.trim();
             if (!name) { alert('Введите название услуги'); return; }
 
-            // Проверка на дубликат
             const existing = servicesData.find(s => s.name.toLowerCase() === name.toLowerCase());
             if (existing) {
                 alert('Услуга с таким названием уже существует');
                 return;
             }
 
+            const price = priceFrom ? parseFloat(priceFrom) : null;
+            const priceToVal = priceTo ? parseFloat(priceTo) : null;
             const nextOrder = servicesData.length > 0 ? Math.max(...servicesData.map(s => s.order ?? 0)) + 1 : 0;
-            await db.collection('services').add({ emoji, name, desc, price: price || null, order: nextOrder });
+            await db.collection('services').add({
+                emoji, name, desc,
+                price: price,
+                priceTo: priceToVal,
+                order: nextOrder
+            });
             closeModal();
         }
 
@@ -771,7 +789,8 @@
                 <input type="text" id="serviceEmoji" placeholder="Эмодзи" value="${s.emoji}">
                 <input type="text" id="serviceName" placeholder="Название услуги" value="${s.name}">
                 <input type="text" id="serviceDesc" placeholder="Описание" value="${s.desc}">
-                <input type="number" id="servicePrice" placeholder="Цена (₽)" value="${s.price || ''}">
+                <input type="number" id="servicePriceFrom" placeholder="Цена от" value="${s.price || ''}">
+                <input type="number" id="servicePriceTo" placeholder="Цена до" value="${s.priceTo || ''}">
                 <button class="btn" onclick="saveServiceChanges('${id}')">Сохранить</button>
                 <button class="btn" onclick="closeModal()">Отмена</button>
             `;
@@ -782,9 +801,16 @@
             const emoji = document.getElementById('serviceEmoji').value.trim() || '✨';
             const name = document.getElementById('serviceName').value.trim();
             const desc = document.getElementById('serviceDesc').value.trim();
-            const price = document.getElementById('servicePrice').value.trim();
+            const priceFrom = document.getElementById('servicePriceFrom').value.trim();
+            const priceTo = document.getElementById('servicePriceTo').value.trim();
             if (!name) { alert('Введите название услуги'); return; }
-            await db.collection('services').doc(id).update({ emoji, name, desc, price: price || null });
+            const price = priceFrom ? parseFloat(priceFrom) : null;
+            const priceToVal = priceTo ? parseFloat(priceTo) : null;
+            await db.collection('services').doc(id).update({
+                emoji, name, desc,
+                price: price,
+                priceTo: priceToVal
+            });
             closeModal();
         }
 
@@ -847,7 +873,7 @@
         document.getElementById('imageViewerSaveBtn').addEventListener('click', saveCurrentImage);
         document.getElementById('imageViewerClose').addEventListener('click', closeImageViewer);
 
-        // Зум и панорамирование
+        // Зум и панорамирование с ограничениями
         const imageViewer = document.getElementById('imageViewer');
         const imageViewerImg = document.getElementById('imageViewerImg');
         let panX = 0, panY = 0;
@@ -874,11 +900,23 @@
                     panX = 0; panY = 0;
                     imageViewerImg.style.left = '0px';
                     imageViewerImg.style.top = '0px';
+                } else {
+                    // Ограничиваем панорамирование при увеличении
+                    const maxX = (imageViewerImg.offsetWidth * scale - imageViewerImg.offsetWidth) / 2;
+                    const maxY = (imageViewerImg.offsetHeight * scale - imageViewerImg.offsetHeight) / 2;
+                    panX = Math.max(-maxX, Math.min(maxX, panX));
+                    panY = Math.max(-maxY, Math.min(maxY, panY));
+                    imageViewerImg.style.left = panX + 'px';
+                    imageViewerImg.style.top = panY + 'px';
                 }
             } else if (e.touches.length === 1 && isPanning) {
                 e.preventDefault();
                 panX = e.touches[0].clientX - startPanX;
                 panY = e.touches[0].clientY - startPanY;
+                const maxX = (imageViewerImg.offsetWidth * scale - imageViewerImg.offsetWidth) / 2;
+                const maxY = (imageViewerImg.offsetHeight * scale - imageViewerImg.offsetHeight) / 2;
+                panX = Math.max(-maxX, Math.min(maxX, panX));
+                panY = Math.max(-maxY, Math.min(maxY, panY));
                 imageViewerImg.style.left = panX + 'px';
                 imageViewerImg.style.top = panY + 'px';
             }
@@ -918,13 +956,13 @@
             
             const paymentUrl = 'https://your-payment-link.com/pay?service=' + encodeURIComponent(service);
             
+            // Открываем чат с ботом с готовым сообщением
+            const chatText = encodeURIComponent(`Я оплатил услугу: ${service}, хочу обговорить детали работы.`);
             if (window.telegramAvailable && window.tg) {
-                const chatText = encodeURIComponent(`Здравствуйте, хочу заказать ${service}, чек оплаты скину ниже`);
                 window.tg.openTelegramLink(`https://t.me/Mark1zDesign_bot?text=${chatText}`);
                 window.tg.openLink(paymentUrl);
             } else {
-                const text = encodeURIComponent(`Здравствуйте, хочу заказать ${service}, чек оплаты скину ниже`);
-                window.open(`https://t.me/Mark1zDesign_bot?text=${text}`, '_blank');
+                window.open(`https://t.me/Mark1zDesign_bot?text=${chatText}`, '_blank');
                 window.open(paymentUrl, '_blank');
             }
         }
@@ -989,7 +1027,7 @@
             }
             for (const file of files) {
                 if (tempReviewImages.length >= 3) break;
-                const dataUrl = await compressImage(file, 1200, 0.8);
+                const dataUrl = await compressImage(file, 1600, 0.9);
                 if (dataUrl) tempReviewImages.push(dataUrl);
             }
             renderReviewImagesPreview();
@@ -1022,9 +1060,17 @@
                         canvas.width = width;
                         canvas.height = height;
                         const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, width, height);
-                        const dataUrl = canvas.toDataURL('image/jpeg', quality);
-                        resolve(dataUrl);
+
+                        // Если файл PNG, сохраняем как PNG для сохранения прозрачности и отсутствия чёрного фона
+                        if (file.type === 'image/png') {
+                            ctx.drawImage(img, 0, 0, width, height);
+                            const dataUrl = canvas.toDataURL('image/png');
+                            resolve(dataUrl);
+                        } else {
+                            ctx.drawImage(img, 0, 0, width, height);
+                            const dataUrl = canvas.toDataURL('image/jpeg', quality);
+                            resolve(dataUrl);
+                        }
                     };
                     img.onerror = () => resolve(null);
                     img.src = e.target.result;
@@ -1165,7 +1211,7 @@
         function previewWorkImage(event) {
             const file = event.target.files[0];
             if (!file) return;
-            compressImage(file, 1400, 0.8).then(dataUrl => {
+            compressImage(file, 1600, 0.9).then(dataUrl => {
                 tempWorkImage = dataUrl;
                 document.getElementById('workImagePreview').src = dataUrl;
                 document.getElementById('workImagePreview').style.display = 'block';
@@ -1250,7 +1296,7 @@
         function previewLogoImage(event) {
             const file = event.target.files[0];
             if (!file) return;
-            compressImage(file, 400, 0.8).then(dataUrl => {
+            compressImage(file, 400, 0.9).then(dataUrl => {
                 window.tempLogoImage = dataUrl;
                 document.getElementById('logoPreview').src = dataUrl;
                 document.getElementById('logoPreview').style.display = 'block';
@@ -1356,15 +1402,6 @@
                 container.appendChild(star);
             }
         }
-
-        // ================== ГЛОБАЛЬНЫЙ ОБРАБОТЧИК КЛИКОВ ДЛЯ КАТЕГОРИЙ ==================
-        document.addEventListener('click', function(e) {
-            const categoryCard = e.target.closest('.category-card');
-            if (categoryCard) {
-                const categoryId = categoryCard.dataset.id;
-                openCategory(categoryId);
-            }
-        });
 
         // ================== ЗАПУСК ==================
         function init() {
