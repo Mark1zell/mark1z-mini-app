@@ -237,6 +237,7 @@
         let portfolioCategoriesData = [];
         let adminOrdersMode = 'services';
         let sortableInstances = {};
+        let isOrderProcessing = false; // защита от повторных нажатий
 
         // ================== TELEGRAM INIT ==================
         function initTelegram() {
@@ -943,6 +944,10 @@
 
         // ================== ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ ==================
         function placeOrder(service) {
+            if (isOrderProcessing) return; // защита от повторных нажатий
+            isOrderProcessing = true;
+            setTimeout(() => { isOrderProcessing = false; }, 2000); // разблокировка через 2 секунды
+
             const user = window.currentUser?.username || window.currentUser?.first_name || 'Пользователь';
             const userName = window.currentUser?.first_name || window.currentUser?.username || 'Пользователь';
             const userUsername = window.currentUser?.username || null;
