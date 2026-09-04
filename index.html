@@ -326,14 +326,15 @@
         }
         let appData = loadData();
 
-        // ================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ TELEGRAM ==================
+        // ================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==================
         window.tg = null;
         window.currentUser = null;
         window.isAdmin = false;
+        window.telegramAvailable = false;
 
         // ================== ДИАГНОСТИКА ==================
         function updateDebugInfo() {
-            let info = `TG: ${window.tg ? 'есть' : 'нет'} | User: ${window.currentUser ? (window.currentUser.username || window.currentUser.first_name) : 'нет'} | Admin: ${window.isAdmin}`;
+            let info = `TG: ${window.telegramAvailable ? 'есть' : 'нет'} | User: ${window.currentUser ? (window.currentUser.username || window.currentUser.first_name) : 'нет'} | Admin: ${window.isAdmin}`;
             document.getElementById('debugInfo').textContent = info;
         }
 
@@ -468,19 +469,22 @@
 
         // ================== ПОЛЬЗОВАТЕЛЬСКИЕ ДЕЙСТВИЯ ==================
         function placeOrder(service) {
-            if (!window.tg || !window.tg.initDataUnsafe?.user) {
-                alert('Работает только в Telegram');
-                return;
+            if (window.telegramAvailable && window.tg?.initDataUnsafe?.user) {
+                // Используем tg.sendData
+                const order = {
+                    service,
+                    user: window.currentUser?.username || window.currentUser?.first_name || 'Пользователь',
+                    time: new Date().toLocaleString()
+                };
+                appData.orders.push(order);
+                saveData();
+                window.tg.sendData(`Заказ: ${service}`);
+                renderOrders();
+            } else {
+                // Открываем чат с ботом через ссылку
+                const text = encodeURIComponent(`Здравствуйте! Хочу заказать: ${service}`);
+                window.open(`https://t.me/Mark1zDesign_bot?text=${text}`, '_blank');
             }
-            const order = {
-                service,
-                user: window.currentUser?.username || window.currentUser?.first_name || 'Пользователь',
-                time: new Date().toLocaleString()
-            };
-            appData.orders.push(order);
-            saveData();
-            window.tg.sendData(`Заказ: ${service}`);
-            renderOrders();
         }
 
         function downloadWork(imageData, title) {
@@ -636,7 +640,7 @@
                     document.getElementById(target).classList.add('active');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                     if (target === 'portfolio') renderPortfolioCategories();
-                    if (window.tg) {
+                    if (window.telegramAvailable && window.tg) {
                         if (target === 'orders' && !window.isAdmin) {
                             window.tg.MainButton.show();
                         } else {
@@ -651,32 +655,31 @@
         function initTelegram() {
             const tg = window.Telegram?.WebApp;
             if (tg) {
+                window.telegramAvailable = true;
+                window.tg = tg;
                 tg.ready();
                 tg.expand();
                 tg.setHeaderColor('#0a050d');
                 tg.setBackgroundColor('#0a0012');
                 tg.MainButton.setParams({ text: 'НАПИСАТЬ ДИЗАЙНЕРУ', color: '#7c3aed', text_color: '#ffffff' });
+
                 const user = tg.initDataUnsafe?.user;
-                let isAdmin = false;
-                if (user && user.username) {
-                    const username = user.username.toLowerCase().replace('@','');
-                    isAdmin = (username === 'mark1zell');
-                }
-                window.tg = tg;
                 window.currentUser = user;
-                window.isAdmin = isAdmin;
-                if (isAdmin) {
+                if (user?.username?.toLowerCase() === 'mark1zell') {
+                    window.isAdmin = true;
                     document.body.classList.add('admin-mode');
                 }
+
                 tg.MainButton.onClick(() => {
                     tg.sendData('Здравствуйте! Хочу обсудить заказ.');
                     tg.close();
                 });
-                renderAll();
             } else {
-                updateDebugInfo();
-                setTimeout(initTelegram, 500);
+                window.telegramAvailable = false;
+                window.tg = null;
+                window.isAdmin = false;
             }
+            renderAll();
         }
 
         // ================== ЗВЁЗДЫ ==================
