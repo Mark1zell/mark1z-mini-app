@@ -301,29 +301,10 @@
     </div>
 
     <script>
-        // ================== ИНИЦИАЛИЗАЦИЯ TELEGRAM ==================
-        let tg = window.Telegram?.WebApp || null;
+        // ================== ПЕРЕМЕННЫЕ TELEGRAM ==================
+        let tg = null;
         let currentUser = null;
         let isAdmin = false;
-
-        if (tg) {
-            tg.ready();
-            tg.expand();
-            tg.setHeaderColor('#0a050d');
-            tg.setBackgroundColor('#0a0012');
-            tg.MainButton.setParams({ text: 'НАПИСАТЬ ДИЗАЙНЕРУ', color: '#7c3aed', text_color: '#ffffff' });
-            currentUser = tg.initDataUnsafe?.user || null;
-            if (currentUser && currentUser.username) {
-                const username = currentUser.username.toLowerCase().replace('@','');
-                isAdmin = (username === 'mark1zell');
-            }
-        } else {
-            alert('Это приложение работает только внутри Telegram. Откройте его через бота.');
-        }
-
-        if (isAdmin) {
-            document.body.classList.add('admin-mode');
-        }
 
         // ================== ДАННЫЕ ==================
         const DEFAULT_DATA = {
@@ -487,7 +468,10 @@
 
         // ================== ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ ==================
         function placeOrder(service) {
-            if (!tg || !tg.initDataUnsafe?.user) { alert('Работает только в Telegram'); return; }
+            if (!tg || !tg.initDataUnsafe?.user) {
+                console.log('Telegram API недоступен, заказ не отправлен');
+                return;
+            }
             const order = {
                 service,
                 user: currentUser.username || currentUser.first_name || 'Пользователь',
@@ -496,7 +480,7 @@
             appData.orders.push(order);
             saveData();
             tg.sendData(`Заказ: ${service}`);
-            alert('Заказ отправлен!');
+            // tg.close(); // можно раскомментировать для закрытия
             renderOrders();
         }
 
@@ -640,29 +624,62 @@
             document.getElementById('modalOverlay').style.display = 'none';
         }
 
-        // ================== НАВИГАЦИЯ ==================
-        const tabs = document.querySelectorAll('.tab-btn');
-        const sections = document.querySelectorAll('.section');
-        tabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                const target = tab.dataset.tab;
-                tabs.forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-                sections.forEach(s => s.classList.remove('active'));
-                document.getElementById(target).classList.add('active');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-                if (tg) {
-                    if (target === 'orders' && !isAdmin) {
-                        tg.MainButton.show();
-                    } else {
-                        tg.MainButton.hide();
-                    }
+        // ================== ИНИЦИАЛИЗАЦИЯ TELEGRAM ==================
+        function initTelegram() {
+            tg = window.Telegram?.WebApp || null;
+            if (tg) {
+                tg.ready();
+                tg.expand();
+                tg.setHeaderColor('#0a050d');
+                tg.setBackgroundColor('#0a0012');
+                tg.MainButton.setParams({ text: 'НАПИСАТЬ ДИЗАЙНЕРУ', color: '#7c3aed', text_color: '#ffffff' });
+                currentUser = tg.initDataUnsafe?.user || null;
+                if (currentUser && currentUser.username) {
+                    const username = currentUser.username.toLowerCase().replace('@','');
+                    isAdmin = (username === 'mark1zell');
                 }
-                if (target === 'portfolio') renderPortfolioCategories();
-            });
-        });
+                if (isAdmin) {
+                    document.body.classList.add('admin-mode');
+                }
+                tg.MainButton.onClick(() => {
+                    tg.sendData('Здравствуйте! Хочу обсудить заказ.');
+                    tg.close();
+                });
+                // Переключатель вкладок
+                setupTabs();
+                // Рендер после инициализации
+                renderAll();
+            } else {
+                // Пробуем ещё раз через 200 мс
+                setTimeout(initTelegram, 200);
+            }
+        }
 
-        // ================== ЗВЁЗДЫ ==================
+        // Настройка вкладок
+        function setupTabs() {
+            const tabs = document.querySelectorAll('.tab-btn');
+            const sections = document.querySelectorAll('.section');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const target = tab.dataset.tab;
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    sections.forEach(s => s.classList.remove('active'));
+                    document.getElementById(target).classList.add('active');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    if (tg) {
+                        if (target === 'orders' && !isAdmin) {
+                            tg.MainButton.show();
+                        } else {
+                            tg.MainButton.hide();
+                        }
+                    }
+                    if (target === 'portfolio') renderPortfolioCategories();
+                });
+            });
+        }
+
+        // Генерация звёзд
         function createStars() {
             const container = document.getElementById('starsContainer');
             for (let i = 0; i < 45; i++) {
@@ -682,15 +699,14 @@
         }
         createStars();
 
-        if (tg) {
-            tg.MainButton.onClick(() => {
-                tg.sendData('Здравствуйте! Хочу обсудить заказ.');
-                tg.close();
-            });
+        // Запускаем инициализацию после загрузки страницы
+        document.addEventListener('DOMContentLoaded', initTelegram);
+        // На случай, если DOM уже загружен
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initTelegram);
+        } else {
+            initTelegram();
         }
-
-        renderAll();
-        console.log('Запущено. Админ:', isAdmin);
     </script>
 </body>
 </html>
