@@ -43,6 +43,34 @@
         .stars-container { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0; }
         .star { position:absolute; background:rgba(255,255,255,0.7); border-radius:50%; opacity:0; animation: twinkle var(--duration) ease-in-out infinite; animation-delay: var(--delay); }
         @keyframes twinkle { 0%,100%{opacity:0; transform:scale(0.3)} 50%{opacity:0.3; transform:scale(1)} }
+
+        /* Астероиды */
+        .asteroid-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+        .asteroid {
+            position: absolute;
+            background: radial-gradient(circle, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+            width: 4px;
+            height: 4px;
+            opacity: 0;
+            animation: flyAsteroid linear infinite;
+        }
+        @keyframes flyAsteroid {
+            0% { transform: translate(0,0) scale(0.5); opacity: 0; }
+            10% { opacity: 0.6; }
+            90% { opacity: 0.6; }
+            100% { transform: translate(var(--tx), var(--ty)) scale(1.5); opacity: 0; }
+        }
+
         .app-container { position:relative; z-index:1; max-width:600px; margin:0 auto; }
         .header { text-align:center; padding:30px 0 20px; position: relative; }
         .header .faq-button {
@@ -220,6 +248,16 @@
             font-weight: 500;
             color: #ddd6fe;
         }
+        .experience-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: 700;
+            color: #fff;
+            font-size: 14px;
+            margin-left: 8px;
+        }
         .review-card { padding: 20px; }
         .review-author { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
         .review-avatar {
@@ -265,19 +303,6 @@
         .order-info p { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
         .order-info a { color: var(--accent); text-decoration: none; }
         .footer { text-align:center; margin-top:30px; padding:10px; color:var(--text-muted); font-size:12px; opacity:0.5; }
-        #debugInfo {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(0,0,0,0.8);
-            color: #fff;
-            font-size: 10px;
-            padding: 5px;
-            text-align: center;
-            z-index: 9999;
-            pointer-events: none;
-        }
         #imageViewer {
             position: fixed;
             inset: 0;
@@ -331,12 +356,6 @@
         .show-handle .drag-handle {
             display: inline-block;
         }
-        @media (max-width: 400px) {
-            .categories-grid { grid-template-columns: repeat(2, 1fr); }
-            .brand-name { font-size: 24px; }
-            .tab-btn { font-size: 11px; padding: 10px 4px; }
-            .card { padding: 18px; }
-        }
 
         /* Загрузочный экран */
         #loadingScreen {
@@ -377,6 +396,12 @@
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.2); }
         }
+        @media (max-width: 400px) {
+            .categories-grid { grid-template-columns: repeat(2, 1fr); }
+            .brand-name { font-size: 24px; }
+            .tab-btn { font-size: 11px; padding: 10px 4px; }
+            .card { padding: 18px; }
+        }
     </style>
 </head>
 <body>
@@ -388,7 +413,9 @@
         </div>
     </div>
 
+    <!-- Звёзды и астероиды -->
     <div class="stars-container" id="starsContainer"></div>
+    <div class="asteroid-container" id="asteroidContainer"></div>
 
     <div class="app-container">
         <div class="header">
@@ -408,7 +435,7 @@
         <section id="resume" class="section active">
             <div class="card">
                 <h3><a href="https://t.me/mark1zell" target="_blank" style="color: inherit; text-decoration: none;">👋 Дмитрий Маркизов</a></h3>
-                <p>19 лет · Опыт 6 лет</p>
+                <p>19 лет · <span class="experience-badge">Опыт 6 лет</span></p>
                 <div id="aboutHighlight" class="resume-highlight"></div>
                 <p id="aboutText1"></p>
                 <p id="aboutText2"></p>
@@ -447,8 +474,6 @@
         <img id="imageViewerImg" src="" alt="Просмотр">
         <button class="btn save-btn" id="imageViewerSaveBtn">Сохранить</button>
     </div>
-
-    <div id="debugInfo"></div>
 
     <script>
         // ================== FIREBASE ==================
@@ -502,15 +527,9 @@
                     tg.sendData('Здравствуйте! Хочу обсудить заказ.');
                     tg.close();
                 });
-                updateDebugInfo();
             } else {
                 setTimeout(initTelegram, 500);
             }
-        }
-
-        function updateDebugInfo() {
-            let info = `TG: ${window.telegramAvailable ? 'есть' : 'нет'} | User: ${window.currentUser ? (window.currentUser.username || window.currentUser.first_name) : 'нет'} | Admin: ${window.isAdmin}`;
-            document.getElementById('debugInfo').textContent = info;
         }
 
         // ================== FAQ ==================
@@ -599,13 +618,18 @@
                     renderOrdersList(snapshot);
                 }
             });
+
+            // Подсчет отзывов
+            db.collection('reviews').onSnapshot((snapshot) => {
+                renderReviews(snapshot);
+            });
         }
 
         // ================== ПОРТФОЛИО ==================
         function renderPortfolioCategories(cats) {
             const container = document.getElementById('portfolioCategories');
             if (!container || container.style.display === 'none') return;
-            let html = '<div class="card"><h3>📁 Категории портфолио</h3><div class="categories-grid" id="categoriesGrid">';
+            let html = '<div class="card"><h3>Портфолио</h3><div class="categories-grid" id="categoriesGrid">';
             cats.forEach((cat, idx) => {
                 const coverStyle = cat.coverImage ? `style="background-image:url('${cat.coverImage}');"` : '';
                 html += `
@@ -945,10 +969,17 @@
             const viewer = document.getElementById('imageViewer');
             const img = document.getElementById('imageViewerImg');
             const saveBtn = document.getElementById('imageViewerSaveBtn');
+            img.onload = function() {
+                viewer.style.display = 'flex';
+            };
+            img.onerror = function() {
+                viewer.style.display = 'none';
+            };
             img.src = src;
-            img.alt = title || 'Изображение';
+            if (img.complete) {
+                img.onload();
+            }
             saveBtn.style.display = 'inline-block';
-            viewer.style.display = 'flex';
             scale = 1;
             img.style.transform = 'scale(1)';
         }
@@ -1157,10 +1188,29 @@
             if (!text) { alert('Введите текст отзыва'); return; }
             if (!selectedRating) { alert('Поставьте оценку'); return; }
 
-            const authorName = window.currentUser?.first_name || window.currentUser?.username || 'Пользователь';
-            const authorUsername = window.currentUser?.username || null;
-            const photoUrl = window.currentUser?.photo_url || null;
-            const authorId = window.currentUser?.id || null;
+            const user = window.currentUser;
+            if (!user || !user.id) {
+                alert('Не удалось определить пользователя');
+                return;
+            }
+
+            // Проверка на частоту
+            const lastReviewRef = db.collection('userLastReview').doc(user.id.toString());
+            const lastReviewDoc = await lastReviewRef.get();
+            if (lastReviewDoc.exists) {
+                const lastTimestamp = lastReviewDoc.data().timestamp?.toMillis() || 0;
+                const now = Date.now();
+                if (now - lastTimestamp < 3600000) {
+                    alert('Вы сможете оставить новый отзыв через 1 час после предыдущего.');
+                    return;
+                }
+            }
+
+            const authorName = user.first_name || user.username || 'Пользователь';
+            const authorUsername = user.username || null;
+            const photoUrl = user.photo_url || null;
+            const authorId = user.id;
+
             await db.collection('reviews').add({
                 authorName: authorName,
                 authorUsername: authorUsername,
@@ -1171,7 +1221,61 @@
                 images: tempReviewImages,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
+
+            // Сохраняем время последнего отзыва
+            await db.collection('userLastReview').doc(user.id.toString()).set({
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
             closeModal();
+        }
+
+        function renderReviews(snapshot) {
+            const container = document.getElementById('reviewsContainer');
+            if (!container) return;
+            const reviewsCount = snapshot.size;
+            let html = `<h3 style="margin-bottom:15px;">Отзывы (${reviewsCount})</h3>`;
+            snapshot.forEach(doc => {
+                const review = doc.data();
+                const authorName = review.authorName || review.author || 'Пользователь';
+                const authorUsername = review.authorUsername || null;
+                const isAuthor = window.currentUser && (window.currentUser.id === review.authorId || window.currentUser.username === review.authorUsername);
+                let avatarHtml = `<div class="review-avatar">${(review.authorName && review.authorName !== 'Пользователь') ? review.authorName.charAt(0) : '👤'}</div>`;
+                if (review.photoUrl) {
+                    avatarHtml = `<div class="review-avatar"><img src="${review.photoUrl}" alt="avatar"></div>`;
+                }
+                let imagesHtml = '';
+                if (review.images && review.images.length > 0) {
+                    imagesHtml = '<div class="review-images">';
+                    review.images.forEach(img => {
+                        imagesHtml += `<img src="${img}" alt="отзыв" onclick="viewImage('${img}', 'Отзыв', false)">`;
+                    });
+                    imagesHtml += '</div>';
+                }
+                let actionsHtml = '';
+                if (window.isAdmin) {
+                    actionsHtml += `<button class="btn" onclick="editReview('${doc.id}')">✏️</button>`;
+                    actionsHtml += `<button class="btn" onclick="deleteReview('${doc.id}')">🗑️</button>`;
+                } else if (isAuthor) {
+                    actionsHtml += `<button class="btn" onclick="deleteReview('${doc.id}')">🗑️ Удалить</button>`;
+                }
+                html += `
+                    <div class="card review-card">
+                        <div class="review-author">
+                            ${avatarHtml}
+                            <div>
+                                <strong>${authorName}</strong>
+                                ${authorUsername ? `<div style="font-size:12px; color:var(--text-muted);">@${authorUsername}</div>` : ''}
+                                <div class="stars">${'★'.repeat(review.stars)}${'☆'.repeat(5 - review.stars)}</div>
+                            </div>
+                        </div>
+                        <p class="review-text">${review.text}</p>
+                        ${imagesHtml}
+                        ${actionsHtml ? `<div style="margin-top:10px">${actionsHtml}</div>` : ''}
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
         }
 
         // ================== АДМИН-ФУНКЦИИ ==================
@@ -1221,7 +1325,6 @@
                 tempWorkImage = dataUrl;
                 document.getElementById('workImagePreview').src = dataUrl;
                 document.getElementById('workImagePreview').style.display = 'block';
-                document.getElementById('debugInfo').textContent = 'Изображение сжато до ' + Math.round(dataUrl.length/1024) + ' КБ';
             });
         }
 
@@ -1238,10 +1341,8 @@
                 items.push({ title, image: tempWorkImage });
                 await catRef.update({ items });
                 closeModal();
-                document.getElementById('debugInfo').textContent = 'Работа добавлена';
             } catch (error) {
                 alert('Ошибка: ' + error.message);
-                document.getElementById('debugInfo').textContent = 'Ошибка: ' + error.message;
             }
         }
 
@@ -1260,9 +1361,17 @@
             }
         }
 
-        function deleteReview(id) {
+        async function deleteReview(id) {
             if (confirm('Удалить отзыв?')) {
-                db.collection('reviews').doc(id).delete();
+                const reviewDoc = await db.collection('reviews').doc(id).get();
+                if (reviewDoc.exists) {
+                    const reviewData = reviewDoc.data();
+                    // Если автор удаляет свой отзыв, удаляем запись о последнем отзыве
+                    if (window.currentUser && reviewData.authorId === window.currentUser.id) {
+                        await db.collection('userLastReview').doc(window.currentUser.id.toString()).delete();
+                    }
+                }
+                await db.collection('reviews').doc(id).delete();
             }
         }
 
@@ -1324,7 +1433,7 @@
             });
         }
 
-        // ================== ЗВЁЗДЫ ==================
+        // ================== ЗВЁЗДЫ И АСТЕРОИДЫ ==================
         function createStars() {
             const container = document.getElementById('starsContainer');
             for (let i = 0; i < 45; i++) {
@@ -1343,6 +1452,29 @@
             }
         }
 
+        function createAsteroids() {
+            const container = document.getElementById('asteroidContainer');
+            const asteroidsCount = 7; // небольшое количество, чтобы не часто
+            for (let i = 0; i < asteroidsCount; i++) {
+                const asteroid = document.createElement('div');
+                asteroid.classList.add('asteroid');
+                const size = Math.random() * 3 + 2;
+                asteroid.style.width = size + 'px';
+                asteroid.style.height = size + 'px';
+                asteroid.style.left = Math.random() * 100 + '%';
+                asteroid.style.top = Math.random() * 100 + '%';
+                const tx = (Math.random() - 0.5) * 200;
+                const ty = (Math.random() - 0.5) * 200;
+                asteroid.style.setProperty('--tx', tx + 'px');
+                asteroid.style.setProperty('--ty', ty + 'px');
+                const duration = Math.random() * 10 + 5;
+                asteroid.style.animationDuration = duration + 's';
+                const delay = Math.random() * 15;
+                asteroid.style.animationDelay = delay + 's';
+                container.appendChild(asteroid);
+            }
+        }
+
         // ================== ГЛОБАЛЬНЫЙ ОБРАБОТЧИК КЛИКОВ ДЛЯ КАТЕГОРИЙ ==================
         document.addEventListener('click', function(e) {
             const categoryCard = e.target.closest('.category-card');
@@ -1355,6 +1487,7 @@
         // ================== ЗАПУСК ==================
         function init() {
             createStars();
+            createAsteroids();
             setupTabs();
             initDefaultServices();
             setupRealTimeListeners();
