@@ -252,6 +252,23 @@
         #imageViewer .save-btn {
             margin-top: 15px;
         }
+        #imageViewerClose {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.6);
+            border: none;
+            color: white;
+            font-size: 28px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2001;
+        }
         @media (max-width: 400px) {
             .categories-grid, .works-grid { grid-template-columns: 1fr; }
             .brand-name { font-size: 24px; }
@@ -319,6 +336,7 @@
     </div>
 
     <div id="imageViewer">
+        <button id="imageViewerClose" onclick="closeImageViewer()">×</button>
         <img id="imageViewerImg" src="" alt="Просмотр">
         <button class="btn save-btn" id="imageViewerSaveBtn">Сохранить</button>
     </div>
@@ -557,10 +575,33 @@
 
         function renderOrderButtons() {
             const container = document.getElementById('userOrderButtons');
-            const services = ['Баннер', 'Брендинг', 'Дизайн упаковки', 'Пользовательские интерфейсы', 'Дизайн публикаций', 'Оформление группы', 'Дизайн приложения', 'Дизайн сайта', 'Карточки WB/OZON/Авито', 'Аватарка', 'Другое'];
-            container.innerHTML = '<h3>Заказать услугу</h3>' + services.map(s => `
-                <button class="btn" onclick="placeOrder('${s}')">${s}</button>
-            `).join('');
+            const services = [
+                { name: 'Баннер', emoji: '🎯', desc: 'Рекламный или оформительский' },
+                { name: 'Брендинг', emoji: '💼', desc: 'Фирменный стиль, айдентика' },
+                { name: 'Дизайн упаковки', emoji: '📦', desc: 'Коробки, этикетки, пакеты' },
+                { name: 'Пользовательские интерфейсы', emoji: '🖥️', desc: 'UI/UX для приложений и сайтов' },
+                { name: 'Дизайн публикаций', emoji: '📰', desc: 'Посты, презентации, документы' },
+                { name: 'Оформление группы', emoji: '📱', desc: 'Шапки, посты, обложки' },
+                { name: 'Дизайн приложения', emoji: '💻', desc: 'UI/UX, интерфейсы' },
+                { name: 'Дизайн сайта', emoji: '🌐', desc: 'Лендинги, многостраничники' },
+                { name: 'Карточки WB/OZON/Авито', emoji: '🛍️', desc: 'Инфографика, продающие карточки' },
+                { name: 'Аватарка', emoji: '👤', desc: 'Для соцсетей и мессенджеров' },
+                { name: 'Другое', emoji: '✨', desc: 'Любая дизайн-задача' }
+            ];
+            let html = '<div class="order-list" style="display:flex; flex-direction:column; gap:12px;">';
+            services.forEach(s => {
+                html += `
+                    <div class="order-item" style="cursor:pointer;" onclick="placeOrder('${s.name}')">
+                        <div class="order-info">
+                            <h4>${s.emoji} ${s.name}</h4>
+                            <p>${s.desc}</p>
+                        </div>
+                        <span style="font-size:24px;">➔</span>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
         }
 
         // ================== ПОЛНОЭКРАННЫЙ ПРОСМОТР ==================
@@ -571,7 +612,7 @@
             const saveBtn = document.getElementById('imageViewerSaveBtn');
             img.src = src;
             img.alt = title || 'Изображение';
-            saveBtn.style.display = 'inline-block'; // всегда показываем
+            saveBtn.style.display = 'inline-block';
             viewer.style.display = 'flex';
         }
 
@@ -592,6 +633,11 @@
             }
         });
 
+        document.getElementById('imageViewerClose').addEventListener('click', function(e) {
+            e.stopPropagation();
+            closeImageViewer();
+        });
+
         // ================== ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ ==================
         function placeOrder(service) {
             const user = window.currentUser?.username || window.currentUser?.first_name || 'Пользователь';
@@ -604,15 +650,11 @@
             db.collection('orders').add(order);
             
             // ================== ВАЖНО: ЗАМЕНИТЕ НА ВАШУ РЕАЛЬНУЮ ССЫЛКУ ОПЛАТЫ ==================
-            // Например, ссылка из Robokassa: https://auth.robokassa.ru/...
-            // Или динамическая ссылка, если вы используете API
             const paymentUrl = 'https://your-payment-link.com/pay?service=' + encodeURIComponent(service);
             
-            // Открываем чат с ботом с текстом о заказе
             if (window.telegramAvailable && window.tg) {
                 const chatText = encodeURIComponent(`Здравствуйте, хочу заказать ${service}, чек оплаты скину ниже`);
                 window.tg.openTelegramLink(`https://t.me/Mark1zDesign_bot?text=${chatText}`);
-                // Открываем страницу оплаты
                 window.tg.openLink(paymentUrl);
             } else {
                 const text = encodeURIComponent(`Здравствуйте, хочу заказать ${service}, чек оплаты скину ниже`);
