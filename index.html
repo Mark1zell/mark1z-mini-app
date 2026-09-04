@@ -93,7 +93,7 @@
             overflow: hidden;
             position: relative;
         }
-        .work-item img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block; }
+        .work-item img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block; cursor: pointer; }
         .work-item .work-info { padding: 8px; font-size: 12px; color: var(--text-muted); text-align: center; }
         .work-item .work-actions { position: absolute; top: 8px; right: 8px; display: flex; gap: 5px; }
         .work-actions button {
@@ -190,6 +190,20 @@
             color: white;
         }
         .review-text { color: var(--text-muted); font-size: 14px; line-height: 1.6; }
+        .review-images {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .review-images img {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 1px solid var(--card-border);
+        }
         .stars { color: #fbbf24; letter-spacing: 2px; }
         .order-list { display: flex; flex-direction: column; gap: 12px; }
         .order-item {
@@ -216,6 +230,22 @@
             text-align: center;
             z-index: 9999;
             pointer-events: none;
+        }
+        /* Полноэкранный просмотр изображения */
+        #imageViewer {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            cursor: pointer;
+        }
+        #imageViewer img {
+            max-width: 95%;
+            max-height: 95%;
+            object-fit: contain;
         }
         @media (max-width: 400px) {
             .categories-grid, .works-grid { grid-template-columns: 1fr; }
@@ -283,6 +313,10 @@
         <div class="modal" id="modalContent"></div>
     </div>
 
+    <div id="imageViewer" onclick="closeImageViewer()">
+        <img id="imageViewerImg" src="" alt="Просмотр">
+    </div>
+
     <div id="debugInfo"></div>
 
     <script>
@@ -306,8 +340,9 @@
         window.telegramAvailable = false;
         let currentCategoryId = null;
         let selectedRating = 0;
+        let tempReviewImages = []; // массив dataURL для отзыва
 
-        // ================== TELEGRAM INIT (с повторными попытками) ==================
+        // ================== TELEGRAM INIT ==================
         function initTelegram() {
             const tg = window.Telegram?.WebApp;
             if (tg) {
@@ -329,7 +364,7 @@
                     tg.close();
                 });
                 updateDebugInfo();
-                // Обновим подписку на отзывы, чтобы показывать имена
+                // Подписка на отзывы
                 db.collection('reviews').orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
                     renderReviews(snapshot);
                 });
@@ -343,7 +378,7 @@
             document.getElementById('debugInfo').textContent = info;
         }
 
-        // ================== ЗАГРУЗКА ДАННЫХ В РЕАЛЬНОМ ВРЕМЕНИ ==================
+        // ================== ЗАГРУЗКА ДАННЫХ ==================
         function setupRealTimeListeners() {
             db.collection('about').doc('main').onSnapshot((doc) => {
                 if (doc.exists) {
@@ -366,7 +401,6 @@
                 renderPortfolioCategories(snapshot);
             });
 
-            // Заказы
             db.collection('orders').orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
                 renderOrders(snapshot);
             });
@@ -417,16 +451,13 @@
                 items.forEach((item, idx) => {
                     html += `
                         <div class="work-item">
-                            <img src="${item.image}" alt="${item.title}" loading="lazy">
+                            <img src="${item.image}" alt="${item.title}" onclick="viewImage('${item.image}', '${item.title}')" loading="lazy">
                             <div class="work-info">${item.title}</div>
                             ${window.isAdmin ? `
                             <div class="work-actions">
                                 <button onclick="editWork(${idx})">✏️</button>
                                 <button onclick="deleteWork(${idx})">🗑️</button>
                             </div>` : ''}
-                            <div class="work-actions" style="left:8px; right:auto;">
-                                <button onclick="downloadWork('${item.image}', '${item.title}')">⬇️</button>
-                            </div>
                         </div>
                     `;
                 });
@@ -451,6 +482,14 @@
                 const review = doc.data();
                 const authorName = review.author || 'Пользователь';
                 const avatarLetter = (review.author && review.author !== 'Пользователь') ? review.author.charAt(0) : '👤';
+                let imagesHtml = '';
+                if (review.images && review.images.length > 0) {
+                    imagesHtml = '<div class="review-images">';
+                    review.images.forEach(img => {
+                        imagesHtml += `<img src="${img}" alt="отзыв" onclick="viewImage('${img}', 'Отзыв')">`;
+                    });
+                    imagesHtml += '</div>';
+                }
                 html += `
                     <div class="card review-card">
                         <div class="review-author">
@@ -461,6 +500,7 @@
                             </div>
                         </div>
                         <p class="review-text">${review.text}</p>
+                        ${imagesHtml}
                         ${window.isAdmin ? `<div style="margin-top:10px">
                             <button class="btn" onclick="editReview('${doc.id}')">✏️</button>
                             <button class="btn" onclick="deleteReview('${doc.id}')">🗑️</button>
@@ -509,6 +549,19 @@
             `).join('');
         }
 
+        // ================== ПОЛНОЭКРАННЫЙ ПРОСМОТР ==================
+        function viewImage(src, title) {
+            const viewer = document.getElementById('imageViewer');
+            const img = document.getElementById('imageViewerImg');
+            img.src = src;
+            img.alt = title || 'Изображение';
+            viewer.style.display = 'flex';
+        }
+
+        function closeImageViewer() {
+            document.getElementById('imageViewer').style.display = 'none';
+        }
+
         // ================== ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ ==================
         function placeOrder(service) {
             const user = window.currentUser?.username || window.currentUser?.first_name || 'Пользователь';
@@ -549,11 +602,16 @@
                     <span data-value="5">☆</span>
                 </div>
                 <textarea id="reviewText" placeholder="Напишите ваш отзыв..." style="height:100px;"></textarea>
+                <div style="margin-bottom:10px;">
+                    <button class="btn" onclick="document.getElementById('reviewImagesInput').click()">📎 Прикрепить изображения (до 3)</button>
+                    <input type="file" id="reviewImagesInput" accept="image/*" multiple hidden onchange="handleReviewImages(event)">
+                    <div id="reviewImagesPreview" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;"></div>
+                </div>
                 <button class="btn" onclick="submitReview()">Опубликовать</button>
                 <button class="btn" onclick="closeModal()">Отмена</button>
             `;
             modal.style.display = 'flex';
-
+            tempReviewImages = [];
             document.querySelectorAll('#starRating span').forEach(star => {
                 star.addEventListener('click', () => {
                     const value = parseInt(star.dataset.value);
@@ -571,6 +629,61 @@
             });
         }
 
+        async function handleReviewImages(event) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+            if (files.length + tempReviewImages.length > 3) {
+                alert('Можно прикрепить не более 3 изображений');
+                return;
+            }
+            for (const file of files) {
+                if (tempReviewImages.length >= 3) break;
+                const dataUrl = await compressImage(file, 300, 0.6);
+                if (dataUrl) {
+                    tempReviewImages.push(dataUrl);
+                }
+            }
+            renderReviewImagesPreview();
+        }
+
+        function renderReviewImagesPreview() {
+            const preview = document.getElementById('reviewImagesPreview');
+            preview.innerHTML = '';
+            tempReviewImages.forEach((img, idx) => {
+                preview.innerHTML += `<img src="${img}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;cursor:pointer;" onclick="tempReviewImages.splice(${idx},1); renderReviewImagesPreview();">`;
+            });
+        }
+
+        function compressImage(file, maxSize, quality) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+                        if (width > height && width > maxSize) {
+                            height = height * maxSize / width;
+                            width = maxSize;
+                        } else if (height > maxSize) {
+                            width = width * maxSize / height;
+                            height = maxSize;
+                        }
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+                        resolve(dataUrl);
+                    };
+                    img.onerror = () => resolve(null);
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
         async function submitReview() {
             const text = document.getElementById('reviewText').value.trim();
             if (!text) { alert('Введите текст отзыва'); return; }
@@ -581,6 +694,7 @@
                 author: author,
                 stars: selectedRating,
                 text: text,
+                images: tempReviewImages,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
             closeModal();
@@ -616,8 +730,8 @@
             const content = document.getElementById('modalContent');
             content.innerHTML = `
                 <h3>Добавить работу</h3>
-                <input type="file" id="workImageInput" accept="image/*" onchange="previewImage(event)">
-                <img id="imagePreview" class="preview" src="" alt="Предпросмотр">
+                <input type="file" id="workImageInput" accept="image/*" onchange="previewWorkImage(event)">
+                <img id="workImagePreview" class="preview" src="" alt="Предпросмотр">
                 <input type="text" id="workTitleInput" placeholder="Название работы">
                 <button class="btn" onclick="saveWork()">Сохранить</button>
                 <button class="btn" onclick="closeModal()">Отмена</button>
@@ -625,67 +739,35 @@
             modal.style.display = 'flex';
         }
 
-        // Сжатие изображения через canvas
-        function previewImage(event) {
+        let tempWorkImage = null;
+
+        function previewWorkImage(event) {
             const file = event.target.files[0];
             if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const img = new Image();
-                img.onload = function() {
-                    const canvas = document.createElement('canvas');
-                    const maxSize = 800;
-                    let width = img.width;
-                    let height = img.height;
-                    if (width > height && width > maxSize) {
-                        height = height * maxSize / width;
-                        width = maxSize;
-                    } else if (height > maxSize) {
-                        width = width * maxSize / height;
-                        height = maxSize;
-                    }
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
-                    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-                    const preview = document.getElementById('imagePreview');
-                    preview.src = dataUrl;
-                    preview.style.display = 'block';
-                    window.tempImageData = dataUrl;
-                    document.getElementById('debugInfo').textContent = 'Изображение сжато до ' + Math.round(dataUrl.length/1024) + ' КБ';
-                };
-                img.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
+            compressImage(file, 800, 0.7).then(dataUrl => {
+                tempWorkImage = dataUrl;
+                document.getElementById('workImagePreview').src = dataUrl;
+                document.getElementById('workImagePreview').style.display = 'block';
+                document.getElementById('debugInfo').textContent = 'Изображение сжато до ' + Math.round(dataUrl.length/1024) + ' КБ';
+            });
         }
 
         async function saveWork() {
             const title = document.getElementById('workTitleInput').value.trim();
-            const imageData = window.tempImageData;
-            if (!title || !imageData) {
-                alert('Заполните все поля');
-                return;
-            }
-            if (imageData.length > 1000000) {
-                alert('Изображение всё ещё слишком большое. Пожалуйста, сожмите его сильнее.');
-                return;
-            }
+            if (!title) { alert('Введите название'); return; }
+            if (!tempWorkImage) { alert('Загрузите изображение'); return; }
+            if (tempWorkImage.length > 1000000) { alert('Изображение слишком большое'); return; }
             try {
                 const catRef = db.collection('portfolioCategories').doc(currentCategoryId);
                 const catDoc = await catRef.get();
-                if (!catDoc.exists) {
-                    alert('Категория не найдена');
-                    return;
-                }
+                if (!catDoc.exists) { alert('Категория не найдена'); return; }
                 const items = catDoc.data().items || [];
-                items.push({ title, image: imageData });
+                items.push({ title, image: tempWorkImage });
                 await catRef.update({ items });
                 closeModal();
                 document.getElementById('debugInfo').textContent = 'Работа добавлена';
             } catch (error) {
-                console.error('Ошибка сохранения:', error);
-                alert('Ошибка при сохранении: ' + error.message);
+                alert('Ошибка: ' + error.message);
                 document.getElementById('debugInfo').textContent = 'Ошибка: ' + error.message;
             }
         }
