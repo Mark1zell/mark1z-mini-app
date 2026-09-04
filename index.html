@@ -5,11 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Mark1z Design</title>
 
+    <!-- Подключаем Telegram WebApp JS -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
     <style>
+        /* ... стили точно такие же, как в предыдущем полном коде ... */
         :root {
             --bg-start: #0a050d;
             --bg-mid: #100820;
@@ -304,7 +308,7 @@
         let currentCategoryId = null;
         let selectedRating = 0;
 
-        // ================== TELEGRAM INIT ==================
+        // ================== TELEGRAM INIT (с повторными попытками) ==================
         function initTelegram() {
             const tg = window.Telegram?.WebApp;
             if (tg) {
@@ -325,12 +329,15 @@
                     tg.sendData('Здравствуйте! Хочу обсудить заказ.');
                     tg.close();
                 });
+                updateDebugInfo();
+                // Обновим отзывы, чтобы показать имена пользователей
+                db.collection('reviews').orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
+                    renderReviews(snapshot);
+                });
             } else {
-                window.telegramAvailable = false;
-                window.tg = null;
-                window.isAdmin = false;
+                // Пробуем снова через 500 мс
+                setTimeout(initTelegram, 500);
             }
-            updateDebugInfo();
         }
 
         function updateDebugInfo() {
@@ -340,7 +347,6 @@
 
         // ================== ЗАГРУЗКА ДАННЫХ В РЕАЛЬНОМ ВРЕМЕНИ ==================
         function setupRealTimeListeners() {
-            // Обо мне
             db.collection('about').doc('main').onSnapshot((doc) => {
                 if (doc.exists) {
                     const data = doc.data();
@@ -358,25 +364,17 @@
                 }
             });
 
-            // Портфолио категории
             db.collection('portfolioCategories').onSnapshot((snapshot) => {
                 renderPortfolioCategories(snapshot);
             });
 
-            // Отзывы
-            db.collection('reviews').orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
-                renderReviews(snapshot);
-            });
-
-            // Заказы
-            db.collection('orders').orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
-                renderOrders(snapshot);
-            });
+            // Отзывы будут подписаны также в initTelegram после получения пользователя
+            // Но чтобы не дублировать подписку, можно оставить одну здесь, но она обновится при изменении user
         }
 
         function renderPortfolioCategories(snapshot) {
             const container = document.getElementById('portfolioCategories');
-            if (!container || container.style.display === 'none') return; // если открыта категория, не трогаем
+            if (!container || container.style.display === 'none') return;
             const cats = [];
             snapshot.forEach(doc => cats.push({ id: doc.id, ...doc.data() }));
             let html = '<div class="card"><h3>📁 Категории портфолио</h3><div class="categories-grid">';
@@ -443,10 +441,6 @@
         function showPortfolioCategories() {
             document.getElementById('portfolioWorks').style.display = 'none';
             document.getElementById('portfolioCategories').style.display = 'block';
-            // Перезагрузим категории (уже подписаны, можно не трогать, но обновим на всякий случай)
-            db.collection('portfolioCategories').onSnapshot((snapshot) => {
-                renderPortfolioCategories(snapshot);
-            });
         }
 
         function renderReviews(snapshot) {
@@ -455,12 +449,14 @@
             let html = '';
             snapshot.forEach(doc => {
                 const review = doc.data();
+                const authorName = review.author || 'Пользователь';
+                const avatarLetter = (review.author && review.author !== 'Пользователь') ? review.author.charAt(0) : '👤';
                 html += `
                     <div class="card review-card">
                         <div class="review-author">
-                            <div class="review-avatar">${review.author.charAt(0)}</div>
+                            <div class="review-avatar">${avatarLetter}</div>
                             <div>
-                                <strong>${review.author}</strong>
+                                <strong>${authorName}</strong>
                                 <div class="stars">${'★'.repeat(review.stars)}${'☆'.repeat(5 - review.stars)}</div>
                             </div>
                         </div>
@@ -660,7 +656,6 @@
         }
 
         function editReview(id) {
-            // Можно реализовать через prompt
             const newText = prompt('Новый текст отзыва:');
             if (newText !== null) {
                 db.collection('reviews').doc(id).update({ text: newText });
@@ -738,7 +733,7 @@
             createStars();
             setupTabs();
             setupRealTimeListeners();
-            initTelegram();
+            initTelegram(); // повторные попытки внутри
         }
 
         if (document.readyState === 'loading') {
