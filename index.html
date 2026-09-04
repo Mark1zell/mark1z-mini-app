@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Mark1z Design</title>
     <style>
+        /* ========== СТИЛИ ========== */
         :root {
             --bg-start: #0a050d;
             --bg-mid: #100820;
@@ -196,6 +197,20 @@
         .order-info h4 { font-size: 16px; font-weight: 600; }
         .order-info p { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
         .footer { text-align:center; margin-top:30px; padding:10px; color:var(--text-muted); font-size:12px; opacity:0.5; }
+        /* Диагностика */
+        #debugInfo {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.8);
+            color: #fff;
+            font-size: 10px;
+            padding: 5px;
+            text-align: center;
+            z-index: 9999;
+            pointer-events: none;
+        }
         @media (max-width: 400px) {
             .categories-grid, .works-grid { grid-template-columns: 1fr; }
             .brand-name { font-size: 24px; }
@@ -262,6 +277,9 @@
         <div class="modal" id="modalContent"></div>
     </div>
 
+    <!-- Диагностическая панель (видна всегда, убрать после отладки) -->
+    <div id="debugInfo"></div>
+
     <script>
         // ================== ДАННЫЕ ==================
         const DEFAULT_DATA = {
@@ -302,6 +320,12 @@
         window.tg = null;
         window.currentUser = null;
         window.isAdmin = false;
+
+        // ================== ДИАГНОСТИКА ==================
+        function updateDebugInfo() {
+            let info = `TG: ${window.tg ? 'есть' : 'нет'} | User: ${window.currentUser ? (window.currentUser.username || window.currentUser.first_name) : 'нет'} | Admin: ${window.isAdmin}`;
+            document.getElementById('debugInfo').textContent = info;
+        }
 
         // ================== РЕНДЕР ==================
         function renderAbout() {
@@ -429,12 +453,13 @@
             renderPortfolioCategories();
             renderReviews();
             renderOrders();
+            updateDebugInfo();
         }
 
         // ================== ПОЛЬЗОВАТЕЛЬСКИЕ ДЕЙСТВИЯ ==================
         function placeOrder(service) {
             if (!window.tg || !window.tg.initDataUnsafe?.user) {
-                console.log('Telegram API недоступен');
+                alert('Работает только в Telegram');
                 return;
             }
             const order = {
@@ -624,6 +649,7 @@
                 const user = tg.initDataUnsafe?.user;
                 let isAdmin = false;
                 if (user && user.username) {
+                    // Сравниваем без учёта регистра и без @
                     const username = user.username.toLowerCase().replace('@','');
                     isAdmin = (username === 'mark1zell');
                 }
@@ -637,8 +663,9 @@
                     tg.sendData('Здравствуйте! Хочу обсудить заказ.');
                     tg.close();
                 });
-                renderAll();
+                renderAll(); // перерисовываем с учётом админа
             } else {
+                // Telegram API не найден, пробуем ещё раз
                 setTimeout(initTelegram, 500);
             }
         }
@@ -666,8 +693,8 @@
         function init() {
             createStars();
             setupTabs();
-            renderAll();
-            initTelegram();
+            renderAll(); // рендерим сразу, даже без Telegram
+            initTelegram(); // пытаемся подключить Telegram
         }
 
         if (document.readyState === 'loading') {
