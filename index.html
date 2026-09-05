@@ -81,11 +81,59 @@
         .category-card .admin-actions { position:absolute; top:5px; right:5px; display:none; gap:3px; z-index:2; }
         .admin-mode .category-card .admin-actions { display:flex; }
         .works-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-top:15px; }
-        .work-item { background: rgba(15,7,25,0.9); border:1px solid var(--card-border); border-radius:var(--radius); overflow:hidden; position:relative; }
-        .work-item img { width:100%; aspect-ratio:1/1; object-fit:cover; display:block; cursor:pointer; }
-        .work-item .work-info { padding:8px; font-size:12px; color:var(--text-muted); text-align:center; }
-        .work-item .work-actions { position:absolute; top:8px; right:8px; display:flex; gap:5px; }
-        .work-actions button { background: rgba(0,0,0,0.6); border:none; color:white; border-radius:50%; width:30px; height:30px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:14px; }
+        .work-item { background: rgba(15,7,25,0.9); border:1px solid var(--card-border); border-radius:var(--radius); overflow:hidden; position:relative; display:flex; flex-direction:column; }
+        /* Новая обёртка для изображения – сохраняет квадрат без aspect-ratio */
+        .work-image-wrapper {
+            position: relative;
+            width: 100%;
+            padding-bottom: 100%; /* 1:1 */
+            height: 0;
+            overflow: hidden;
+            background: #0a050d;
+        }
+        .work-image-wrapper img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            cursor: pointer;
+        }
+        .work-item .work-info {
+            padding: 8px;
+            font-size: 12px;
+            color: var(--text-muted);
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .work-item .work-actions {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            display: flex;
+            gap: 5px;
+            z-index: 2;
+        }
+        .work-actions button {
+            background: rgba(0,0,0,0.6);
+            border: none;
+            color: white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+        .work-actions button:first-child {
+            /* для кнопки скачивания слева */
+            left: 8px;
+            right: auto;
+        }
         .add-work-btn { display:flex; align-items:center; justify-content:center; aspect-ratio:1/1; background: rgba(124,58,237,0.2); border:2px dashed var(--primary); border-radius:var(--radius); cursor:pointer; font-size:32px; color:var(--primary); transition: background 0.3s; }
         .add-work-btn:hover { background: rgba(124,58,237,0.3); }
         .modal-overlay { position:fixed; inset:0; background: rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; z-index:1000; }
@@ -115,8 +163,17 @@
         .order-info a { color:var(--accent); text-decoration:none; }
         .price-old { text-decoration: line-through; color: var(--text-muted); margin-right: 5px; }
         .price-new { color: var(--accent); font-weight: 700; }
-        .footer { text-align:center; margin-top:30px; padding:10px; color:var(--text-muted); font-size:12px; opacity:0.7; }
+        .footer { text-align:center; margin-top:30px; padding:10px; color:var(--text-muted); font-size:12px; opacity:0.7; position:relative; }
         .footer a { color: var(--accent); text-decoration: none; }
+        .footer .version {
+            position: absolute;
+            bottom: 5px;
+            right: 10px;
+            font-size: 10px;
+            opacity: 0.5;
+            color: var(--text-muted);
+            pointer-events: none;
+        }
         #imageViewer { position:fixed; inset:0; background:rgba(0,0,0,0.9); display:none; align-items:center; justify-content:center; z-index:2000; flex-direction:column; overflow:hidden; touch-action:none; }
         #imageViewer img { max-width:95%; max-height:85%; object-fit:contain; transition: transform 0.2s; transform-origin:center; position:relative; }
         #imageViewer .save-btn { margin-top:15px; }
@@ -223,8 +280,9 @@
         </section>
 
         <div class="footer">
-            © Mark1z Design · Дмитрий Маркизов<br>
+            <div>© Mark1z Design · Дмитрий Маркизов</div>
             <a href="#" onclick="openPrivacyPolicy()">Политика конфиденциальности</a>
+            <span class="version">V.0.0.0</span>
         </div>
     </div>
 
@@ -507,7 +565,6 @@
         const caseProbabilities = [60, 25, 12, 3];
 
         function openCaseModal() {
-            // Всегда открываем модалку, чтобы пользователь мог видеть содержимое
             const modal = document.getElementById('modalOverlay');
             const content = document.getElementById('modalContent');
             content.innerHTML = `
@@ -553,7 +610,6 @@
             const minutes = Math.floor((remaining % (60*60*1000)) / (60*1000));
             const seconds = Math.floor((remaining % (60*1000)) / 1000);
             timerEl.textContent = `До следующего прокрута: ${days}д ${hours}ч ${minutes}м ${seconds}с`;
-            // Кнопка должна быть disabled, это уже задано в разметке
             setTimeout(updateCaseTimer, 1000);
         }
 
@@ -1140,13 +1196,15 @@
                 items.forEach((item, idx) => {
                     html += `
                         <div class="work-item" data-index="${idx}">
-                            <img src="${item.image}" alt="${item.title}" onclick="viewImage('${item.image}', '${item.title}', true)" loading="lazy">
+                            <div class="work-image-wrapper">
+                                <img src="${item.image}" alt="${item.title}" onclick="viewImage('${item.image}', '${item.title}', true)" loading="lazy">
+                            </div>
                             <div class="work-info">${item.title}</div>
                             <div class="work-actions" style="left:8px; right:auto;">
                                 <button onclick="event.stopPropagation(); downloadWork('${item.image}', '${item.title}')" title="Скачать">⬇️</button>
                             </div>
                             ${window.isAdmin ? `
-                            <div class="work-actions">
+                            <div class="work-actions" style="right:8px; left:auto;">
                                 <button onclick="editWork(${idx})">✏️</button>
                                 <button onclick="deleteWork(${idx})">🗑️</button>
                             </div>` : ''}
