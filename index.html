@@ -82,11 +82,10 @@
         .admin-mode .category-card .admin-actions { display:flex; }
         .works-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-top:15px; }
         .work-item { background: rgba(15,7,25,0.9); border:1px solid var(--card-border); border-radius:var(--radius); overflow:hidden; position:relative; display:flex; flex-direction:column; }
-        /* Новая обёртка для изображения – сохраняет квадрат без aspect-ratio */
         .work-image-wrapper {
             position: relative;
             width: 100%;
-            padding-bottom: 100%; /* 1:1 */
+            padding-bottom: 100%;
             height: 0;
             overflow: hidden;
             background: #0a050d;
@@ -128,11 +127,6 @@
             align-items: center;
             justify-content: center;
             font-size: 14px;
-        }
-        .work-actions button:first-child {
-            /* для кнопки скачивания слева */
-            left: 8px;
-            right: auto;
         }
         .add-work-btn { display:flex; align-items:center; justify-content:center; aspect-ratio:1/1; background: rgba(124,58,237,0.2); border:2px dashed var(--primary); border-radius:var(--radius); cursor:pointer; font-size:32px; color:var(--primary); transition: background 0.3s; }
         .add-work-btn:hover { background: rgba(124,58,237,0.3); }
@@ -365,7 +359,7 @@
             }
         }
 
-        // ================== СЖАТИЕ ИЗОБРАЖЕНИЙ ==================
+        // ================== СЖАТИЕ ИЗОБРАЖЕНИЙ (УСИЛЕННОЕ) ==================
         function dataURLToBlob(dataUrl) {
             const parts = dataUrl.split(',');
             const mime = parts[0].match(/:(.*?);/)[1];
@@ -378,7 +372,7 @@
             return new Blob([u8arr], {type: mime});
         }
 
-        function compressImage(file, maxSize = 1200, quality = 0.7, maxAttempts = 6) {
+        function compressImage(file, maxSize = 600, quality = 0.5, maxAttempts = 6) {
             return new Promise((resolve) => {
                 const reader = new FileReader();
                 reader.onload = function(e) {
@@ -402,7 +396,7 @@
                             ctx.drawImage(img, 0, 0, width, height);
                             const dataUrl = canvas.toDataURL('image/jpeg', currentQuality);
                             const blob = dataURLToBlob(dataUrl);
-                            if (blob.size > 900 * 1024 && attemptsLeft > 0) {
+                            if (blob.size > 450 * 1024 && attemptsLeft > 0) {
                                 attempt(currentMaxSize * 0.8, Math.max(0.2, currentQuality - 0.15), attemptsLeft - 1);
                             } else {
                                 resolve(dataUrl);
@@ -418,7 +412,7 @@
             });
         }
 
-        function compressDataUrl(dataUrl, maxSize = 800, quality = 0.5) {
+        function compressDataUrl(dataUrl, maxSize = 500, quality = 0.3) {
             return new Promise((resolve) => {
                 const img = new Image();
                 img.onload = function() {
@@ -446,15 +440,13 @@
 
         async function ensureImageWithinLimit(dataUrl) {
             let result = dataUrl;
-            const maxSizeBytes = 900 * 1024;
+            const maxSizeBytes = 450 * 1024;
             if (dataURLToBlob(result).size > maxSizeBytes) {
                 const compressionSteps = [
-                    [1000, 0.6],
-                    [800, 0.4],
-                    [600, 0.3],
-                    [400, 0.2],
-                    [300, 0.15],
-                    [200, 0.1]
+                    [500, 0.3],
+                    [400, 0.25],
+                    [300, 0.2],
+                    [200, 0.15]
                 ];
                 for (const [maxSize, quality] of compressionSteps) {
                     result = await compressDataUrl(result, maxSize, quality);
@@ -825,7 +817,7 @@
         function previewPostImage(event) {
             const file = event.target.files[0];
             if (!file) return;
-            compressImage(file, 800, 0.7).then(async dataUrl => {
+            compressImage(file, 600, 0.5).then(async dataUrl => {
                 dataUrl = await ensureImageWithinLimit(dataUrl);
                 tempPostImage = dataUrl;
                 document.getElementById('postImagePreview').src = dataUrl;
@@ -858,6 +850,11 @@
             };
             if (tempPostImage) {
                 postData.image = tempPostImage;
+                const size = new Blob([JSON.stringify(postData)]).size;
+                if (size > 900 * 1024) {
+                    alert('Пост слишком большой (из-за изображения). Попробуйте другое изображение.');
+                    return;
+                }
             }
             await db.collection('posts').add(postData);
             alert('Пост опубликован!');
@@ -1155,7 +1152,7 @@
         function previewCoverImage(event) {
             const file = event.target.files[0];
             if (!file) return;
-            compressImage(file, 800, 0.7).then(async dataUrl => {
+            compressImage(file, 600, 0.5).then(async dataUrl => {
                 dataUrl = await ensureImageWithinLimit(dataUrl);
                 window.tempCoverImage = dataUrl;
                 document.getElementById('coverPreview').src = dataUrl;
@@ -1165,6 +1162,11 @@
 
         async function saveCover(categoryId) {
             if (!window.tempCoverImage) { alert('Загрузите изображение'); return; }
+            const size = new Blob([JSON.stringify({ coverImage: window.tempCoverImage })]).size;
+            if (size > 900 * 1024) {
+                alert('Изображение слишком большое. Попробуйте другое.');
+                return;
+            }
             await db.collection('portfolioCategories').doc(categoryId).update({ coverImage: window.tempCoverImage });
             closeModal();
         }
@@ -1227,6 +1229,75 @@
 
         function editWork(index) {
             alert('Редактирование работы пока не реализовано. Удалите и добавьте заново.');
+        }
+
+        // ================== ДОБАВЛЕНИЕ РАБОТЫ ==================
+        function addWork() {
+            if (!currentCategoryId) { alert('Сначала откройте категорию'); return; }
+            const modal = document.getElementById('modalOverlay');
+            const content = document.getElementById('modalContent');
+            content.innerHTML = `
+                <h3>Добавить работу</h3>
+                <input type="file" id="workImageInput" accept="image/*" onchange="previewWorkImage(event)">
+                <img id="workImagePreview" class="preview" src="" alt="Предпросмотр">
+                <input type="text" id="workTitleInput" placeholder="Название работы">
+                <button class="btn" onclick="saveWork()">Сохранить</button>
+                <button class="btn" onclick="closeModal()">Отмена</button>
+            `;
+            modal.style.display = 'flex';
+            tempWorkImage = null;
+        }
+
+        function previewWorkImage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            compressImage(file, 600, 0.5).then(async dataUrl => {
+                dataUrl = await ensureImageWithinLimit(dataUrl);
+                tempWorkImage = dataUrl;
+                document.getElementById('workImagePreview').src = dataUrl;
+                document.getElementById('workImagePreview').style.display = 'block';
+            });
+        }
+
+        async function saveWork() {
+            const title = document.getElementById('workTitleInput').value.trim();
+            if (!title) { alert('Введите название'); return; }
+            if (!tempWorkImage) { alert('Загрузите изображение'); return; }
+
+            tempWorkImage = await ensureImageWithinLimit(tempWorkImage);
+            if (dataURLToBlob(tempWorkImage).size > 450 * 1024) {
+                alert('Не удалось сжать изображение до допустимого размера (450 КБ). Попробуйте другое фото.');
+                return;
+            }
+
+            try {
+                const catRef = db.collection('portfolioCategories').doc(currentCategoryId);
+                const catDoc = await catRef.get();
+                if (!catDoc.exists) { alert('Категория не найдена'); return; }
+                const items = catDoc.data().items || [];
+                const testDoc = { items: [...items, { title, image: tempWorkImage }] };
+                const size = new Blob([JSON.stringify(testDoc)]).size;
+                if (size > 900 * 1024) {
+                    alert('Слишком много данных в этой категории. Удалите несколько работ или используйте изображения меньшего размера.');
+                    return;
+                }
+                items.push({ title, image: tempWorkImage });
+                await catRef.update({ items });
+                tempWorkImage = null;
+                closeModal();
+                await openCategory(currentCategoryId);
+            } catch (error) {
+                alert('Ошибка: ' + error.message);
+            }
+        }
+
+        async function deleteWork(index) {
+            const catRef = db.collection('portfolioCategories').doc(currentCategoryId);
+            const catDoc = await catRef.get();
+            const items = catDoc.data().items || [];
+            items.splice(index, 1);
+            await catRef.update({ items });
+            await openCategory(currentCategoryId);
         }
 
         // ================== РАЗДЕЛ ЗАКАЗЫ ==================
@@ -1654,10 +1725,10 @@
             }
             for (const file of files) {
                 if (tempReviewImages.length >= 3) break;
-                let dataUrl = await compressImage(file, 1200, 0.7);
+                let dataUrl = await compressImage(file, 600, 0.5);
                 if (!dataUrl) continue;
                 dataUrl = await ensureImageWithinLimit(dataUrl);
-                if (dataURLToBlob(dataUrl).size > 900 * 1024) {
+                if (dataURLToBlob(dataUrl).size > 450 * 1024) {
                     alert('Некоторые изображения слишком большие даже после сжатия. Попробуйте другие.');
                     continue;
                 }
@@ -1709,7 +1780,7 @@
 
             for (let i = 0; i < tempReviewImages.length; i++) {
                 tempReviewImages[i] = await ensureImageWithinLimit(tempReviewImages[i]);
-                if (dataURLToBlob(tempReviewImages[i]).size > 900 * 1024) {
+                if (dataURLToBlob(tempReviewImages[i]).size > 450 * 1024) {
                     alert('Некоторые изображения слишком большие. Удалите их или выберите другие.');
                     return;
                 }
@@ -1720,7 +1791,7 @@
             const photoUrl = user.photo_url || null;
             const authorId = user.id;
 
-            await db.collection('reviews').add({
+            const reviewData = {
                 authorName: authorName,
                 authorUsername: authorUsername,
                 authorId: authorId,
@@ -1729,12 +1800,17 @@
                 text: text,
                 images: tempReviewImages,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
+            };
+            const size = new Blob([JSON.stringify(reviewData)]).size;
+            if (size > 900 * 1024) {
+                alert('Отзыв слишком большой (из-за изображений). Удалите часть изображений или выберите менее качественные.');
+                return;
+            }
 
+            await db.collection('reviews').add(reviewData);
             await db.collection('userLastReview').doc(user.id.toString()).set({
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
-
             closeModal();
         }
 
@@ -1806,68 +1882,6 @@
             db.collection('portfolioCategories').add({ name, icon, items: [], order: nextOrder });
         }
 
-        function addWork() {
-            if (!currentCategoryId) { alert('Сначала откройте категорию'); return; }
-            const modal = document.getElementById('modalOverlay');
-            const content = document.getElementById('modalContent');
-            content.innerHTML = `
-                <h3>Добавить работу</h3>
-                <input type="file" id="workImageInput" accept="image/*" onchange="previewWorkImage(event)">
-                <img id="workImagePreview" class="preview" src="" alt="Предпросмотр">
-                <input type="text" id="workTitleInput" placeholder="Название работы">
-                <button class="btn" onclick="saveWork()">Сохранить</button>
-                <button class="btn" onclick="closeModal()">Отмена</button>
-            `;
-            modal.style.display = 'flex';
-            tempWorkImage = null;
-        }
-
-        function previewWorkImage(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            compressImage(file, 1200, 0.7).then(async dataUrl => {
-                dataUrl = await ensureImageWithinLimit(dataUrl);
-                tempWorkImage = dataUrl;
-                document.getElementById('workImagePreview').src = dataUrl;
-                document.getElementById('workImagePreview').style.display = 'block';
-            });
-        }
-
-        async function saveWork() {
-            const title = document.getElementById('workTitleInput').value.trim();
-            if (!title) { alert('Введите название'); return; }
-            if (!tempWorkImage) { alert('Загрузите изображение'); return; }
-
-            tempWorkImage = await ensureImageWithinLimit(tempWorkImage);
-            if (dataURLToBlob(tempWorkImage).size > 900 * 1024) {
-                alert('Не удалось сжать изображение до допустимого размера. Попробуйте другое фото.');
-                return;
-            }
-
-            try {
-                const catRef = db.collection('portfolioCategories').doc(currentCategoryId);
-                const catDoc = await catRef.get();
-                if (!catDoc.exists) { alert('Категория не найдена'); return; }
-                const items = catDoc.data().items || [];
-                items.push({ title, image: tempWorkImage });
-                await catRef.update({ items });
-                tempWorkImage = null;
-                closeModal();
-                await openCategory(currentCategoryId);
-            } catch (error) {
-                alert('Ошибка: ' + error.message);
-            }
-        }
-
-        async function deleteWork(index) {
-            const catRef = db.collection('portfolioCategories').doc(currentCategoryId);
-            const catDoc = await catRef.get();
-            const items = catDoc.data().items || [];
-            items.splice(index, 1);
-            await catRef.update({ items });
-            await openCategory(currentCategoryId);
-        }
-
         function editReview(id) {
             const newText = prompt('Новый текст отзыва:');
             if (newText !== null) db.collection('reviews').doc(id).update({ text: newText });
@@ -1920,7 +1934,7 @@
         function previewLogoImage(event) {
             const file = event.target.files[0];
             if (!file) return;
-            compressImage(file, 400, 0.7).then(async dataUrl => {
+            compressImage(file, 400, 0.5).then(async dataUrl => {
                 dataUrl = await ensureImageWithinLimit(dataUrl);
                 window.tempLogoImage = dataUrl;
                 document.getElementById('logoPreview').src = dataUrl;
@@ -1930,6 +1944,11 @@
 
         async function saveLogo() {
             if (!window.tempLogoImage) { alert('Загрузите изображение'); return; }
+            const size = new Blob([JSON.stringify({ image: window.tempLogoImage })]).size;
+            if (size > 900 * 1024) {
+                alert('Изображение слишком большое. Попробуйте другое.');
+                return;
+            }
             await db.collection('settings').doc('logo').set({ image: window.tempLogoImage });
             closeModal();
             document.getElementById('logoImage').src = window.tempLogoImage;
