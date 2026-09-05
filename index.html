@@ -134,14 +134,17 @@
         .preview-thumb { position: relative; display: inline-block; margin: 5px; }
         .preview-thumb img { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid var(--card-border); }
         .preview-thumb .remove-btn { position: absolute; top: -8px; left: -8px; background: rgba(255, 0, 0, 0.8); color: white; border: none; width: 20px; height: 20px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; padding: 0; }
-
-        /* Кейс */
         .case-container { position: relative; width: 100%; max-width: 400px; margin: 20px auto; overflow: hidden; }
         .case-strip { display: flex; transition: transform 0.1s linear; }
         .case-item { min-width: 120px; height: 100px; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; color: #fff; background: linear-gradient(145deg, #2a1a3e, #1a0b2e); border: 2px solid var(--card-border); border-radius: 16px; margin: 0 5px; }
         .case-arrow { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 40px; color: #fff; pointer-events: none; z-index: 2; filter: drop-shadow(0 0 10px rgba(255,255,255,0.8)); }
         .case-modal { text-align: center; }
         .case-modal .close-btn { position: absolute; top: 10px; right: 10px; background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; }
+        .case-timer { margin: 10px 0; font-size: 14px; color: #fbbf24; }
+        .post-modal { text-align: center; }
+        .post-modal .close-btn { position: absolute; top: 10px; right: 10px; background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; }
+        .post-content { margin: 15px 0; line-height: 1.5; }
+        .post-link { color: #a855f7; text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -262,6 +265,8 @@
         let lastSpinTime = localStorage.getItem('lastSpinTime') ? parseInt(localStorage.getItem('lastSpinTime')) : 0;
         let lastSpinDiscount = localStorage.getItem('lastSpinDiscount') ? parseInt(localStorage.getItem('lastSpinDiscount')) : 0;
         let canSpinNow = false;
+        let activePosts = [];
+        let viewedPosts = JSON.parse(localStorage.getItem('viewedPosts') || '[]');
 
         currentDiscount = lastSpinDiscount;
 
@@ -374,7 +379,6 @@
             let result = dataUrl;
             const maxSizeBytes = 900 * 1024;
             if (dataURLToBlob(result).size > maxSizeBytes) {
-                // Последовательные попытки сжатия с уменьшением размера и качества
                 const compressionSteps = [
                     [1000, 0.6],
                     [800, 0.4],
@@ -393,7 +397,7 @@
 
         // ================== КЕЙС ==================
         const caseItems = ['10%', '15%', '25%', '50%'];
-        const caseProbabilities = [60, 25, 12, 3]; // 50% очень маловероятен
+        const caseProbabilities = [60, 25, 12, 3];
 
         function openCaseModal() {
             if (!window.isAdmin && !canSpinNow && !canSpin()) {
@@ -411,18 +415,45 @@
                         <div class="case-strip" id="caseStrip"></div>
                         <div class="case-arrow">➤</div>
                     </div>
-                    <button class="btn case-spin-btn" id="caseSpinBtn" onclick="spinCase()">Крутить</button>
+                    <button class="btn case-spin-btn" id="caseSpinBtn" onclick="spinCase()" ${(!window.isAdmin && !canSpinNow && !canSpin()) ? 'disabled' : ''}>Крутить</button>
                     <button class="btn promo-in-case" onclick="openPromoInCase()">Ввести промокод</button>
+                    <div class="case-timer" id="caseTimer"></div>
                 </div>
             `;
             modal.style.display = 'flex';
             initCaseStrip();
+            updateCaseTimer();
+        }
+
+        function updateCaseTimer() {
+            const timerEl = document.getElementById('caseTimer');
+            if (!timerEl) return;
+            if (window.isAdmin) {
+                timerEl.textContent = 'Вы админ, можете крутить без ограничений';
+                return;
+            }
+            if (canSpinNow) {
+                timerEl.textContent = 'Промокод активирован! Крутите сейчас';
+                return;
+            }
+            const oneWeek = 7 * 24 * 60 * 60 * 1000;
+            const remaining = lastSpinTime ? oneWeek - (Date.now() - lastSpinTime) : 0;
+            if (remaining <= 0) {
+                timerEl.textContent = 'Доступно для прокрута!';
+                if (document.getElementById('caseSpinBtn')) document.getElementById('caseSpinBtn').disabled = false;
+                return;
+            }
+            const days = Math.floor(remaining / (24*60*60*1000));
+            const hours = Math.floor((remaining % (24*60*60*1000)) / (60*60*1000));
+            const minutes = Math.floor((remaining % (60*60*1000)) / (60*1000));
+            const seconds = Math.floor((remaining % (60*1000)) / 1000);
+            timerEl.textContent = `До следующего прокрута: ${days}д ${hours}ч ${minutes}м ${seconds}с`;
+            setTimeout(updateCaseTimer, 1000);
         }
 
         function initCaseStrip() {
             const strip = document.getElementById('caseStrip');
             strip.innerHTML = '';
-            // Дублируем элементы для бесконечной ленты
             for (let i = 0; i < 20; i++) {
                 const item = document.createElement('div');
                 item.className = 'case-item';
@@ -437,10 +468,9 @@
             spinBtn.disabled = true;
             const strip = document.getElementById('caseStrip');
             const items = strip.children;
-            const itemWidth = items[0].offsetWidth + 10; // width + margin
+            const itemWidth = items[0].offsetWidth + 10;
             const totalItems = items.length;
 
-            // Выбираем случайный индекс на основе вероятностей
             const totalProb = caseProbabilities.reduce((a,b)=>a+b,0);
             let r = Math.random() * totalProb;
             let chosenIndex = 0;
@@ -449,8 +479,7 @@
                 if (r <= 0) { chosenIndex = i; break; }
             }
 
-            // Корректный расчёт индекса в ленте
-            const repetitions = totalItems / caseItems.length; // 5
+            const repetitions = totalItems / caseItems.length;
             const targetItemIndex = (repetitions - 1) * caseItems.length + chosenIndex;
 
             const containerWidth = document.getElementById('caseContainer').clientWidth;
@@ -543,14 +572,15 @@
             if (code) applyPromo(code);
         }
 
-        // ================== АДМИН-ПРОМОКОДЫ ==================
+        // ================== АДМИН-ПАНЕЛЬ ==================
         function openAdminPromoPanel() {
             const modal = document.getElementById('modalOverlay');
             const content = document.getElementById('modalContent');
             content.innerHTML = `
-                <h3>Управление промокодами</h3>
+                <h3>Управление</h3>
                 <button class="btn" onclick="createPromo('wheel')">🎡 Промокод Фортуна</button>
                 <button class="btn" onclick="createPromo('discount')">🏷️ Промокод скидки</button>
+                <button class="btn" onclick="createPost()">📢 Создать пост</button>
                 <button class="btn" onclick="closeModal()">Закрыть</button>
             `;
             modal.style.display = 'flex';
@@ -577,100 +607,82 @@
             closeModal();
         }
 
-        // ================== FAQ ==================
-        function openFaqModal() {
-            const modal = document.getElementById('modalOverlay');
-            const content = document.getElementById('modalContent');
-            content.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h3>FAQ</h3>
-                    <button class="btn" onclick="closeModal()" style="margin:0;">×</button>
-                </div>
-                <div style="line-height: 1.6;">
-                    <p><strong>1.</strong> Работаю по 100% предоплате.</p>
-                    <p><strong>2.</strong> Деньги возврату не подлежат.</p>
-                    <p><strong>3.</strong> Поправки в работе: 2 поправки бесплатно, последующие — 50 рублей за 2 поправки.</p>
-                    <p><strong>4.</strong> Сроки выполнения зависят от сложности задачи и оговариваются индивидуально.</p>
-                    <p><strong>5.</strong> Все исходники передаются после полной оплаты.</p>
-                    <p><strong>6.</strong> При заказе нескольких услуг предоставляется скидка.</p>
-                    <p><strong>7.</strong> Для срочных заказов возможна доплата за приоритет.</p>
-                </div>
-                <button class="btn" style="width:100%; margin-top:20px;" onclick="openLegalModal()">Условия и реквизиты</button>
-                <button class="btn" style="width:100%; margin-top:5px;" onclick="window.open('https://t.me/mark1zell', '_blank')">Связаться с Дизайнером лично</button>
-            `;
-            modal.style.display = 'flex';
+        async function createPost() {
+            const title = prompt('Заголовок поста:');
+            if (!title) return;
+            const content = prompt('Текст поста (можно с HTML):', '<p>Подпишись на канал и нажми на бота</p>');
+            if (!content) return;
+            const conditions = prompt('Условия (текст):', 'Подпишитесь на канал @... и нажмите на бота @BestRandom_bot');
+            const link = prompt('Ссылка (URL):', 'https://t.me/BestRandom_bot');
+            const activeUntil = prompt('Дата окончания (в формате ГГГГ-ММ-ДД или 0 для бессрочно):', '0');
+            let activeUntilDate = null;
+            if (activeUntil !== '0' && activeUntil) {
+                activeUntilDate = new Date(activeUntil);
+                if (isNaN(activeUntilDate.getTime())) {
+                    alert('Неверный формат даты');
+                    return;
+                }
+            }
+            await db.collection('posts').add({
+                title,
+                content,
+                conditions,
+                link,
+                active: true,
+                activeUntil: activeUntilDate ? firebase.firestore.Timestamp.fromDate(activeUntilDate) : null
+            });
+            alert('Пост создан!');
         }
 
-        // ================== ПРАВОВАЯ ИНФОРМАЦИЯ ==================
-        function openLegalModal() {
+        // ================== ПОСТЫ ==================
+        async function loadActivePosts() {
+            try {
+                const snapshot = await db.collection('posts')
+                    .where('active', '==', true)
+                    .get();
+                activePosts = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.activeUntil && data.activeUntil.toMillis() < Date.now()) {
+                        doc.ref.update({ active: false });
+                        return;
+                    }
+                    activePosts.push({ id: doc.id, ...data });
+                });
+                if (activePosts.length > 0) {
+                    showPost(activePosts[0]);
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки постов:', error);
+            }
+        }
+
+        function showPost(post) {
+            if (viewedPosts.includes(post.id)) return;
             const modal = document.getElementById('modalOverlay');
             const content = document.getElementById('modalContent');
             content.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h3>Условия и реквизиты</h3>
-                    <button class="btn" onclick="closeModal()" style="margin:0;">×</button>
-                </div>
-                <div style="line-height: 1.6; max-height: 60vh; overflow-y: auto;">
-                    <p><strong>Описание товаров и услуг</strong><br>
-                    Графический дизайн: оформление соцсетей, логотипы, баннеры, карточки маркетплейсов, веб-дизайн, дизайн приложений, презентации и др. Все услуги выполняются индивидуально, с учётом требований заказчика. Характеристики: высокое качество, соответствие брендбуку, передача исходников.</p>
-
-                    <p><strong>Цены</strong><br>
-                    Стоимость зависит от сложности и объёма работ. Диапазоны цен указаны в разделе «Услуги». Точная стоимость согласовывается до начала работы.</p>
-
-                    <p><strong>Контакты</strong><br>
-                    Telegram: @Mark1zell (личные сообщения)<br>
-                    Email: keklolorbidollol321@gmail.com<br>
-                    Телефон: +7 902 (900) 87-41</p>
-
-                    <p><strong>Заказ</strong><br>
-                    Заказ оформляется путём выбора услуги в приложении, после чего заказчик переходит в чат с ботом для уточнения деталей. Сроки исполнения – от 1 до 7 рабочих дней, в зависимости от задачи. Точный срок оговаривается до начала работы.</p>
-
-                    <p><strong>Оплата</strong><br>
-                    Работаю по 100% предоплате. Способы оплаты: банковская карта, СБП, электронные кошельки (через платёжный сервис).</p>
-
-                    <p><strong>Доставка / Оказание услуг</strong><br>
-                    Услуги оказываются удалённо. Готовые материалы передаются в электронном виде (файлы, ссылки). Физическая доставка не предусмотрена.</p>
-
-                    <p><strong>Возврат и отказ от покупки</strong><br>
-                    Заказчик вправе отказаться от услуги до момента начала её выполнения (до отправки первого промежуточного результата). Для этого необходимо написать в Telegram @Mark1zell или на email keklolorbidollol321@gmail.com с указанием причины отказа.<br>
-                    Алгоритм возврата средств:<br>
-                    1. Обращение с требованием возврата направляется в течение 3 дней с момента оплаты.<br>
-                    2. Обращение рассматривается в течение 2 рабочих дней.<br>
-                    3. Если услуга ещё не начата, возврат производится в полном объёме в течение 5 рабочих дней на те же реквизиты, с которых была произведена оплата.<br>
-                    Если работа уже начата, возврат невозможен (согласно ст. 32 Закона о защите прав потребителей, исполнитель вправе удержать фактически понесённые расходы, но не более).<br>
-                    Комиссии платёжных систем и банков не удерживаются.</p>
-
-                    <p><strong>Реквизиты самозанятого</strong><br>
-                    ФИО: Кузнецов Дмитрий Александрович<br>
-                    ИНН: 710609555942</p>
-
-                    <p><strong>Политика обработки персональных данных</strong><br>
-                    Персональные данные (имя, Telegram ID, контактная информация) обрабатываются исключительно для исполнения заказа и связи с клиентом. Данные не передаются третьим лицам, за исключением случаев, предусмотренных законодательством РФ. Согласие на обработку даётся при оформлении заказа. Клиент может отозвать согласие, обратившись к @Mark1zell.</p>
+                <div class="post-modal">
+                    <button class="close-btn" onclick="closePost('${post.id}')">×</button>
+                    <h3>${post.title || 'Объявление'}</h3>
+                    <div class="post-content">${post.content}</div>
+                    ${post.conditions ? `<p><strong>Условия:</strong> ${post.conditions}</p>` : ''}
+                    ${post.link ? `<a class="post-link" href="${post.link}" target="_blank">Перейти к боту</a>` : ''}
                 </div>
             `;
             modal.style.display = 'flex';
         }
 
-        // ================== ПОЛИТИКА КОНФИДЕНЦИАЛЬНОСТИ ==================
-        function openPrivacyPolicy() {
-            const modal = document.getElementById('modalOverlay');
-            const content = document.getElementById('modalContent');
-            content.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h3>Политика конфиденциальности</h3>
-                    <button class="btn" onclick="closeModal()" style="margin:0;">×</button>
-                </div>
-                <div style="line-height: 1.6; max-height: 60vh; overflow-y: auto;">
-                    <p>Настоящая Политика конфиденциальности определяет порядок обработки и защиты персональных данных пользователей при использовании сервиса Mark1z Design.</p>
-                    <p><strong>1. Какие данные собираются:</strong> имя пользователя Telegram, username, идентификатор Telegram, а также изображения и тексты, которые пользователь добровольно загружает (отзывы, портфолио).</p>
-                    <p><strong>2. Цели обработки:</strong> предоставление услуг, связь с клиентом, оформление заказов, отображение отзывов и портфолио в рамках сервиса.</p>
-                    <p><strong>3. Хранение данных:</strong> данные хранятся в облачной базе данных Firebase. Срок хранения – до момента удаления пользователем или по запросу.</p>
-                    <p><strong>4. Передача третьим лицам:</strong> данные не передаются третьим лицам, за исключением случаев, предусмотренных законодательством РФ.</p>
-                    <p><strong>5. Права пользователя:</strong> пользователь вправе запросить удаление своих персональных данных, обратившись к @Mark1zell. Обращение рассматривается в течение 7 рабочих дней.</p>
-                    <p><strong>6. Согласие:</strong> используя сервис, пользователь соглашается с настоящей Политикой.</p>
-                </div>
-            `;
-            modal.style.display = 'flex';
+        function closePost(postId) {
+            if (!viewedPosts.includes(postId)) {
+                viewedPosts.push(postId);
+                localStorage.setItem('viewedPosts', JSON.stringify(viewedPosts));
+            }
+            closeModal();
+            const nextPost = activePosts.find(p => !viewedPosts.includes(p.id));
+            if (nextPost) {
+                showPost(nextPost);
+            }
         }
 
         // ================== ИНИЦИАЛИЗАЦИЯ ДАННЫХ ==================
@@ -1765,6 +1777,7 @@
             if (lastSpinDiscount > 0) {
                 applyDiscount(lastSpinDiscount);
             }
+            loadActivePosts();
 
             setTimeout(() => {
                 document.getElementById('loadingScreen').classList.add('hidden');
