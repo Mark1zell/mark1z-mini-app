@@ -52,7 +52,7 @@
         .header .faq-button:hover { background: rgba(124,58,237,0.6); }
         .header .wheel-button { position:absolute; top:20px; left:20px; background: rgba(124,58,237,0.3); border:1px solid var(--card-border); color:#fff; width:40px; height:40px; border-radius:50%; font-size:20px; cursor:pointer; transition:all 0.3s; }
         .header .wheel-button:hover { background: rgba(124,58,237,0.6); }
-        .header .promo-button { position:absolute; top:20px; left:70px; background: rgba(124,58,237,0.3); border:1px solid var(--card-border); color:#fff; width:40px; height:40px; border-radius:50%; font-size:20px; cursor:pointer; transition:all 0.3s; }
+        .header .promo-button { position:absolute; top:70px; left:20px; background: rgba(124,58,237,0.3); border:1px solid var(--card-border); color:#fff; width:40px; height:40px; border-radius:50%; font-size:20px; cursor:pointer; transition:all 0.3s; }
         .header .promo-button:hover { background: rgba(124,58,237,0.6); }
         .logo { width:100px; height:100px; margin:0 auto 16px; border-radius:28px; overflow:hidden; box-shadow:0 4px 15px rgba(124,58,237,0.3); position:relative; }
         .logo img { width:100%; height:100%; object-fit:cover; }
@@ -134,10 +134,21 @@
         .preview-thumb { position: relative; display: inline-block; margin: 5px; }
         .preview-thumb img { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid var(--card-border); }
         .preview-thumb .remove-btn { position: absolute; top: -8px; left: -8px; background: rgba(255, 0, 0, 0.8); color: white; border: none; width: 20px; height: 20px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; padding: 0; }
+        /* Рулетка */
         .wheel-container { text-align: center; margin-top: 20px; }
         .wheel-canvas { max-width: 100%; }
         .wheel-spin-btn { font-size: 18px; padding: 10px 30px; margin-top: 10px; }
         .wheel-inactive { filter: grayscale(0.8); opacity: 0.6; }
+        .wheel-arrow {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 30px;
+            color: #fff;
+            pointer-events: none;
+            z-index: 2;
+        }
     </style>
 </head>
 <body>
@@ -257,6 +268,7 @@
         let currentDiscount = 0;
         let lastSpinTime = localStorage.getItem('lastSpinTime') ? parseInt(localStorage.getItem('lastSpinTime')) : 0;
         let lastSpinDiscount = localStorage.getItem('lastSpinDiscount') ? parseInt(localStorage.getItem('lastSpinDiscount')) : 0;
+        let canSpinNow = false; // разрешение крутить колесо (для промокода)
 
         // Применяем сохранённую скидку при загрузке
         currentDiscount = lastSpinDiscount;
@@ -387,8 +399,8 @@
         ];
 
         function openWheelModal() {
-            if (!canSpin()) {
-                alert('Вы уже крутили рулетку на этой неделе. Приходите позже!');
+            if (!canSpinNow && !canSpin()) {
+                alert('Вы уже крутили рулетку на этой неделе. Приходите позже или используйте промокод.');
                 return;
             }
             const modal = document.getElementById('modalOverlay');
@@ -397,7 +409,10 @@
                 <div style="text-align:center;">
                     <h3>Колесо фортуны</h3>
                     <p>Испытайте удачу и получите скидку!</p>
-                    <canvas id="wheelCanvas" width="300" height="300" class="wheel-canvas"></canvas>
+                    <div style="position:relative; display:inline-block;">
+                        <canvas id="wheelCanvas" width="300" height="300" class="wheel-canvas"></canvas>
+                        <div class="wheel-arrow">⬆️</div>
+                    </div>
                     <button class="btn wheel-spin-btn" id="spinBtn" onclick="spinWheel()">Крутить</button>
                     <button class="btn" onclick="closeModal()">Закрыть</button>
                 </div>
@@ -467,12 +482,17 @@
                 canvas.style.transform = `rotate(${rotation}deg)`;
                 if (rotation >= targetRotation) {
                     clearInterval(spinInterval);
-                    applyDiscount(discountPercent);
-                    localStorage.setItem('lastSpinTime', Date.now());
-                    localStorage.setItem('lastSpinDiscount', discountPercent);
-                    lastSpinTime = Date.now();
-                    lastSpinDiscount = discountPercent;
-                    alert(`Поздравляем! Ваша скидка: ${discountPercent}%`);
+                    if (!window.isAdmin) { // админ не получает скидку
+                        applyDiscount(discountPercent);
+                        localStorage.setItem('lastSpinTime', Date.now());
+                        localStorage.setItem('lastSpinDiscount', discountPercent);
+                        lastSpinTime = Date.now();
+                        lastSpinDiscount = discountPercent;
+                        alert(`Поздравляем! Ваша скидка: ${discountPercent}%`);
+                    } else {
+                        alert('Вы админ, скидка не применена (тестовый режим).');
+                    }
+                    canSpinNow = false; // сброс разрешения
                     closeModal();
                     renderOrdersSection();
                 }
@@ -507,12 +527,21 @@
             if (!code) { alert('Введите промокод'); return; }
             try {
                 const promoDoc = await db.collection('promocodes').doc(code).get();
-                if (promoDoc.exists) {
-                    const data = promoDoc.data();
-                    if (data.used) {
-                        alert('Промокод уже использован');
-                        return;
-                    }
+                if (!promoDoc.exists) {
+                    alert('Промокод не найден');
+                    return;
+                }
+                const data = promoDoc.data();
+                if (data.used) {
+                    alert('Промокод уже использован');
+                    return;
+                }
+                if (data.type === 'wheel') {
+                    // Промокод на колесо: разрешаем крутить сейчас
+                    canSpinNow = true;
+                    alert('Промокод активирован! Теперь вы можете крутить колесо.');
+                    openWheelModal();
+                } else if (data.type === 'discount') {
                     if (data.discountPercent !== undefined) {
                         applyDiscount(data.discountPercent);
                         alert(`Скидка ${data.discountPercent}% применена!`);
@@ -520,32 +549,48 @@
                         applyDiscount(100);
                         alert('Промокод даёт бесплатную услугу!');
                     }
-                    if (data.oneTime) {
-                        await db.collection('promocodes').doc(code).update({ used: true });
-                    }
+                    // Помечаем использованным
+                    await db.collection('promocodes').doc(code).update({ used: true });
                     closeModal();
                     renderOrdersSection();
-                } else {
-                    alert('Промокод не найден');
                 }
             } catch (error) {
                 alert('Ошибка проверки промокода');
             }
         }
 
-        function adminAddPromo() {
+        // ================== АДМИН-ПРОМОКОДЫ ==================
+        function openAdminPromoPanel() {
+            const modal = document.getElementById('modalOverlay');
+            const content = document.getElementById('modalContent');
+            content.innerHTML = `
+                <h3>Управление промокодами</h3>
+                <button class="btn" onclick="createPromo('wheel')">🎡 Промокод Фортуна</button>
+                <button class="btn" onclick="createPromo('discount')">🏷️ Промокод скидки</button>
+                <button class="btn" onclick="closeModal()">Закрыть</button>
+            `;
+            modal.style.display = 'flex';
+        }
+
+        async function createPromo(type) {
             const code = prompt('Введите промокод:');
             if (!code) return;
-            const discount = prompt('Введите процент скидки (или "free" для бесплатно):');
-            let data = { oneTime: true };
-            if (discount.toLowerCase() === 'free') {
-                data.free = true;
-            } else {
-                data.discountPercent = parseInt(discount);
+            if (type === 'wheel') {
+                await db.collection('promocodes').doc(code).set({ type: 'wheel', used: false });
+                alert('Промокод на колесо создан!');
+            } else if (type === 'discount') {
+                const discount = prompt('Введите процент скидки (или "free" для бесплатно):');
+                if (!discount) return;
+                let data = { type: 'discount', used: false };
+                if (discount.toLowerCase() === 'free') {
+                    data.free = true;
+                } else {
+                    data.discountPercent = parseInt(discount);
+                }
+                await db.collection('promocodes').doc(code).set(data);
+                alert('Промокод на скидку создан!');
             }
-            db.collection('promocodes').doc(code).set(data).then(() => {
-                alert('Промокод добавлен');
-            });
+            closeModal();
         }
 
         // ================== ИНИЦИАЛИЗАЦИЯ ДАННЫХ ==================
@@ -836,6 +881,7 @@
                     <div style="display:flex; gap:10px; margin-bottom:15px;">
                         <button class="btn ${adminOrdersMode === 'services' ? 'active' : ''}" onclick="switchAdminMode('services')">Услуги</button>
                         <button class="btn ${adminOrdersMode === 'orders' ? 'active' : ''}" onclick="switchAdminMode('orders')">Заказы</button>
+                        <button class="btn" onclick="openAdminPromoPanel()">👑 Админ</button>
                     </div>
                 `;
                 if (adminOrdersMode === 'services') {
@@ -851,7 +897,6 @@
                 }
                 if (adminOrdersMode === 'services') {
                     setupSortableForServices();
-                    html += `<div style="margin-top:15px;"><button class="btn" onclick="adminAddPromo()">🏷️ Добавить промокод</button></div>`;
                 }
             } else {
                 let html = '<h3 style="margin-bottom:15px;">Наши услуги</h3>';
@@ -870,7 +915,9 @@
                 const basePrice = s.price || 0;
                 const basePriceTo = s.priceTo || basePrice;
                 let priceText = '';
-                if (currentDiscount > 0) {
+                let discountApplied = false;
+                if (currentDiscount > 0 && !(s.name === 'Telegram Mini Apps' && (currentDiscount === 50 || currentDiscount === 100))) {
+                    discountApplied = true;
                     const newFrom = Math.round(basePrice * (1 - currentDiscount / 100));
                     const newTo = Math.round(basePriceTo * (1 - currentDiscount / 100));
                     priceText = `
@@ -881,7 +928,7 @@
                     priceText = basePriceTo ? `от ${basePrice} до ${basePriceTo} ₽` : (basePrice ? `${basePrice} ₽` : 'Цена не указана');
                 }
                 html += `
-                    <div class="order-item" style="cursor:pointer;" onclick="placeOrder('${s.name}')">
+                    <div class="order-item" style="cursor:pointer;" onclick="placeOrder('${s.name}', ${discountApplied})">
                         <div class="order-info">
                             <h4>${s.emoji} ${s.name}</h4>
                             <p>${s.desc}</p>
@@ -1153,7 +1200,7 @@
         }
 
         // ================== ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ ==================
-        function placeOrder(service) {
+        function placeOrder(service, discountApplied) {
             if (isOrderProcessing) return;
             isOrderProcessing = true;
             setTimeout(() => { isOrderProcessing = false; }, 2000);
@@ -1166,10 +1213,20 @@
                 userName: userName,
                 userUsername: userUsername,
                 time: new Date().toLocaleString(),
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                discountApplied: discountApplied || false,
+                discountPercent: discountApplied ? currentDiscount : 0
             };
             db.collection('orders').add(order);
             
+            // Если была применена скидка, сбрасываем её
+            if (discountApplied) {
+                currentDiscount = 0;
+                localStorage.removeItem('lastSpinDiscount');
+                lastSpinDiscount = 0;
+                renderOrdersSection();
+            }
+
             const paymentUrl = 'https://your-payment-link.com/pay?service=' + encodeURIComponent(service);
             const chatText = encodeURIComponent(`Я оплатил услугу: ${service}, хочу обговорить детали работы.`);
             if (window.telegramAvailable && window.tg) {
