@@ -16,6 +16,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
     <style>
+        /* ... все стили без изменений ... */
         :root {
             --bg-start: #0a050d;
             --bg-mid: #100820;
@@ -487,7 +488,7 @@
                             canvas.height = height;
                             ctx.drawImage(img, 0, 0, width, height);
 
-                            // Всегда конвертируем в JPEG для максимального сжатия
+                            // Всегда конвертируем в JPEG
                             const dataUrl = canvas.toDataURL('image/jpeg', currentQuality);
 
                             if (dataUrl.length > 1000 * 1024 && attemptsLeft > 0) {
@@ -530,6 +531,19 @@
                 img.onerror = () => resolve(dataUrl);
                 img.src = dataUrl;
             });
+        }
+
+        // Функция гарантированного сжатия до нужного размера
+        async function ensureImageWithinLimit(dataUrl) {
+            let result = dataUrl;
+            if (result.length > 900 * 1024) {
+                // Пробуем разные параметры
+                for (const [maxSize, quality] of [[1000, 0.7], [800, 0.5], [600, 0.4], [400, 0.3]]) {
+                    result = await compressDataUrl(result, maxSize, quality);
+                    if (result.length <= 900 * 1024) break;
+                }
+            }
+            return result;
         }
 
         // ================== ПОРТФОЛИО ==================
@@ -644,7 +658,8 @@
         function previewCoverImage(event) {
             const file = event.target.files[0];
             if (!file) return;
-            compressImage(file, 800, 0.85).then(dataUrl => {
+            compressImage(file, 800, 0.85).then(async dataUrl => {
+                dataUrl = await ensureImageWithinLimit(dataUrl);
                 window.tempCoverImage = dataUrl;
                 document.getElementById('coverPreview').src = dataUrl;
                 document.getElementById('coverPreview').style.display = 'block';
@@ -1112,10 +1127,8 @@
                 if (tempReviewImages.length >= 3) break;
                 let dataUrl = await compressImage(file, 1200, 0.85);
                 if (!dataUrl) continue;
-                if (dataUrl.length > 1000 * 1024) {
-                    dataUrl = await compressDataUrl(dataUrl, 800, 0.5);
-                }
-                if (dataUrl.length > 1000 * 1024) {
+                dataUrl = await ensureImageWithinLimit(dataUrl);
+                if (dataUrl.length > 900 * 1024) {
                     alert('Некоторые изображения слишком большие даже после сжатия. Попробуйте другие.');
                     continue;
                 }
@@ -1165,14 +1178,12 @@
                 }
             }
 
-            // Дополнительно сжимаем изображения перед сохранением
+            // Гарантированное сжатие изображений
             for (let i = 0; i < tempReviewImages.length; i++) {
-                if (tempReviewImages[i].length > 1000 * 1024) {
-                    tempReviewImages[i] = await compressDataUrl(tempReviewImages[i], 600, 0.4);
-                    if (tempReviewImages[i].length > 1000 * 1024) {
-                        alert('Некоторые изображения слишком большие. Удалите их или выберите другие.');
-                        return;
-                    }
+                tempReviewImages[i] = await ensureImageWithinLimit(tempReviewImages[i]);
+                if (tempReviewImages[i].length > 900 * 1024) {
+                    alert('Некоторые изображения слишком большие. Удалите их или выберите другие.');
+                    return;
                 }
             }
 
@@ -1286,18 +1297,11 @@
         function previewWorkImage(event) {
             const file = event.target.files[0];
             if (!file) return;
-            compressImage(file, 1400, 0.85).then(dataUrl => {
-                if (dataUrl.length > 1000 * 1024) {
-                    compressDataUrl(dataUrl, 800, 0.5).then(compressed => {
-                        tempWorkImage = compressed;
-                        document.getElementById('workImagePreview').src = compressed;
-                        document.getElementById('workImagePreview').style.display = 'block';
-                    });
-                } else {
-                    tempWorkImage = dataUrl;
-                    document.getElementById('workImagePreview').src = dataUrl;
-                    document.getElementById('workImagePreview').style.display = 'block';
-                }
+            compressImage(file, 1400, 0.85).then(async dataUrl => {
+                dataUrl = await ensureImageWithinLimit(dataUrl);
+                tempWorkImage = dataUrl;
+                document.getElementById('workImagePreview').src = dataUrl;
+                document.getElementById('workImagePreview').style.display = 'block';
             });
         }
 
@@ -1306,13 +1310,11 @@
             if (!title) { alert('Введите название'); return; }
             if (!tempWorkImage) { alert('Загрузите изображение'); return; }
 
-            // Гарантированно сжимаем, если размер превышает лимит
-            if (tempWorkImage.length > 1000 * 1024) {
-                tempWorkImage = await compressDataUrl(tempWorkImage, 600, 0.4);
-                if (tempWorkImage.length > 1000 * 1024) {
-                    alert('Не удалось сжать изображение до допустимого размера. Попробуйте другое фото.');
-                    return;
-                }
+            // Гарантируем сжатие перед сохранением
+            tempWorkImage = await ensureImageWithinLimit(tempWorkImage);
+            if (tempWorkImage.length > 900 * 1024) {
+                alert('Не удалось сжать изображение до допустимого размера. Попробуйте другое фото.');
+                return;
             }
 
             try {
@@ -1391,7 +1393,8 @@
         function previewLogoImage(event) {
             const file = event.target.files[0];
             if (!file) return;
-            compressImage(file, 400, 0.85).then(dataUrl => {
+            compressImage(file, 400, 0.85).then(async dataUrl => {
+                dataUrl = await ensureImageWithinLimit(dataUrl);
                 window.tempLogoImage = dataUrl;
                 document.getElementById('logoPreview').src = dataUrl;
                 document.getElementById('logoPreview').style.display = 'block';
