@@ -136,13 +136,13 @@
         .preview-thumb img { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid var(--card-border); }
         .preview-thumb .remove-btn { position: absolute; top: -8px; left: -8px; background: rgba(255, 0, 0, 0.8); color: white; border: none; width: 20px; height: 20px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; padding: 0; }
 
-        /* ========== СТИЛИ КЕЙСА (CS:GO) ========== */
-        .case-container { position: relative; width: 100%; max-width: 400px; margin: 20px auto; overflow: hidden; }
-        .case-arrow { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 40px; color: #fff; pointer-events: none; z-index: 2; filter: drop-shadow(0 0 10px rgba(255,255,255,0.8)); }
-        .case-strip { display: flex; transition: transform 0.1s linear; }
-        .case-item { min-width: 120px; height: 100px; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; color: #fff; background: linear-gradient(145deg, #2a1a3e, #1a0b2e); border: 2px solid var(--card-border); border-radius: 16px; margin: 0 5px; }
-        .case-modal { text-align: center; }
-        .case-modal .close-btn { position: absolute; top: 10px; right: 10px; background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; }
+        /* ========== РУЛЕТКА ========== */
+        .wheel-container { position: relative; width: 300px; height: 300px; margin: 20px auto; }
+        .wheel-canvas { width: 100%; height: 100%; transition: transform 0.1s linear; }
+        .wheel-arrow { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-top: 30px solid #fff; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5)); z-index: 2; }
+        .wheel-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 50px; height: 50px; background: #fff; border-radius: 50%; z-index: 1; }
+        .wheel-spin-btn { font-size: 18px; padding: 10px 30px; margin-top: 20px; }
+        .wheel-inactive { filter: grayscale(0.8); opacity: 0.6; }
     </style>
 </head>
 <body>
@@ -162,7 +162,7 @@
     <div class="app-container">
         <div class="header">
             <button class="faq-button" onclick="openFaqModal()">?</button>
-            <button class="wheel-button" id="wheelBtn" onclick="openCaseModal()">🎁</button>
+            <button class="wheel-button" id="wheelBtn" onclick="openWheelModal()">🎡</button>
             <button class="promo-button" onclick="openPromoModal()">🏷️</button>
             <div class="logo" id="logoContainer">
                 <img id="logoImage" src="https://i.ibb.co/3y8vZHQz/2026-09-02-025009694.png" alt="Avatar">
@@ -383,166 +383,116 @@
             return result;
         }
 
-        // ================== FAQ ==================
-        function openFaqModal() {
-            const modal = document.getElementById('modalOverlay');
-            const content = document.getElementById('modalContent');
-            content.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h3>FAQ</h3>
-                    <button class="btn" onclick="closeModal()" style="margin:0;">×</button>
-                </div>
-                <div style="line-height: 1.6;">
-                    <p><strong>1.</strong> Работаю по 100% предоплате.</p>
-                    <p><strong>2.</strong> Деньги возврату не подлежат.</p>
-                    <p><strong>3.</strong> Поправки в работе: 2 поправки бесплатно, последующие — 50 рублей за 2 поправки.</p>
-                    <p><strong>4.</strong> Сроки выполнения зависят от сложности задачи и оговариваются индивидуально.</p>
-                    <p><strong>5.</strong> Все исходники передаются после полной оплаты.</p>
-                    <p><strong>6.</strong> При заказе нескольких услуг предоставляется скидка.</p>
-                    <p><strong>7.</strong> Для срочных заказов возможна доплата за приоритет.</p>
-                </div>
-                <button class="btn" style="width:100%; margin-top:20px;" onclick="openLegalModal()">Условия и реквизиты</button>
-                <button class="btn" style="width:100%; margin-top:5px;" onclick="window.open('https://t.me/mark1zell', '_blank')">Связаться с Дизайнером лично</button>
-            `;
-            modal.style.display = 'flex';
-        }
+        // ================== РУЛЕТКА ==================
+        const wheelSegments = [
+            { label: '10%', probability: 60 },
+            { label: '15%', probability: 25 },
+            { label: '25%', probability: 10 },
+            { label: '50%', probability: 5 } // уменьшено
+        ];
 
-        // ================== ПРАВОВАЯ ИНФОРМАЦИЯ ==================
-        function openLegalModal() {
-            const modal = document.getElementById('modalOverlay');
-            const content = document.getElementById('modalContent');
-            content.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h3>Условия и реквизиты</h3>
-                    <button class="btn" onclick="closeModal()" style="margin:0;">×</button>
-                </div>
-                <div style="line-height: 1.6; max-height: 60vh; overflow-y: auto;">
-                    <p><strong>Описание товаров и услуг</strong><br>
-                    Графический дизайн: оформление соцсетей, логотипы, баннеры, карточки маркетплейсов, веб-дизайн, дизайн приложений, презентации и др. Все услуги выполняются индивидуально, с учётом требований заказчика. Характеристики: высокое качество, соответствие брендбуку, передача исходников.</p>
-
-                    <p><strong>Цены</strong><br>
-                    Стоимость зависит от сложности и объёма работ. Диапазоны цен указаны в разделе «Услуги». Точная стоимость согласовывается до начала работы.</p>
-
-                    <p><strong>Контакты</strong><br>
-                    Telegram: @Mark1zell (личные сообщения)<br>
-                    Email: keklolorbidollol321@gmail.com<br>
-                    Телефон: +7 902 (900) 87-41</p>
-
-                    <p><strong>Заказ</strong><br>
-                    Заказ оформляется путём выбора услуги в приложении, после чего заказчик переходит в чат с ботом для уточнения деталей. Сроки исполнения – от 1 до 7 рабочих дней, в зависимости от задачи. Точный срок оговаривается до начала работы.</p>
-
-                    <p><strong>Оплата</strong><br>
-                    Работаю по 100% предоплате. Способы оплаты: банковская карта, СБП, электронные кошельки (через платёжный сервис).</p>
-
-                    <p><strong>Доставка / Оказание услуг</strong><br>
-                    Услуги оказываются удалённо. Готовые материалы передаются в электронном виде (файлы, ссылки). Физическая доставка не предусмотрена.</p>
-
-                    <p><strong>Возврат и отказ от покупки</strong><br>
-                    Заказчик вправе отказаться от услуги до момента начала её выполнения (до отправки первого промежуточного результата). Для этого необходимо написать в Telegram @Mark1zell или на email keklolorbidollol321@gmail.com с указанием причины отказа.<br>
-                    Алгоритм возврата средств:<br>
-                    1. Обращение с требованием возврата направляется в течение 3 дней с момента оплаты.<br>
-                    2. Обращение рассматривается в течение 2 рабочих дней.<br>
-                    3. Если услуга ещё не начата, возврат производится в полном объёме в течение 5 рабочих дней на те же реквизиты, с которых была произведена оплата.<br>
-                    Если работа уже начата, возврат невозможен (согласно ст. 32 Закона о защите прав потребителей, исполнитель вправе удержать фактически понесённые расходы, но не более).<br>
-                    Комиссии платёжных систем и банков не удерживаются.</p>
-
-                    <p><strong>Реквизиты самозанятого</strong><br>
-                    ФИО: Кузнецов Дмитрий Александрович<br>
-                    ИНН: 710609555942</p>
-
-                    <p><strong>Политика обработки персональных данных</strong><br>
-                    Персональные данные (имя, Telegram ID, контактная информация) обрабатываются исключительно для исполнения заказа и связи с клиентом. Данные не передаются третьим лицам, за исключением случаев, предусмотренных законодательством РФ. Согласие на обработку даётся при оформлении заказа. Клиент может отозвать согласие, обратившись к @Mark1zell.</p>
-                </div>
-            `;
-            modal.style.display = 'flex';
-        }
-
-        // ================== ПОЛИТИКА КОНФИДЕНЦИАЛЬНОСТИ ==================
-        function openPrivacyPolicy() {
-            const modal = document.getElementById('modalOverlay');
-            const content = document.getElementById('modalContent');
-            content.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h3>Политика конфиденциальности</h3>
-                    <button class="btn" onclick="closeModal()" style="margin:0;">×</button>
-                </div>
-                <div style="line-height: 1.6; max-height: 60vh; overflow-y: auto;">
-                    <p>Настоящая Политика конфиденциальности определяет порядок обработки и защиты персональных данных пользователей при использовании сервиса Mark1z Design.</p>
-                    <p><strong>1. Какие данные собираются:</strong> имя пользователя Telegram, username, идентификатор Telegram, а также изображения и тексты, которые пользователь добровольно загружает (отзывы, портфолио).</p>
-                    <p><strong>2. Цели обработки:</strong> предоставление услуг, связь с клиентом, оформление заказов, отображение отзывов и портфолио в рамках сервиса.</p>
-                    <p><strong>3. Хранение данных:</strong> данные хранятся в облачной базе данных Firebase. Срок хранения – до момента удаления пользователем или по запросу.</p>
-                    <p><strong>4. Передача третьим лицам:</strong> данные не передаются третьим лицам, за исключением случаев, предусмотренных законодательством РФ.</p>
-                    <p><strong>5. Права пользователя:</strong> пользователь вправе запросить удаление своих персональных данных, обратившись к @Mark1zell. Обращение рассматривается в течение 7 рабочих дней.</p>
-                    <p><strong>6. Согласие:</strong> используя сервис, пользователь соглашается с настоящей Политикой.</p>
-                </div>
-            `;
-            modal.style.display = 'flex';
-        }
-
-        // ================== КЕЙС (CS:GO) ==================
-        const caseItems = ['10%', '15%', '25%', '50%'];
-
-        function openCaseModal() {
-            const modal = document.getElementById('modalOverlay');
-            const content = document.getElementById('modalContent');
-            content.innerHTML = `
-                <div class="case-modal">
-                    <button class="close-btn" onclick="closeModal()">×</button>
-                    <h3>Кейс скидок</h3>
-                    <p>Испытайте удачу!</p>
-                    <div class="case-container" id="caseContainer">
-                        <div class="case-strip" id="caseStrip"></div>
-                        <div class="case-arrow">➤</div>
-                    </div>
-                    <button class="btn case-spin-btn" id="caseSpinBtn" onclick="spinCase()">Крутить</button>
-                    <button class="btn promo-in-case" onclick="openPromoInCase()">Ввести промокод</button>
-                </div>
-            `;
-            modal.style.display = 'flex';
-            initCaseStrip();
-        }
-
-        function initCaseStrip() {
-            const strip = document.getElementById('caseStrip');
-            strip.innerHTML = '';
-            for (let i = 0; i < 20; i++) {
-                const item = document.createElement('div');
-                item.className = 'case-item';
-                item.textContent = caseItems[i % caseItems.length];
-                strip.appendChild(item);
-            }
-        }
-
-        function spinCase() {
-            const spinBtn = document.getElementById('caseSpinBtn');
-            if (spinBtn.disabled) return;
+        function openWheelModal() {
             if (!window.isAdmin && !canSpinNow && !canSpin()) {
-                alert('Вы уже крутили кейс на этой неделе. Приходите позже или используйте промокод.');
+                alert('Вы уже крутили рулетку на этой неделе. Приходите позже или используйте промокод.');
                 return;
             }
+            const modal = document.getElementById('modalOverlay');
+            const content = document.getElementById('modalContent');
+            content.innerHTML = `
+                <div style="text-align:center;">
+                    <h3>Колесо фортуны</h3>
+                    <p>Испытайте удачу!</p>
+                    <div class="wheel-container" id="wheelContainer">
+                        <canvas id="wheelCanvas" width="300" height="300" class="wheel-canvas"></canvas>
+                        <div class="wheel-arrow"></div>
+                        <div class="wheel-center"></div>
+                    </div>
+                    <button class="btn wheel-spin-btn" id="spinBtn" onclick="spinWheel()">Крутить</button>
+                    <button class="btn promo-in-wheel" onclick="openPromoInWheel()">Ввести промокод</button>
+                    <button class="btn" onclick="closeModal()">Закрыть</button>
+                </div>
+            `;
+            modal.style.display = 'flex';
+            drawWheel();
+        }
+
+        function drawWheel() {
+            const canvas = document.getElementById('wheelCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = Math.min(centerX, centerY) - 10;
+            const totalProbability = wheelSegments.reduce((sum, seg) => sum + seg.probability, 0);
+            let startAngle = 0;
+            const colors = ['#FF5733', '#33FF57', '#3357FF', '#F3FF33'];
+            wheelSegments.forEach((seg, index) => {
+                const angle = (seg.probability / totalProbability) * 2 * Math.PI;
+                const endAngle = startAngle + angle;
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+                ctx.closePath();
+                ctx.fillStyle = colors[index % colors.length];
+                ctx.fill();
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                const textAngle = startAngle + angle / 2;
+                const textX = centerX + (radius / 2) * Math.cos(textAngle);
+                const textY = centerY + (radius / 2) * Math.sin(textAngle);
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(seg.label, textX, textY);
+                startAngle = endAngle;
+            });
+        }
+
+        function spinWheel() {
+            const spinBtn = document.getElementById('spinBtn');
+            if (spinBtn.disabled) return;
             spinBtn.disabled = true;
-            const strip = document.getElementById('caseStrip');
-            const items = strip.children;
-            const itemWidth = items[0].offsetWidth + 10;
-            const totalItems = items.length;
-            const randomIndex = Math.floor(Math.random() * caseItems.length);
-            const targetItemIndex = totalItems - 10 + randomIndex;
-            const containerWidth = document.getElementById('caseContainer').clientWidth;
-            const targetX = -(targetItemIndex * itemWidth) + (containerWidth - itemWidth) / 2;
-            const startX = strip.getBoundingClientRect().left - document.getElementById('caseContainer').getBoundingClientRect().left;
-            const duration = 3000;
+            const canvas = document.getElementById('wheelCanvas');
+            const totalProbability = wheelSegments.reduce((sum, seg) => sum + seg.probability, 0);
+            let random = Math.random() * totalProbability;
+            let chosenIndex = 0;
+            for (let i = 0; i < wheelSegments.length; i++) {
+                random -= wheelSegments[i].probability;
+                if (random <= 0) {
+                    chosenIndex = i;
+                    break;
+                }
+            }
+            // Вычисляем угол сектора, чтобы он оказался под стрелкой (верх)
+            let startAngle = 0;
+            for (let i = 0; i < chosenIndex; i++) {
+                startAngle += (wheelSegments[i].probability / totalProbability) * 2 * Math.PI;
+            }
+            const sectorAngle = (wheelSegments[chosenIndex].probability / totalProbability) * 2 * Math.PI;
+            const middleAngle = startAngle + sectorAngle / 2; // угол центра сектора в радианах от положительной оси X
+            // Нам нужно, чтобы этот угол был направлен вверх (270 градусов или -90 градусов)
+            const targetAngleRad = -Math.PI / 2; // верх
+            let rotationNeeded = targetAngleRad - middleAngle;
+            // Добавляем несколько полных оборотов для эффекта
+            const fullSpins = 5;
+            const totalRotation = fullSpins * 2 * Math.PI + rotationNeeded;
+            const duration = Math.random() * (5000 - 3000) + 3000; // 3-5 секунд
             const startTime = performance.now();
+            const startRotation = 0;
 
             function animate(now) {
                 const elapsed = now - startTime;
                 const progress = Math.min(elapsed / duration, 1);
-                const ease = 1 - Math.pow(1 - progress, 3);
-                const x = startX + (targetX - startX) * ease;
-                strip.style.transform = `translateX(${x}px)`;
+                const ease = 1 - Math.pow(1 - progress, 3); // cubic ease out
+                const currentRotation = startRotation + totalRotation * ease;
+                canvas.style.transform = `rotate(${currentRotation}rad)`;
                 if (progress < 1) {
                     requestAnimationFrame(animate);
                 } else {
-                    const discount = parseInt(caseItems[randomIndex]);
+                    // Определяем выигрышный сектор после остановки
+                    const discount = parseInt(wheelSegments[chosenIndex].label);
                     if (!window.isAdmin) {
                         applyDiscount(discount);
                         localStorage.setItem('lastSpinTime', Date.now());
@@ -572,7 +522,7 @@
             currentDiscount = percent;
         }
 
-        function openPromoInCase() {
+        function openPromoInWheel() {
             const code = prompt('Введите промокод:');
             if (!code) return;
             applyPromo(code);
@@ -593,8 +543,8 @@
                 }
                 if (data.type === 'wheel') {
                     canSpinNow = true;
-                    alert('Промокод активирован! Теперь вы можете крутить кейс.');
-                    openCaseModal();
+                    alert('Промокод активирован! Теперь вы можете крутить рулетку.');
+                    openWheelModal();
                 } else if (data.type === 'discount') {
                     if (data.discountPercent !== undefined) {
                         applyDiscount(data.discountPercent);
@@ -635,7 +585,7 @@
             if (!code) return;
             if (type === 'wheel') {
                 await db.collection('promocodes').doc(code).set({ type: 'wheel', used: false });
-                alert('Промокод на кейс создан!');
+                alert('Промокод на рулетку создан!');
             } else if (type === 'discount') {
                 const discount = prompt('Введите процент скидки (или "free" для бесплатно):');
                 if (!discount) return;
