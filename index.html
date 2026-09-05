@@ -507,10 +507,7 @@
         const caseProbabilities = [60, 25, 12, 3];
 
         function openCaseModal() {
-            if (!window.isAdmin && !canSpinNow && !canSpin()) {
-                alert('Вы уже крутили кейс на этой неделе. Приходите позже или используйте промокод.');
-                return;
-            }
+            // Всегда открываем модалку, чтобы пользователь мог видеть содержимое
             const modal = document.getElementById('modalOverlay');
             const content = document.getElementById('modalContent');
             content.innerHTML = `
@@ -541,6 +538,7 @@
             }
             if (canSpinNow) {
                 timerEl.textContent = 'Промокод активирован! Крутите сейчас';
+                if (document.getElementById('caseSpinBtn')) document.getElementById('caseSpinBtn').disabled = false;
                 return;
             }
             const oneWeek = 7 * 24 * 60 * 60 * 1000;
@@ -555,6 +553,7 @@
             const minutes = Math.floor((remaining % (60*60*1000)) / (60*1000));
             const seconds = Math.floor((remaining % (60*1000)) / 1000);
             timerEl.textContent = `До следующего прокрута: ${days}д ${hours}ч ${minutes}м ${seconds}с`;
+            // Кнопка должна быть disabled, это уже задано в разметке
             setTimeout(updateCaseTimer, 1000);
         }
 
