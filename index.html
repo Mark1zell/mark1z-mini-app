@@ -4,18 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Mark1z Design</title>
-
-    <!-- Telegram WebApp JS -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-
-    <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-    <!-- SortableJS -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-
     <style>
-        /* ===== ПОЛНЫЙ CSS (без изменений) ===== */
         :root {
             --bg-start: #0a050d;
             --bg-mid: #100820;
@@ -219,7 +211,6 @@
     </style>
 </head>
 <body oncontextmenu="return false;">
-    <!-- ===== ЗАГРУЗОЧНЫЙ ЭКРАН ===== -->
     <div id="loadingScreen">
         <div class="loading-stars" id="loadingStars"></div>
         <div style="text-align: center; position: relative; z-index: 1;">
@@ -228,11 +219,9 @@
         </div>
     </div>
 
-    <!-- ===== ЗВЁЗДЫ И АСТЕРОИДЫ ===== -->
     <div class="stars-container" id="starsContainer"></div>
     <div class="asteroid-container" id="asteroidContainer"></div>
 
-    <!-- ===== ОСНОВНОЙ КОНТЕЙНЕР ===== -->
     <div class="app-container">
         <div class="header">
             <button class="faq-button" onclick="openFaqModal()">?</button>
@@ -288,16 +277,14 @@
         <div class="footer">
             <div>© Mark1z Design · Дмитрий Маркизов</div>
             <a href="#" onclick="openPrivacyPolicy()">Политика конфиденциальности</a>
-            <span class="version">V.1.0.3</span>
+            <span class="version">V.1.0.4</span>
         </div>
     </div>
 
-    <!-- ===== МОДАЛЬНОЕ ОКНО ===== -->
     <div class="modal-overlay" id="modalOverlay">
         <div class="modal" id="modalContent"></div>
     </div>
 
-    <!-- ===== ПРОСМОТР ИЗОБРАЖЕНИЙ ===== -->
     <div id="imageViewer">
         <button id="imageViewerClose" onclick="closeImageViewer()">×</button>
         <img id="imageViewerImg" src="" alt="Просмотр">
@@ -308,14 +295,12 @@
         // ================================================================
         // ИНИЦИАЛИЗАЦИЯ SUPABASE
         // ================================================================
-        (function initSupabase() {
-            if (!window._supabaseClient) {
-                var url = 'https://lcgbpwowppwwpjjlphod.supabase.co';
-                var key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZ2Jwd293cHB3d3BqamxwaG9kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NDAwNTMsImV4cCI6MjEwNDIxNjA1M30.95VPot7saWmlgv1IzBop3E4x-ZxSc8HepqKdDLJa7JI';
-                window._supabaseClient = window.supabase.createClient(url, key);
-            }
-        })();
-
+        if (typeof window._supabaseClient === 'undefined') {
+            const url = 'https://lcgbpwowppwwpjjlphod.supabase.co';
+            const key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZ2Jwd293cHB3d3BqamxwaG9kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NDAwNTMsImV4cCI6MjEwNDIxNjA1M30.95VPot7saWmlgv1IzBop3E4x-ZxSc8HepqKdDLJa7JI';
+            window._supabaseClient = window.supabase.createClient(url, key);
+            console.log('Supabase инициализирован');
+        }
         var supabase = window._supabaseClient;
 
         // ================================================================
@@ -427,10 +412,10 @@
             var timestamp = Date.now();
             var fileName = timestamp + '_' + cleanName;
             var path = folder + '/' + fileName;
-            return window._supabaseClient.storage.from('public').upload(path, file, { cacheControl: '3600', upsert: false })
+            return supabase.storage.from('public').upload(path, file, { cacheControl: '3600', upsert: false })
                 .then(function(res) {
                     if (res.error) throw res.error;
-                    var publicUrl = window._supabaseClient.storage.from('public').getPublicUrl(path);
+                    var publicUrl = supabase.storage.from('public').getPublicUrl(path);
                     if (!publicUrl.data || !publicUrl.data.publicUrl) {
                         throw new Error('Не удалось получить URL загруженного файла');
                     }
@@ -459,12 +444,8 @@
                 });
         }
 
-        // ================================================================
-        // ОБНОВЛЕНИЕ ПОРЯДКА (СОРТИРОВКА)
-        // ================================================================
         function updateOrder(tableName, items) {
             var promises = [];
-            var supabase = window._supabaseClient;
             items.forEach(function(item, index) {
                 var id = item.dataset.id;
                 promises.push(supabase.from(tableName).update({ order: index }).eq('id', id));
@@ -702,7 +683,6 @@
         // ПРОМОКОДЫ
         // ================================================================
         function applyPromo(code) {
-            var supabase = window._supabaseClient;
             supabase.from('promocodes').select('*').eq('code', code).single()
                 .then(function(res) {
                     if (res.error || !res.data) {
@@ -762,7 +742,6 @@
         function createPromo(type) {
             var code = prompt('Введите промокод:');
             if (!code) return;
-            var supabase = window._supabaseClient;
             if (type === 'wheel') {
                 supabase.from('promocodes').insert([{ code: code, type: 'wheel', used: false }])
                     .then(function(res) {
@@ -806,7 +785,6 @@
         function loadPostsList() {
             var container = document.getElementById('postsList');
             container.innerHTML = '';
-            var supabase = window._supabaseClient;
             supabase.from('posts').select('*').eq('active', true)
                 .then(function(res) {
                     if (res.error) {
@@ -880,7 +858,6 @@
                 active: true,
                 active_until: activeUntilDate ? activeUntilDate.toISOString() : null
             };
-            var supabase = window._supabaseClient;
             if (tempPostFile) {
                 compressImage(tempPostFile, 800, 0.7)
                     .then(function(compressedDataUrl) {
@@ -913,7 +890,6 @@
 
         function deletePost(id) {
             if (confirm('Удалить этот пост для всех?')) {
-                var supabase = window._supabaseClient;
                 supabase.from('posts').update({ active: false }).eq('id', id)
                     .then(function() {
                         loadPostsList();
@@ -925,7 +901,6 @@
         // ПОКАЗ ПОСТОВ ПРИ ЗАГРУЗКЕ
         // ================================================================
         function loadActivePosts() {
-            var supabase = window._supabaseClient;
             supabase.from('posts').select('*').eq('active', true)
                 .then(function(res) {
                     if (res.error) throw res.error;
@@ -1003,10 +978,9 @@
         }
 
         // ================================================================
-        // ЗАГРУЗКА ДАННЫХ И REALTIME ПОДПИСКИ
+        // ЗАГРУЗКА ДАННЫХ И REALTIME
         // ================================================================
         function initDefaultServices() {
-            var supabase = window._supabaseClient;
             supabase.from('services').select('*')
                 .then(function(res) {
                     if (res.error) {
@@ -1037,50 +1011,36 @@
         }
 
         function setupRealTimeListeners() {
-            var supabase = window._supabaseClient;
-            // Категории портфолио
+            // Категории
             supabase.channel('portfolio_categories_changes')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'portfolio_categories' }, function() {
                     loadPortfolioCategories();
-                    if (currentCategoryId) {
-                        openCategory(currentCategoryId);
-                    }
+                    if (currentCategoryId) openCategory(currentCategoryId);
                 })
-                .subscribe(function(status, err) {
-                    if (err) console.error('Ошибка подписки на категории:', err);
-                });
+                .subscribe();
 
             // Услуги
             supabase.channel('services_changes')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'services' }, function() {
                     loadServices();
                 })
-                .subscribe(function(status, err) {
-                    if (err) console.error('Ошибка подписки на услуги:', err);
-                });
+                .subscribe();
 
             // Отзывы
             supabase.channel('reviews_changes')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews' }, function() {
                     loadReviews();
                 })
-                .subscribe(function(status, err) {
-                    if (err) console.error('Ошибка подписки на отзывы:', err);
-                });
+                .subscribe();
 
-            // Посты (для админки)
+            // Посты
             supabase.channel('posts_changes')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, function() {
                     var postsList = document.getElementById('postsList');
-                    if (postsList && postsList.innerHTML !== '') {
-                        loadPostsList();
-                    }
+                    if (postsList && postsList.innerHTML !== '') loadPostsList();
                 })
-                .subscribe(function(status, err) {
-                    if (err) console.error('Ошибка подписки на посты:', err);
-                });
+                .subscribe();
 
-            // Первичная загрузка
             loadAbout();
             loadPortfolioCategories();
             loadServices();
@@ -1089,7 +1049,6 @@
         }
 
         function loadAbout() {
-            var supabase = window._supabaseClient;
             supabase.from('about').select('*').eq('id', 'main').single()
                 .then(function(res) {
                     if (res.error && res.error.code === 'PGRST116') {
@@ -1112,7 +1071,6 @@
         }
 
         function loadPortfolioCategories() {
-            var supabase = window._supabaseClient;
             supabase.from('portfolio_categories').select('*').order('order', { ascending: true })
                 .then(function(res) {
                     if (!res.error && res.data) {
@@ -1123,7 +1081,6 @@
         }
 
         function loadServices() {
-            var supabase = window._supabaseClient;
             supabase.from('services').select('*').order('order', { ascending: true })
                 .then(function(res) {
                     if (!res.error && res.data) {
@@ -1134,7 +1091,6 @@
         }
 
         function loadReviews() {
-            var supabase = window._supabaseClient;
             supabase.from('reviews').select('*').order('timestamp', { ascending: false })
                 .then(function(res) {
                     if (!res.error && res.data) {
@@ -1144,7 +1100,6 @@
         }
 
         function loadLogo() {
-            var supabase = window._supabaseClient;
             supabase.from('settings').select('*').eq('key', 'logo').single()
                 .then(function(res) {
                     if (!res.error && res.data && res.data.value) {
@@ -1235,7 +1190,6 @@
         }
 
         function updateWorksOrder(fromIndex, toIndex) {
-            var supabase = window._supabaseClient;
             supabase.from('portfolio_categories').select('items').eq('id', currentCategoryId).single()
                 .then(function(res) {
                     if (res.error) return;
@@ -1281,7 +1235,7 @@
                     return uploadFileToSupabase(file, 'covers');
                 })
                 .then(function(url) {
-                    return window._supabaseClient.from('portfolio_categories').update({ cover_image: url }).eq('id', categoryId);
+                    return supabase.from('portfolio_categories').update({ cover_image: url }).eq('id', categoryId);
                 })
                 .then(function() {
                     window.tempCoverFile = null;
@@ -1294,13 +1248,12 @@
 
         function deleteCategory(categoryId) {
             if (confirm('Удалить папку и все работы внутри?')) {
-                window._supabaseClient.from('portfolio_categories').delete().eq('id', categoryId);
+                supabase.from('portfolio_categories').delete().eq('id', categoryId);
             }
         }
 
         function openCategory(categoryId) {
             currentCategoryId = categoryId;
-            var supabase = window._supabaseClient;
             supabase.from('portfolio_categories').select('*').eq('id', categoryId).single()
                 .then(function(res) {
                     if (res.error || !res.data) return;
@@ -1344,7 +1297,6 @@
                     worksContainer.innerHTML = html;
                     if (window.isAdmin) setupSortableForWorks();
 
-                    // Подписка на изменения этой категории (реальное время)
                     if (categorySubscription) {
                         categorySubscription.unsubscribe();
                     }
@@ -1357,9 +1309,7 @@
                         }, function() {
                             openCategory(categoryId);
                         })
-                        .subscribe(function(status, err) {
-                            if (err) console.error('Ошибка подписки на категорию:', err);
-                        });
+                        .subscribe();
                 });
         }
 
@@ -1417,13 +1367,13 @@
                     return uploadFileToSupabase(file, 'portfolio/' + currentCategoryId);
                 })
                 .then(function(url) {
-                    return window._supabaseClient.from('portfolio_categories').select('items').eq('id', currentCategoryId).single();
+                    return supabase.from('portfolio_categories').select('items').eq('id', currentCategoryId).single();
                 })
                 .then(function(res) {
                     if (res.error || !res.data) { alert('Категория не найдена'); return; }
                     var items = res.data.items || [];
                     items.push({ title: title, image: url });
-                    return window._supabaseClient.from('portfolio_categories').update({ items: items }).eq('id', currentCategoryId);
+                    return supabase.from('portfolio_categories').update({ items: items }).eq('id', currentCategoryId);
                 })
                 .then(function() {
                     tempWorkFile = null;
@@ -1436,7 +1386,6 @@
         }
 
         function deleteWork(index) {
-            var supabase = window._supabaseClient;
             supabase.from('portfolio_categories').select('items').eq('id', currentCategoryId).single()
                 .then(function(res) {
                     if (res.error || !res.data) return;
@@ -1470,7 +1419,7 @@
                 }
                 container.innerHTML = html;
                 if (adminOrdersMode === 'orders') {
-                    window._supabaseClient.from('orders').select('*').order('timestamp', { ascending: false })
+                    supabase.from('orders').select('*').order('timestamp', { ascending: false })
                         .then(function(res) {
                             if (!res.error && res.data) renderOrdersList(res.data);
                         });
@@ -1607,7 +1556,7 @@
             var price = priceFrom ? parseFloat(priceFrom) : null;
             var priceToVal = priceTo ? parseFloat(priceTo) : null;
             var nextOrder = servicesData.length > 0 ? Math.max.apply(null, servicesData.map(function(s) { return s.order || 0; })) + 1 : 0;
-            window._supabaseClient.from('services').insert([{
+            supabase.from('services').insert([{
                 emoji: emoji, name: name, description: description,
                 price: price, price_to: priceToVal, order: nextOrder
             }]).then(function() {
@@ -1616,7 +1565,6 @@
         }
 
         function editService(id) {
-            var supabase = window._supabaseClient;
             supabase.from('services').select('*').eq('id', id).single()
                 .then(function(res) {
                     if (res.error || !res.data) return;
@@ -1646,7 +1594,7 @@
             if (!name) { alert('Введите название услуги'); return; }
             var price = priceFrom ? parseFloat(priceFrom) : null;
             var priceToVal = priceTo ? parseFloat(priceTo) : null;
-            window._supabaseClient.from('services').update({
+            supabase.from('services').update({
                 emoji: emoji, name: name, description: description,
                 price: price, price_to: priceToVal
             }).eq('id', id).then(function() {
@@ -1656,7 +1604,7 @@
 
         function deleteService(id) {
             if (confirm('Удалить услугу?')) {
-                window._supabaseClient.from('services').delete().eq('id', id);
+                supabase.from('services').delete().eq('id', id);
             }
         }
 
@@ -1684,7 +1632,7 @@
                 discount_applied: discountApplied || false,
                 discount_percent: discountApplied ? currentDiscount : 0
             };
-            window._supabaseClient.from('orders').insert([order]);
+            supabase.from('orders').insert([order]);
             if (discountApplied) {
                 currentDiscount = 0;
                 localStorage.removeItem('lastSpinDiscount');
@@ -1702,7 +1650,7 @@
         }
 
         // ================================================================
-        // ОТЗЫВЫ (ИСПРАВЛЕНИЕ: прерывание цепочки при таймере)
+        // ОТЗЫВЫ
         // ================================================================
         function openReviewModal() {
             var modal = document.getElementById('modalOverlay');
@@ -1793,8 +1741,6 @@
                 return;
             }
 
-            var supabase = window._supabaseClient;
-
             // Проверка на 1 час
             supabase.from('user_last_review').select('timestamp').eq('user_id', user.id.toString()).single()
                 .then(function(res) {
@@ -1803,11 +1749,10 @@
                         var now = Date.now();
                         if (now - lastTimestamp < 3600000) {
                             alert('Вы сможете оставить новый отзыв через 1 час после предыдущего.');
-                            // Прерываем цепочку, выбрасывая ошибку
                             return Promise.reject('timeout');
                         }
                     }
-                    // Если всё ок, загружаем изображения
+                    // Загрузка изображений
                     var imageUrls = [];
                     var uploadPromises = tempReviewFiles.map(function(file) {
                         return compressImage(file, 600, 0.6)
@@ -1849,7 +1794,7 @@
                 })
                 .catch(function(err) {
                     if (err === 'timeout') {
-                        // уже показан alert, ничего не делаем
+                        // ничего не делаем, alert уже показан
                     } else {
                         alert('Ошибка: ' + err.message);
                     }
@@ -1904,7 +1849,6 @@
 
         function deleteReview(id) {
             if (!confirm('Удалить отзыв?')) return;
-            var supabase = window._supabaseClient;
             supabase.from('reviews').select('author_id').eq('id', id).single()
                 .then(function(res) {
                     if (res.error) {
@@ -1917,7 +1861,6 @@
                         alert('Вы не можете удалить этот отзыв');
                         return;
                     }
-                    // Если автор или админ, удаляем запись о времени последнего отзыва, чтобы можно было оставить новый
                     if (reviewAuthorId) {
                         supabase.from('user_last_review').delete().eq('user_id', reviewAuthorId);
                     }
@@ -1932,10 +1875,9 @@
         }
 
         // ================================================================
-        // ОСТАЛЬНЫЕ АДМИН-ФУНКЦИИ
+        // АДМИН-ФУНКЦИИ
         // ================================================================
         function editAbout() {
-            var supabase = window._supabaseClient;
             supabase.from('about').select('*').eq('id', 'main').single()
                 .then(function(res) {
                     if (res.error || !res.data) return;
@@ -1955,25 +1897,25 @@
             var icon = prompt('Эмодзи-иконка:');
             if (!icon) return;
             var nextOrder = portfolioCategoriesData.length > 0 ? Math.max.apply(null, portfolioCategoriesData.map(function(c) { return c.order || 0; })) + 1 : 0;
-            window._supabaseClient.from('portfolio_categories').insert([{ name: name, icon: icon, items: [], order: nextOrder }]);
+            supabase.from('portfolio_categories').insert([{ name: name, icon: icon, items: [], order: nextOrder }]);
         }
 
         function editReview(id) {
             var newText = prompt('Новый текст отзыва:');
             if (newText !== null) {
-                window._supabaseClient.from('reviews').update({ text: newText }).eq('id', id);
+                supabase.from('reviews').update({ text: newText }).eq('id', id);
             }
         }
 
         function deleteOrder(id) {
             if (confirm('Удалить заказ?')) {
-                window._supabaseClient.from('orders').delete().eq('id', id);
+                supabase.from('orders').delete().eq('id', id);
             }
         }
 
         function clearOrders() {
             if (confirm('Очистить все заказы?')) {
-                window._supabaseClient.from('orders').delete().neq('id', 0);
+                supabase.from('orders').delete().neq('id', 0);
             }
         }
 
@@ -2019,7 +1961,7 @@
                     return uploadFileToSupabase(file, 'logo');
                 })
                 .then(function(url) {
-                    return window._supabaseClient.from('settings').upsert({ key: 'logo', value: url });
+                    return supabase.from('settings').upsert({ key: 'logo', value: url });
                 })
                 .then(function() {
                     window.tempLogoFile = null;
