@@ -8,7 +8,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
-        /* ===== ПОЛНЫЙ СТИЛЬ ===== */
         :root {
             --bg-start: #0a050d;
             --bg-mid: #100820;
@@ -142,15 +141,22 @@
         .skills-list { display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
         .skill-badge { background: rgba(124,58,237,0.2); border:1px solid rgba(124,58,237,0.3); padding:8px 14px; border-radius:20px; font-size:13px; font-weight:500; color:#ddd6fe; }
         .experience-badge { display:inline-block; background:linear-gradient(135deg, var(--primary), var(--secondary)); padding:6px 14px; border-radius:20px; font-weight:700; color:#fff; font-size:14px; margin-left:8px; }
-        .review-card { padding:20px; }
+        .review-card { padding:20px; position:relative; }
         .review-author { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
-        .review-avatar { width:40px; height:40px; border-radius:50%; background: linear-gradient(135deg, #7c3aed, #be185d); display:flex; align-items:center; justify-content:center; font-weight:700; color:white; overflow:hidden; }
+        .review-avatar { width:40px; height:40px; border-radius:50%; background: linear-gradient(135deg, #7c3aed, #be185d); display:flex; align-items:center; justify-content:center; font-weight:700; color:white; overflow:hidden; flex-shrink:0; }
         .review-avatar img { width:100%; height:100%; object-fit:cover; }
         .review-text { color:var(--text-muted); font-size:14px; line-height:1.6; }
         .review-images { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
         .review-images img { width:60px; height:60px; object-fit:cover; border-radius:8px; cursor:pointer; border:1px solid var(--card-border); }
         .review-images img.single { width:100%; height:auto; max-height:300px; object-fit:contain; }
         .stars { color:#fbbf24; letter-spacing:2px; }
+        .review-footer { display:flex; align-items:center; gap:15px; margin-top:12px; flex-wrap:wrap; }
+        .like-btn { background:transparent; border:none; color:var(--text-muted); font-size:16px; cursor:pointer; display:flex; align-items:center; gap:5px; padding:4px 8px; border-radius:16px; transition:all 0.2s; }
+        .like-btn:hover { background:rgba(255,255,255,0.05); }
+        .like-btn.liked { color:#ff3b30; }
+        .like-btn.liked svg { fill:#ff3b30; }
+        .admin-reply { margin-top:10px; padding:10px 14px; background:rgba(124,58,237,0.08); border-left:2px solid var(--primary); border-radius:8px; font-size:13px; color:var(--text-muted); }
+        .admin-reply strong { color:#a78bfa; font-weight:600; }
         .order-list { display:flex; flex-direction:column; gap:12px; }
         .order-item { display:flex; align-items:center; justify-content:space-between; padding:16px 18px; background: rgba(15,7,25,0.8); border:1px solid var(--card-border); border-radius:16px; cursor: grab; }
         .order-info h4 { font-size:16px; font-weight:600; }
@@ -209,6 +215,12 @@
             -webkit-user-drag: none !important;
             user-drag: none !important;
         }
+        .review-actions { display:flex; gap:5px; }
+        .review-actions button { background:rgba(255,255,255,0.05); border:none; color:var(--text-muted); padding:4px 10px; border-radius:12px; font-size:12px; cursor:pointer; transition:background 0.2s; }
+        .review-actions button:hover { background:rgba(255,255,255,0.1); }
+        .admin-reply-input { margin-top:10px; display:flex; gap:8px; }
+        .admin-reply-input textarea { flex:1; padding:8px; border:1px solid var(--card-border); border-radius:8px; background:rgba(0,0,0,0.3); color:var(--text); font-size:13px; resize:vertical; min-height:50px; }
+        .admin-reply-input button { padding:8px 16px; }
     </style>
 </head>
 <body oncontextmenu="return false;">
@@ -408,7 +420,7 @@
             });
         }
 
-        // ИСПРАВЛЕННАЯ ФУНКЦИЯ uploadFileToSupabase
+        // ИСПРАВЛЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ (работает и для портфолио, и для отзывов)
         function uploadFileToSupabase(file, folder) {
             var cleanName = file.name.replace(/[^\w\d\-_.]/g, '_');
             var timestamp = Date.now();
@@ -980,7 +992,7 @@
         }
 
         // ================================================================
-        // ЗАГРУЗКА ДАННЫХ И REALTIME (ИСПРАВЛЕНО)
+        // ЗАГРУЗКА ДАННЫХ И REALTIME
         // ================================================================
         function initDefaultServices() {
             supabase.from('services').select('*')
@@ -1012,7 +1024,6 @@
                 });
         }
 
-        // ИСПРАВЛЕННАЯ ФУНКЦИЯ setupRealTimeListeners с логами
         function setupRealTimeListeners() {
             // Категории
             supabase.channel('portfolio_categories_changes')
@@ -1058,6 +1069,23 @@
                 .subscribe(function(status, err) {
                     if (err) console.error('Ошибка подписки на посты:', err);
                     else console.log('Подписка на посты:', status);
+                });
+
+            // Заказы (для админки)
+            supabase.channel('orders_changes')
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, function(payload) {
+                    console.log('Новый заказ:', payload);
+                    if (adminOrdersMode === 'orders') {
+                        // Обновляем список заказов
+                        supabase.from('orders').select('*').order('timestamp', { ascending: false })
+                            .then(function(res) {
+                                if (!res.error && res.data) renderOrdersList(res.data);
+                            });
+                    }
+                })
+                .subscribe(function(status, err) {
+                    if (err) console.error('Ошибка подписки на заказы:', err);
+                    else console.log('Подписка на заказы:', status);
                 });
 
             loadAbout();
@@ -1651,7 +1679,13 @@
                 discount_applied: discountApplied || false,
                 discount_percent: discountApplied ? currentDiscount : 0
             };
-            supabase.from('orders').insert([order]);
+            supabase.from('orders').insert([order])
+                .then(function() {
+                    console.log('Заказ добавлен:', service);
+                })
+                .catch(function(err) {
+                    console.error('Ошибка добавления заказа:', err);
+                });
             if (discountApplied) {
                 currentDiscount = 0;
                 localStorage.removeItem('lastSpinDiscount');
@@ -1669,7 +1703,7 @@
         }
 
         // ================================================================
-        // ОТЗЫВЫ (ИСПРАВЛЕННЫЙ renderReviews И deleteReview)
+        // ОТЗЫВЫ (С РЕАКЦИЯМИ, ОТВЕТАМИ И АВАТАРКОЙ)
         // ================================================================
         function openReviewModal() {
             var modal = document.getElementById('modalOverlay');
@@ -1760,6 +1794,7 @@
                 return;
             }
 
+            // Проверка на 1 час
             supabase.from('user_last_review').select('timestamp').eq('user_id', user.id.toString()).single()
                 .then(function(res) {
                     if (!res.error && res.data) {
@@ -1770,6 +1805,7 @@
                             return Promise.reject('timeout');
                         }
                     }
+                    // Загрузка изображений
                     var imageUrls = [];
                     var uploadPromises = tempReviewFiles.map(function(file) {
                         return compressImage(file, 600, 0.6)
@@ -1794,6 +1830,8 @@
                         stars: selectedRating,
                         text: text,
                         images: urls || [],
+                        likes: 0,
+                        admin_reply: '',
                         timestamp: new Date().toISOString()
                     };
                     return supabase.from('reviews').insert([reviewData]);
@@ -1818,7 +1856,38 @@
                 });
         }
 
-        // ИСПРАВЛЕННАЯ renderReviews с fallback для аватарки
+        function likeReview(id) {
+            var supabase = window._supabaseClient;
+            // Сначала получаем текущее значение лайков
+            supabase.from('reviews').select('likes').eq('id', id).single()
+                .then(function(res) {
+                    if (res.error) throw res.error;
+                    var currentLikes = res.data.likes || 0;
+                    return supabase.from('reviews').update({ likes: currentLikes + 1 }).eq('id', id);
+                })
+                .then(function() {
+                    loadReviews(); // обновляем список
+                })
+                .catch(function(err) {
+                    alert('Ошибка: ' + err.message);
+                });
+        }
+
+        function saveAdminReply(id) {
+            var replyText = document.getElementById('adminReply_' + id)?.value?.trim();
+            if (!replyText) {
+                alert('Введите текст ответа');
+                return;
+            }
+            supabase.from('reviews').update({ admin_reply: replyText }).eq('id', id)
+                .then(function() {
+                    loadReviews();
+                })
+                .catch(function(err) {
+                    alert('Ошибка: ' + err.message);
+                });
+        }
+
         function renderReviews(reviews) {
             var container = document.getElementById('reviewsContainer');
             if (!container) return;
@@ -1830,7 +1899,7 @@
                     (String(window.currentUser.id) === String(review.author_id) || 
                      window.currentUser.username === review.author_username);
                 
-                // Аватарка с fallback на инициалы
+                // Аватарка с fallback
                 var avatarHtml = '';
                 if (review.photo_url) {
                     avatarHtml = '<div class="review-avatar"><img src="' + review.photo_url + '" alt="avatar" onerror="this.style.display=\'none\';this.parentElement.textContent=\'' + (authorName.charAt(0) || '👤') + '\'"></div>';
@@ -1846,6 +1915,8 @@
                     });
                     imagesHtml += '</div>';
                 }
+
+                // Кнопки действий
                 var actionsHtml = '';
                 if (window.isAdmin) {
                     actionsHtml += '<button class="btn" onclick="editReview(' + review.id + ')">✏️</button>';
@@ -1853,6 +1924,23 @@
                 } else if (isAuthor) {
                     actionsHtml += '<button class="btn" onclick="deleteReview(' + review.id + ')">🗑️ Удалить</button>';
                 }
+
+                // Лайк
+                var likeBtn = '<button class="like-btn" onclick="likeReview(' + review.id + ')">❤️ ' + (review.likes || 0) + '</button>';
+
+                // Ответ админа
+                var adminReplyHtml = '';
+                if (review.admin_reply) {
+                    adminReplyHtml = '<div class="admin-reply"><strong>👑 Ответ дизайнера:</strong> ' + review.admin_reply + '</div>';
+                } else if (window.isAdmin) {
+                    adminReplyHtml = `
+                        <div class="admin-reply-input">
+                            <textarea id="adminReply_${review.id}" placeholder="Ответить на отзыв..."></textarea>
+                            <button class="btn" onclick="saveAdminReply(${review.id})" style="padding:8px 12px; font-size:12px;">Отправить</button>
+                        </div>
+                    `;
+                }
+
                 html += `
                     <div class="card review-card">
                         <div class="review-author">
@@ -1865,14 +1953,17 @@
                         </div>
                         <p class="review-text">${review.text}</p>
                         ${imagesHtml}
-                        ${actionsHtml ? '<div style="margin-top:10px">' + actionsHtml + '</div>' : ''}
+                        <div class="review-footer">
+                            ${likeBtn}
+                            ${actionsHtml ? '<div class="review-actions">' + actionsHtml + '</div>' : ''}
+                        </div>
+                        ${adminReplyHtml}
                     </div>
                 `;
             });
             container.innerHTML = html;
         }
 
-        // ИСПРАВЛЕННАЯ deleteReview (сброс таймера)
         function deleteReview(id) {
             if (!confirm('Удалить отзыв?')) return;
             supabase.from('reviews').select('author_id').eq('id', id).single()
@@ -1901,7 +1992,7 @@
         }
 
         // ================================================================
-        // ОСТАЛЬНЫЕ АДМИН-ФУНКЦИИ
+        // АДМИН-ФУНКЦИИ
         // ================================================================
         function editAbout() {
             supabase.from('about').select('*').eq('id', 'main').single()
