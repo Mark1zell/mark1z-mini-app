@@ -12,7 +12,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
     <style>
-        /* ========== ВСЕ ВАШИ СТИЛИ ========== */
+        /* ========== СТИЛИ (без изменений) ========== */
         :root {
             --bg-start: #0a050d;
             --bg-mid: #100820;
@@ -306,7 +306,6 @@
                     }
                 };
                 script.onerror = () => {
-                    // Попробуем резервный источник
                     const script2 = document.createElement('script');
                     script2.src = 'https://unpkg.com/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js';
                     script2.async = true;
@@ -372,6 +371,7 @@
                 tg.MainButton.setParams({ text: 'НАПИСАТЬ ДИЗАЙНЕРУ', color: '#7c3aed', text_color: '#ffffff' });
                 const user = tg.initDataUnsafe?.user;
                 window.currentUser = user;
+                console.log('Telegram user:', user);
                 if (user?.username?.toLowerCase() === 'mark1zell') {
                     window.isAdmin = true;
                     document.body.classList.add('admin-mode');
@@ -438,7 +438,10 @@
                     cacheControl: '3600',
                     upsert: false
                 });
-            if (error) throw error;
+            if (error) {
+                console.error('Storage upload error:', error);
+                throw error;
+            }
             const { data: urlData } = supabaseClient.storage
                 .from('public')
                 .getPublicUrl(path);
@@ -1022,6 +1025,7 @@
 
         function setupRealTimeListeners() {
             if (!supabaseClient) return;
+
             // Загружаем about
             supabaseClient.from('about').select('*').eq('id', 'main').single()
                 .then(({ data, error }) => {
@@ -1061,7 +1065,25 @@
                     }
                 });
 
-            // Отзывы
+            // Отзывы с real-time
+            const reviewsChannel = supabaseClient
+                .channel('reviews_channel')
+                .on(
+                    'postgres_changes',
+                    { event: '*', schema: 'public', table: 'reviews' },
+                    () => {
+                        // При любом изменении перезагружаем отзывы
+                        supabaseClient.from('reviews').select('*').order('timestamp', { ascending: false })
+                            .then(({ data, error }) => {
+                                if (!error && data) {
+                                    renderReviews(data);
+                                }
+                            });
+                    }
+                )
+                .subscribe();
+
+            // Первоначальная загрузка отзывов
             supabaseClient.from('reviews').select('*').order('timestamp', { ascending: false })
                 .then(({ data, error }) => {
                     if (!error && data) {
@@ -1211,6 +1233,7 @@
         }
 
         async function saveCover(categoryId) {
+            if (!supabaseClient) { alert('База данных не загружена'); return; }
             if (!window.tempCoverFile) { alert('Загрузите изображение'); return; }
             const compressedDataUrl = await compressImage(window.tempCoverFile, 600, 0.6);
             const blob = dataURLToBlob(compressedDataUrl);
@@ -1906,7 +1929,7 @@
 
             const authorName = user.first_name || user.username || 'Пользователь';
             const authorUsername = user.username || null;
-            const photoUrl = user.photo_url || null;
+            const photoUrl = user.photo_url || null; // Может быть null, если нет аватарки
             const authorId = user.id;
 
             const reviewData = {
@@ -1937,8 +1960,11 @@
                 const authorName = review.author_name || 'Пользователь';
                 const authorUsername = review.author_username || null;
                 const isAuthor = window.currentUser && (window.currentUser.id === review.author_id || window.currentUser.username === review.author_username);
+                // Аватарка – если есть photo_url, показываем её, иначе инициалы
                 let avatarHtml = `<div class="review-avatar">${(authorName && authorName !== 'Пользователь') ? authorName.charAt(0) : '👤'}</div>`;
-                if (review.photo_url) avatarHtml = `<div class="review-avatar"><img src="${review.photo_url}" alt="avatar"></div>`;
+                if (review.photo_url) {
+                    avatarHtml = `<div class="review-avatar"><img src="${review.photo_url}" alt="avatar" onerror="this.style.display='none';this.parentElement.textContent='${authorName.charAt(0)||'👤'}'"></div>`;
+                }
                 let imagesHtml = '';
                 if (review.images && review.images.length > 0) {
                     imagesHtml = '<div class="review-images">';
@@ -2000,7 +2026,17 @@
             const icon = prompt('Эмодзи-иконка:');
             if (!icon) return;
             const nextOrder = portfolioCategoriesData.length > 0 ? Math.max(...portfolioCategoriesData.map(c => c.order ?? 0)) + 1 : 0;
-            supabaseClient.from('portfolio_categories').insert([{ name, icon, items: [], order: nextOrder }]);
+            supabaseClient.from('portfolio_categories').insert([{ name, icon, items: [], order: nextOrder }])
+                .then(() => {
+                    // Обновляем список категорий
+                    supabaseClient.from('portfolio_categories').select('*').order('order', { ascending: true })
+                        .then(({ data, error }) => {
+                            if (!error && data) {
+                                portfolioCategoriesData = data;
+                                renderPortfolioCategories(data);
+                            }
+                        });
+                });
         }
 
         async function editReview(id) {
@@ -2072,6 +2108,7 @@
         }
 
         async function saveLogo() {
+            if (!supabaseClient) { alert('База данных не загружена'); return; }
             if (!window.tempLogoFile) { alert('Загрузите изображение'); return; }
             const compressedDataUrl = await compressImage(window.tempLogoFile, 400, 0.6);
             const blob = dataURLToBlob(compressedDataUrl);
@@ -2204,9 +2241,7 @@
         loadSupabase()
             .then(() => {
                 console.log('Supabase загружен!');
-                // Создаём клиент
                 supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                // Запускаем приложение
                 initApp();
             })
             .catch(err => {
