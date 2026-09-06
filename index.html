@@ -151,12 +151,37 @@
         .review-images img.single { width:100%; height:auto; max-height:300px; object-fit:contain; }
         .stars { color:#fbbf24; letter-spacing:2px; }
         .review-footer { display:flex; align-items:center; gap:15px; margin-top:12px; flex-wrap:wrap; }
-        .like-btn { background:transparent; border:none; color:var(--text-muted); font-size:16px; cursor:pointer; display:flex; align-items:center; gap:5px; padding:4px 8px; border-radius:16px; transition:all 0.2s; }
-        .like-btn:hover { background:rgba(255,255,255,0.05); }
-        .like-btn.liked { color:#ff3b30; }
-        .like-btn.liked svg { fill:#ff3b30; }
-        .admin-reply { margin-top:10px; padding:10px 14px; background:rgba(124,58,237,0.08); border-left:2px solid var(--primary); border-radius:8px; font-size:13px; color:var(--text-muted); }
+        .like-btn { 
+            background:transparent; border:none; color:var(--text-muted); font-size:18px; cursor:pointer; 
+            display:flex; align-items:center; gap:4px; padding:4px 10px; border-radius:20px; 
+            transition: all 0.15s ease; position:relative; 
+        }
+        .like-btn:active { transform: scale(0.85); }
+        .like-btn .count { font-size:14px; font-weight:500; }
+        .like-btn.heart { color:#ff3b30; }
+        .like-btn.fire { color:#ff9500; }
+        .like-btn.plus { color:#34c759; }
+        .like-btn .emoji { transition: transform 0.2s ease; display:inline-block; }
+        .like-btn:active .emoji { transform: scale(1.5); }
+        .like-btn.animating .emoji { animation: pop 0.3s ease; }
+        @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.6); } 100% { transform: scale(1); } }
+        .admin-reply { 
+            margin-top:10px; padding:10px 14px; background:rgba(124,58,237,0.08); 
+            border-left:2px solid var(--primary); border-radius:8px; font-size:13px; color:var(--text-muted);
+            display: flex; justify-content: space-between; align-items: flex-start; gap:8px;
+        }
+        .admin-reply .reply-text { flex:1; }
         .admin-reply strong { color:#a78bfa; font-weight:600; }
+        .admin-reply .edit-reply-btn {
+            background: transparent; border: none; color: var(--text-muted); 
+            cursor: pointer; font-size: 14px; padding: 2px 6px; border-radius: 4px;
+            transition: background 0.2s;
+            flex-shrink: 0;
+        }
+        .admin-reply .edit-reply-btn:hover { background: rgba(255,255,255,0.05); }
+        .admin-reply-edit { display:flex; gap:8px; width:100%; margin-top:8px; }
+        .admin-reply-edit textarea { flex:1; padding:8px; border:1px solid var(--card-border); border-radius:8px; background:rgba(0,0,0,0.3); color:var(--text); font-size:13px; resize:vertical; min-height:50px; }
+        .admin-reply-edit button { padding:8px 16px; font-size:12px; }
         .order-list { display:flex; flex-direction:column; gap:12px; }
         .order-item { display:flex; align-items:center; justify-content:space-between; padding:16px 18px; background: rgba(15,7,25,0.8); border:1px solid var(--card-border); border-radius:16px; cursor: grab; }
         .order-info h4 { font-size:16px; font-weight:600; }
@@ -218,9 +243,6 @@
         .review-actions { display:flex; gap:5px; }
         .review-actions button { background:rgba(255,255,255,0.05); border:none; color:var(--text-muted); padding:4px 10px; border-radius:12px; font-size:12px; cursor:pointer; transition:background 0.2s; }
         .review-actions button:hover { background:rgba(255,255,255,0.1); }
-        .admin-reply-input { margin-top:10px; display:flex; gap:8px; }
-        .admin-reply-input textarea { flex:1; padding:8px; border:1px solid var(--card-border); border-radius:8px; background:rgba(0,0,0,0.3); color:var(--text); font-size:13px; resize:vertical; min-height:50px; }
-        .admin-reply-input button { padding:8px 16px; }
     </style>
 </head>
 <body oncontextmenu="return false;">
@@ -290,7 +312,7 @@
         <div class="footer">
             <div>© Mark1z Design · Дмитрий Маркизов</div>
             <a href="#" onclick="openPrivacyPolicy()">Политика конфиденциальности</a>
-            <span class="version">V.1.0.5</span>
+            <span class="version">V.1.0.6</span>
         </div>
     </div>
 
@@ -420,7 +442,7 @@
             });
         }
 
-        // ИСПРАВЛЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ (работает и для портфолио, и для отзывов)
+        // ИСПРАВЛЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ (работает для всего)
         function uploadFileToSupabase(file, folder) {
             var cleanName = file.name.replace(/[^\w\d\-_.]/g, '_');
             var timestamp = Date.now();
@@ -1071,12 +1093,11 @@
                     else console.log('Подписка на посты:', status);
                 });
 
-            // Заказы (для админки)
+            // Заказы
             supabase.channel('orders_changes')
                 .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, function(payload) {
                     console.log('Новый заказ:', payload);
                     if (adminOrdersMode === 'orders') {
-                        // Обновляем список заказов
                         supabase.from('orders').select('*').order('timestamp', { ascending: false })
                             .then(function(res) {
                                 if (!res.error && res.data) renderOrdersList(res.data);
@@ -1703,7 +1724,7 @@
         }
 
         // ================================================================
-        // ОТЗЫВЫ (С РЕАКЦИЯМИ, ОТВЕТАМИ И АВАТАРКОЙ)
+        // ОТЗЫВЫ (С РЕАКЦИЯМИ, ОТВЕТАМИ, РЕДАКТИРОВАНИЕМ)
         // ================================================================
         function openReviewModal() {
             var modal = document.getElementById('modalOverlay');
@@ -1830,7 +1851,9 @@
                         stars: selectedRating,
                         text: text,
                         images: urls || [],
-                        likes: 0,
+                        likes_heart: 0,
+                        likes_fire: 0,
+                        likes_plus: 0,
                         admin_reply: '',
                         timestamp: new Date().toISOString()
                     };
@@ -1856,14 +1879,21 @@
                 });
         }
 
-        function likeReview(id) {
-            var supabase = window._supabaseClient;
-            // Сначала получаем текущее значение лайков
-            supabase.from('reviews').select('likes').eq('id', id).single()
+        function reactReview(id, type) {
+            var fieldMap = {
+                'heart': 'likes_heart',
+                'fire': 'likes_fire',
+                'plus': 'likes_plus'
+            };
+            var field = fieldMap[type];
+            if (!field) return;
+
+            // Получаем текущее значение, инкрементируем, обновляем
+            supabase.from('reviews').select(field).eq('id', id).single()
                 .then(function(res) {
                     if (res.error) throw res.error;
-                    var currentLikes = res.data.likes || 0;
-                    return supabase.from('reviews').update({ likes: currentLikes + 1 }).eq('id', id);
+                    var current = res.data[field] || 0;
+                    return supabase.from('reviews').update({ [field]: current + 1 }).eq('id', id);
                 })
                 .then(function() {
                     loadReviews(); // обновляем список
@@ -1871,6 +1901,41 @@
                 .catch(function(err) {
                     alert('Ошибка: ' + err.message);
                 });
+        }
+
+        function editAdminReply(id) {
+            // Показываем форму редактирования ответа
+            var replyContainer = document.getElementById('replyContainer_' + id);
+            if (!replyContainer) return;
+            var currentText = replyContainer.querySelector('.reply-text')?.textContent || '';
+            replyContainer.innerHTML = `
+                <div class="admin-reply-edit">
+                    <textarea id="editReplyText_${id}">${currentText}</textarea>
+                    <button class="btn" onclick="saveAdminReplyEdit(${id})" style="padding:8px 12px; font-size:12px;">Сохранить</button>
+                    <button class="btn" onclick="cancelAdminReplyEdit(${id})" style="padding:8px 12px; font-size:12px; background:rgba(255,255,255,0.1);">Отмена</button>
+                </div>
+            `;
+        }
+
+        function saveAdminReplyEdit(id) {
+            var textarea = document.getElementById('editReplyText_' + id);
+            if (!textarea) return;
+            var newText = textarea.value.trim();
+            if (!newText) {
+                alert('Введите текст ответа');
+                return;
+            }
+            supabase.from('reviews').update({ admin_reply: newText }).eq('id', id)
+                .then(function() {
+                    loadReviews();
+                })
+                .catch(function(err) {
+                    alert('Ошибка: ' + err.message);
+                });
+        }
+
+        function cancelAdminReplyEdit(id) {
+            loadReviews(); // просто перезагружаем отзывы, чтобы скрыть форму
         }
 
         function saveAdminReply(id) {
@@ -1925,13 +1990,32 @@
                     actionsHtml += '<button class="btn" onclick="deleteReview(' + review.id + ')">🗑️ Удалить</button>';
                 }
 
-                // Лайк
-                var likeBtn = '<button class="like-btn" onclick="likeReview(' + review.id + ')">❤️ ' + (review.likes || 0) + '</button>';
+                // Реакции
+                var heartCount = review.likes_heart || 0;
+                var fireCount = review.likes_fire || 0;
+                var plusCount = review.likes_plus || 0;
+
+                var reactionsHtml = `
+                    <button class="like-btn heart" onclick="reactReview(${review.id}, 'heart')">
+                        <span class="emoji">❤️</span> <span class="count">${heartCount}</span>
+                    </button>
+                    <button class="like-btn fire" onclick="reactReview(${review.id}, 'fire')">
+                        <span class="emoji">🔥</span> <span class="count">${fireCount}</span>
+                    </button>
+                    <button class="like-btn plus" onclick="reactReview(${review.id}, 'plus')">
+                        <span class="emoji">👍</span> <span class="count">${plusCount}</span>
+                    </button>
+                `;
 
                 // Ответ админа
                 var adminReplyHtml = '';
                 if (review.admin_reply) {
-                    adminReplyHtml = '<div class="admin-reply"><strong>👑 Ответ дизайнера:</strong> ' + review.admin_reply + '</div>';
+                    adminReplyHtml = `
+                        <div class="admin-reply" id="replyContainer_${review.id}">
+                            <div class="reply-text"><strong>👑 Ответ дизайнера:</strong> ${review.admin_reply}</div>
+                            ${window.isAdmin ? `<button class="edit-reply-btn" onclick="editAdminReply(${review.id})">✏️</button>` : ''}
+                        </div>
+                    `;
                 } else if (window.isAdmin) {
                     adminReplyHtml = `
                         <div class="admin-reply-input">
@@ -1954,7 +2038,7 @@
                         <p class="review-text">${review.text}</p>
                         ${imagesHtml}
                         <div class="review-footer">
-                            ${likeBtn}
+                            ${reactionsHtml}
                             ${actionsHtml ? '<div class="review-actions">' + actionsHtml + '</div>' : ''}
                         </div>
                         ${adminReplyHtml}
@@ -1962,6 +2046,14 @@
                 `;
             });
             container.innerHTML = html;
+
+            // Добавляем анимацию для реакций
+            document.querySelectorAll('.like-btn').forEach(function(btn) {
+                btn.addEventListener('click', function(e) {
+                    this.classList.add('animating');
+                    setTimeout(() => this.classList.remove('animating'), 300);
+                });
+            });
         }
 
         function deleteReview(id) {
