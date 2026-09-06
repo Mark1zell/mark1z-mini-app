@@ -8,13 +8,16 @@
     <!-- Telegram WebApp JS -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
-<script src="https://unpkg.com/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js" defer></script>
+    <!-- Supabase JS (проверенный CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <!-- Запасной вариант через unpkg, если первый не загрузится -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js" async></script>
 
     <!-- SortableJS -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
     <style>
-        /* ========== СТИЛИ (без изменений) ========== */
+        /* ========== ВЕСЬ ВАШ СТИЛЬ (БЕЗ ИЗМЕНЕНИЙ) ========== */
         :root {
             --bg-start: #0a050d;
             --bg-mid: #100820;
@@ -290,15 +293,16 @@
     </div>
 
     <script>
-// ================== SUPABASE CONFIG ==================
-const SUPABASE_URL = 'https://lcgbpwowppwwpjjlphod.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZ2Jwd293cHB3d3BqamxwaG9kIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODY0MDA1MywiZXhwIjoyMTA0MjE2MDUzfQ.RBoeuqHBzrpnCr9ev__fPYR-EF3okB4G6kcAH9Ww-FM';
+        // ================== SUPABASE CONFIG ==================
+        const SUPABASE_URL = 'https://lcgbpwowppwwpjjlphod.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZ2Jwd293cHB3d3BqamxwaG9kIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODY0MDA1MywiZXhwIjoyMTA0MjE2MDUzfQ.RBoeuqHBzrpnCr9ev__fPYR-EF3okB4G6kcAH9Ww-FM';
 
-if (typeof window.supabase !== 'undefined' && typeof supabase === 'undefined') {
-    var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-} else if (typeof window.supabase === 'undefined') {
-    console.error('Supabase library did not load. Check your internet connection or try reloading.');
-}
+        // Создаём клиент только если библиотека загружена
+        if (typeof window.supabase !== 'undefined' && typeof supabase === 'undefined') {
+            var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        } else if (typeof window.supabase === 'undefined') {
+            console.warn('Supabase library not loaded yet. Will retry in init.');
+        }
 
         // ================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==================
         window.tg = null;
@@ -2101,33 +2105,44 @@ if (typeof window.supabase !== 'undefined' && typeof supabase === 'undefined') {
             }
         }
 
-// ================== ЗАПУСК ==================
-function init() {
-    // Проверяем, что Supabase загружен
-    if (typeof supabase === 'undefined' || !supabase.from) {
-        console.warn('Supabase not ready, retrying in 1 second...');
-        setTimeout(init, 1000);
-        return;
-    }
-    createStars();
-    createAsteroids();
-    createLoadingStars();
-    setupTabs();
-    initDefaultServices();
-    setupRealTimeListeners();
-    initTelegram();
-    renderOrdersSection();
-    if (lastSpinDiscount > 0) {
-        applyDiscount(lastSpinDiscount);
-    }
-    loadActivePosts();
+        // ================== ЗАПУСК ==================
+        let retryCount = 0;
+        const maxRetries = 10;
 
-    setTimeout(() => {
-        document.getElementById('loadingScreen').classList.add('hidden');
-    }, 800);
-}
+        function init() {
+            // Проверяем, что supabase загружен
+            if (typeof supabase === 'undefined' || !supabase.from) {
+                retryCount++;
+                if (retryCount <= maxRetries) {
+                    console.warn(`Supabase not ready, retry ${retryCount}/${maxRetries}...`);
+                    setTimeout(init, 1000);
+                } else {
+                    console.error('Supabase failed to load after multiple attempts. Please refresh.');
+                }
+                return;
+            }
 
-window.addEventListener('load', init);
+            console.log('Supabase loaded successfully!');
+
+            createStars();
+            createAsteroids();
+            createLoadingStars();
+            setupTabs();
+            initDefaultServices();
+            setupRealTimeListeners();
+            initTelegram();
+            renderOrdersSection();
+            if (lastSpinDiscount > 0) {
+                applyDiscount(lastSpinDiscount);
+            }
+            loadActivePosts();
+
+            setTimeout(() => {
+                document.getElementById('loadingScreen').classList.add('hidden');
+            }, 800);
+        }
+
+        window.addEventListener('load', init);
     </script>
 </body>
 </html>
