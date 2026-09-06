@@ -322,11 +322,11 @@ input, textarea, select {
         <section id="orders" class="section">
             <div id="ordersContent"></div>
         </section>
-        <div class="footer">
-            <div>© Mark1z Design · Дмитрий Маркизов</div>
-            <a href="#" onclick="openPrivacyPolicy()">Политика конфиденциальности</a>
-            <span class="version">V.2.0.1</span>
-        </div>
+<div class="footer">
+    <div>© Mark1z Design · <a href="https://t.me/mark1zell" target="_blank" style="color:#ec4899;text-decoration:none;font-weight:600;">Дмитрий Маркизов</a></div>
+    <a href="#" onclick="openPrivacyPolicy()">Политика конфиденциальности</a>
+    <span class="version">V.2.2.0</span>
+</div>
     </div>
     <div class="modal-overlay" id="modalOverlay">
         <div class="modal" id="modalContent"></div>
@@ -391,30 +391,27 @@ input, textarea, select {
         // ================================================================
         // TELEGRAM INIT
         // ================================================================
-        function initTelegram() {
-            var tg = window.Telegram?.WebApp;
-            if (tg) {
-                window.telegramAvailable = true;
-                window.tg = tg;
-                tg.ready();
-                tg.expand();
-                tg.setHeaderColor('#0a050d');
-                tg.setBackgroundColor('#0a0012');
-                tg.MainButton.setParams({ text: 'НАПИСАТЬ ДИЗАЙНЕРУ', color: '#7c3aed', text_color: '#ffffff' });
-                var user = tg.initDataUnsafe?.user;
-                window.currentUser = user;
-                if (user?.username?.toLowerCase() === 'mark1zell') {
-                    window.isAdmin = true;
-                    document.body.classList.add('admin-mode');
-                }
-                tg.MainButton.onClick(function() {
-                    tg.sendData('Здравствуйте! Хочу обсудить заказ.');
-                    tg.close();
-                });
-            } else {
-                setTimeout(initTelegram, 500);
-            }
+function initTelegram() {
+    var tg = window.Telegram?.WebApp;
+    if (tg) {
+        window.telegramAvailable = true;
+        window.tg = tg;
+        tg.ready();
+        tg.expand();
+        tg.setHeaderColor('#0a050d');
+        tg.setBackgroundColor('#0a0012');
+        // Скрываем MainButton
+        tg.MainButton.hide();
+        var user = tg.initDataUnsafe?.user;
+        window.currentUser = user;
+        if (user?.username?.toLowerCase() === 'mark1zell') {
+            window.isAdmin = true;
+            document.body.classList.add('admin-mode');
         }
+    } else {
+        setTimeout(initTelegram, 500);
+    }
+}
 
         // ================================================================
         // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
@@ -976,55 +973,57 @@ function showAddOptionFormImproved(serviceId) {
             <h4 style="margin-bottom:15px;">➕ Новая опция</h4>
             
             <div style="margin-bottom:12px;">
-                <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Название опции *</label>
-                <input type="text" id="optName" placeholder="Например: Логотип" style="width:100%;" autocomplete="off">
+                <label>Название опции *</label>
+                <input type="text" id="optName" placeholder="Например: Логотип" style="width:100%;">
             </div>
             
             <div style="margin-bottom:12px;">
-                <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Цена (₽) *</label>
-                <input type="number" id="optPrice" placeholder="Например: 500" style="width:100%;" autocomplete="off">
+                <label>Цена (₽) *</label>
+                <input type="number" id="optPrice" placeholder="Например: 500" style="width:100%;">
             </div>
             
             <div style="margin-bottom:12px;">
-                <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Описание (необязательно)</label>
-                <input type="text" id="optDescription" placeholder="Краткое описание опции" style="width:100%;" autocomplete="off">
+                <label>Описание</label>
+                <input type="text" id="optDescription" placeholder="Краткое описание" style="width:100%;">
             </div>
             
             <div style="display:flex;gap:8px;margin-bottom:12px;">
                 <div style="flex:1;">
-                    <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Мин. количество</label>
-                    <input type="number" id="optMinQty" placeholder="1" value="1" style="width:100%;" autocomplete="off">
+                    <label>Мин. количество</label>
+                    <input type="number" id="optMinQty" value="1" style="width:100%;">
                 </div>
                 <div style="flex:1;">
-                    <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Макс. количество</label>
-                    <input type="number" id="optMaxQty" placeholder="10" value="10" style="width:100%;" autocomplete="off">
-                    <p style="font-size:10px;color:var(--text-muted);margin-top:2px;">Поставьте 1, если опция одиночная (только галочка)</p>
+                    <label>Макс. количество</label>
+                    <input type="number" id="optMaxQty" value="1" style="width:100%;">
                 </div>
             </div>
             
             <div style="display:flex;gap:8px;margin-bottom:12px;">
                 <div style="flex:1;">
-                    <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Кол-во для скидки</label>
-                    <input type="number" id="optDiscountMin" placeholder="Например: 3" style="width:100%;" autocomplete="off">
+                    <label>Кол-во для скидки</label>
+                    <input type="number" id="optDiscountMin" placeholder="3" style="width:100%;">
                 </div>
                 <div style="flex:1;">
-                    <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Цена со скидкой (₽)</label>
-                    <input type="number" id="optDiscountPrice" placeholder="Например: 400" style="width:100%;" autocomplete="off">
+                    <label>Цена со скидкой (₽)</label>
+                    <input type="number" id="optDiscountPrice" placeholder="400" style="width:100%;">
                 </div>
             </div>
             
-            <div style="display:flex;gap:10px;margin-top:15px;">
-                <button class="btn" onclick="saveOptionImproved(${serviceId})" style="flex:1;background:linear-gradient(135deg, #10b981, #059669);">
-                    💾 Сохранить
-                </button>
-                <button class="btn" onclick="loadServiceOptionsForManager(${serviceId})" style="background:rgba(255,255,255,0.1);">
-                    Отмена
-                </button>
+            <div style="margin-bottom:12px;">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                    <input type="checkbox" id="optRequired" style="width:auto;">
+                    <span>Обязательная опция</span>
+                </label>
+            </div>
+            
+            <div style="display:flex;gap:10px;">
+                <button class="btn" onclick="saveOptionImproved(${serviceId})">💾 Сохранить</button>
+                <button class="btn" onclick="loadServiceOptionsForManager(${serviceId})">Отмена</button>
             </div>
         </div>
     `;
-    
     container.innerHTML = formHtml + container.innerHTML;
+}
     
     // Устанавливаем фокус на первое поле
     setTimeout(function() {
@@ -1053,15 +1052,14 @@ function saveOptionImproved(serviceId) {
     var maxQty = document.getElementById('optMaxQty')?.value.trim() || '1';
     var discountMin = document.getElementById('optDiscountMin')?.value.trim() || null;
     var discountPrice = document.getElementById('optDiscountPrice')?.value.trim() || null;
+    var isRequired = document.getElementById('optRequired')?.checked || false;
     
     if (!name) { alert('Введите название опции'); return; }
     if (!price) { alert('Введите цену'); return; }
     
-    // Если макс. количество не указано или меньше 1, ставим 1
     var finalMaxQty = parseInt(maxQty) || 1;
     if (finalMaxQty < 1) finalMaxQty = 1;
     
-    // Если мин. количество больше макс., ставим мин = макс
     var finalMinQty = parseInt(minQty) || 1;
     if (finalMinQty < 1) finalMinQty = 1;
     if (finalMinQty > finalMaxQty) finalMinQty = finalMaxQty;
@@ -1073,7 +1071,7 @@ function saveOptionImproved(serviceId) {
         .limit(1)
         .then(function(res) {
             var nextOrder = 0;
-            if (res.data && res.data.length > 0 && res.data[0].order !== null && res.data[0].order !== undefined) {
+            if (res.data && res.data.length > 0) {
                 nextOrder = res.data[0].order + 1;
             }
             
@@ -1082,21 +1080,21 @@ function saveOptionImproved(serviceId) {
                 name: name,
                 price: parseInt(price),
                 description: description || '',
-                option_type: 'checkbox', // По умолчанию checkbox, но с количеством если max > 1
+                option_type: 'checkbox',
                 min_quantity: finalMinQty,
                 max_quantity: finalMaxQty,
                 discount_min_quantity: discountMin ? parseInt(discountMin) : null,
                 discount_price: discountPrice ? parseInt(discountPrice) : null,
+                is_required: isRequired,
                 order: nextOrder
             }]);
         })
         .then(function(res) {
             if (res.error) {
-                alert('Ошибка при сохранении: ' + res.error.message);
+                alert('Ошибка: ' + res.error.message);
                 return;
             }
-            
-            alert('✅ Опция успешно добавлена!');
+            alert('✅ Опция добавлена!');
             loadServiceOptionsForManager(serviceId);
             loadServiceOptions();
         })
@@ -1948,35 +1946,38 @@ function updateOptionImproved(optionId, serviceId) {
             reader.readAsDataURL(file);
         }
 
-        function saveWork() {
-            var title = document.getElementById('workTitleInput').value.trim();
-            if (!title) { alert('Введите название'); return; }
-            if (!tempWorkFile) { alert('Загрузите изображение'); return; }
+function saveWork() {
+    var title = document.getElementById('workTitleInput').value.trim();
+    if (!title) { alert('Введите название'); return; }
+    if (!tempWorkFile) { alert('Загрузите изображение'); return; }
 
-            compressImage(tempWorkFile, 800, 0.7)
-                .then(function(compressedDataUrl) {
-                    var blob = dataURLToBlob(compressedDataUrl);
-                    var file = new File([blob], tempWorkFile.name, { type: 'image/jpeg' });
-                    return uploadFileToSupabase(file, 'portfolio/' + currentCategoryId);
-                })
-                .then(function(url) {
-                    return supabase.from('portfolio_categories').select('items').eq('id', currentCategoryId).single();
-                })
-                .then(function(res) {
-                    if (res.error || !res.data) { alert('Категория не найдена'); return; }
-                    var items = res.data.items || [];
-                    items.push({ title: title, image: url });
-                    return supabase.from('portfolio_categories').update({ items: items }).eq('id', currentCategoryId);
-                })
-                .then(function() {
-                    tempWorkFile = null;
-                    closeModal();
-                    openCategory(currentCategoryId);
-                })
-                .catch(function(err) {
-                    alert('Ошибка: ' + err.message);
-                });
-        }
+    var uploadedUrl = null; // Сохраняем URL здесь
+    
+    compressImage(tempWorkFile, 800, 0.7)
+        .then(function(compressedDataUrl) {
+            var blob = dataURLToBlob(compressedDataUrl);
+            var file = new File([blob], tempWorkFile.name, { type: 'image/jpeg' });
+            return uploadFileToSupabase(file, 'portfolio/' + currentCategoryId);
+        })
+        .then(function(url) {
+            uploadedUrl = url; // Сохраняем URL
+            return supabase.from('portfolio_categories').select('items').eq('id', currentCategoryId).single();
+        })
+        .then(function(res) {
+            if (res.error || !res.data) { alert('Категория не найдена'); return; }
+            var items = res.data.items || [];
+            items.push({ title: title, image: uploadedUrl }); // Используем сохраненный URL
+            return supabase.from('portfolio_categories').update({ items: items }).eq('id', currentCategoryId);
+        })
+        .then(function() {
+            tempWorkFile = null;
+            closeModal();
+            openCategory(currentCategoryId);
+        })
+        .catch(function(err) {
+            alert('Ошибка: ' + err.message);
+        });
+}
 
         function deleteWork(index) {
             supabase.from('portfolio_categories').select('items').eq('id', currentCategoryId).single()
@@ -2272,6 +2273,8 @@ function updateQuantityDisplay(optId) {
 
 function submitOrderWithOptions() {
     var selectedOptions = [];
+    var missingRequired = [];
+    
     currentOrderOptions.forEach(function(opt) {
         var qty = currentOrderQuantities[opt.id] || 0;
         if (qty > 0) {
@@ -2283,11 +2286,17 @@ function submitOrderWithOptions() {
                 name: opt.name,
                 price: price,
                 quantity: qty,
-                total: price * qty,
-                option_type: opt.option_type || 'checkbox'
+                total: price * qty
             });
+        } else if (opt.is_required) {
+            missingRequired.push(opt.name);
         }
     });
+
+    if (missingRequired.length > 0) {
+        alert('Выберите обязательные опции:\n' + missingRequired.join('\n'));
+        return;
+    }
 
     if (selectedOptions.length === 0) {
         alert('Выберите хотя бы одну опцию');
@@ -2411,25 +2420,29 @@ function submitOrderWithOptions() {
             }
         }
 
-        function renderServicesForUser() {
-            if (servicesData.length === 0) return '<p style="color:var(--text-muted)">Услуги пока не добавлены</p>';
-            var html = '<div class="order-list" style="display:flex; flex-direction:column; gap:12px;">';
-            servicesData.forEach(function(s) {
-                var hasOptions = serviceOptionsData.some(function(o) { return o.service_id == s.id; });
-                html += `
-                    <div class="order-item" onclick="openOrderConstructor(${s.id})">
-                        <div class="order-info">
-                            <h4>${s.emoji} ${s.name}</h4>
-                            <p>${s.description || ''}</p>
-                            ${hasOptions ? '<p style="color:var(--accent); font-size:12px;">⚙️ Конструктор заказа</p>' : ''}
-                        </div>
-                        <span style="font-size:24px;">➔</span>
-                    </div>
-                `;
-            });
-            html += '</div>';
-            return html;
-        }
+function renderServicesForUser() {
+    if (servicesData.length === 0) return '<p>Услуги пока не добавлены</p>';
+    var html = '<div class="order-list">';
+    servicesData.forEach(function(s) {
+        var hasOptions = serviceOptionsData.some(function(o) { return o.service_id == s.id; });
+        html += `
+            <div class="order-item" onclick="openOrderConstructor(${s.id})">
+                <div class="order-info">
+                    <h4>${s.emoji} ${s.name}</h4>
+                    <p>${s.description || ''}</p>
+                    ${hasOptions ? '<p style="color:var(--accent);font-size:12px;">⚙️ Конструктор заказа</p>' : ''}
+                </div>
+                <span>➔</span>
+            </div>
+        `;
+    });
+    html += '</div>';
+    // Добавляем кнопку внизу
+    html += '<div style="text-align:center;margin-top:20px;">';
+    html += '<button class="btn" onclick="contactDesigner()" style="font-size:14px;padding:12px 24px;">💬 Написать дизайнеру</button>';
+    html += '</div>';
+    return html;
+}
 
         function renderServicesForAdmin() {
             var html = '<div class="order-list" id="servicesList" style="display:flex; flex-direction:column; gap:12px;">';
@@ -2622,11 +2635,29 @@ function renderOrdersList(orders) {
             });
         }
 
-        function deleteService(id) {
-            if (confirm('Удалить услугу?')) {
-                supabase.from('services').delete().eq('id', id);
+function deleteService(id) {
+    if (!confirm('Удалить услугу? Все опции этой услуги будут удалены!')) return;
+    
+    // Сначала удаляем все опции услуги
+    supabase.from('service_options').delete().eq('service_id', id)
+        .then(function() {
+            // Потом удаляем саму услугу
+            return supabase.from('services').delete().eq('id', id);
+        })
+        .then(function(res) {
+            if (res.error) {
+                alert('Ошибка при удалении: ' + res.error.message);
+                return;
             }
-        }
+            alert('✅ Услуга удалена!');
+            // Обновляем данные
+            loadServices();
+            loadServiceOptions();
+        })
+        .catch(function(err) {
+            alert('Ошибка: ' + err.message);
+        });
+}
 
         // ================================================================
         // ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ
@@ -3627,6 +3658,14 @@ function preventModalCloseOnInput() {
             alert('Ошибка: ' + err.message);
             console.error('Ошибка при выполнении заказа:', err);
         });
+}
+
+        function contactDesigner() {
+    if (window.telegramAvailable && window.tg) {
+        window.tg.openTelegramLink('https://t.me/mark1zell');
+    } else {
+        window.open('https://t.me/mark1zell', '_blank');
+    }
 }
 
         // ================================================================
