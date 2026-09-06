@@ -15,7 +15,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
     <style>
-        /* ========== СТИЛИ (без изменений) ========== */
+        /* ===== ПОЛНЫЙ CSS (сокращён для экономии места, но функционал полный) ===== */
         :root {
             --bg-start: #0a050d;
             --bg-mid: #100820;
@@ -186,7 +186,6 @@
         .preview-thumb img { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid var(--card-border); }
         .preview-thumb .remove-btn { position: absolute; top: -8px; left: -8px; background: rgba(255, 0, 0, 0.8); color: white; border: none; width: 20px; height: 20px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; padding: 0; }
 
-        /* Кейс */
         .case-container { position: relative; width: 100%; max-width: 400px; margin: 20px auto; overflow: hidden; }
         .case-strip { display: flex; transition: transform 0.1s linear; }
         .case-item { min-width: 120px; height: 100px; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; color: #fff; background: linear-gradient(145deg, #2a1a3e, #1a0b2e); border: 2px solid var(--card-border); border-radius: 16px; margin: 0 5px; }
@@ -195,7 +194,6 @@
         .case-modal .close-btn { position: absolute; top: 10px; right: 10px; background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; }
         .case-timer { margin: 10px 0; font-size: 14px; color: #fbbf24; }
 
-        /* Посты */
         .post-modal { text-align: center; }
         .post-modal .close-btn { position: absolute; top: 10px; right: 10px; background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; }
         .post-content { margin: 15px 0; line-height: 1.5; }
@@ -208,7 +206,7 @@
     </style>
 </head>
 <body>
-    <!-- Загрузочный экран -->
+    <!-- ===== ЗАГРУЗОЧНЫЙ ЭКРАН ===== -->
     <div id="loadingScreen">
         <div class="loading-stars" id="loadingStars"></div>
         <div style="text-align: center; position: relative; z-index: 1;">
@@ -217,10 +215,11 @@
         </div>
     </div>
 
-    <!-- Звёзды и астероиды -->
+    <!-- ===== ЗВЁЗДЫ И АСТЕРОИДЫ ===== -->
     <div class="stars-container" id="starsContainer"></div>
     <div class="asteroid-container" id="asteroidContainer"></div>
 
+    <!-- ===== ОСНОВНОЙ КОНТЕЙНЕР ===== -->
     <div class="app-container">
         <div class="header">
             <button class="faq-button" onclick="openFaqModal()">?</button>
@@ -280,10 +279,12 @@
         </div>
     </div>
 
+    <!-- ===== МОДАЛЬНОЕ ОКНО ===== -->
     <div class="modal-overlay" id="modalOverlay">
         <div class="modal" id="modalContent"></div>
     </div>
 
+    <!-- ===== ПРОСМОТР ИЗОБРАЖЕНИЙ ===== -->
     <div id="imageViewer">
         <button id="imageViewerClose" onclick="closeImageViewer()">×</button>
         <img id="imageViewerImg" src="" alt="Просмотр">
@@ -291,44 +292,55 @@
     </div>
 
     <script>
-        // ================== SUPABASE CONFIG ==================
-        const SUPABASE_URL = 'https://ваш-проект.supabase.co'; // замените на свой URL
-        const SUPABASE_ANON_KEY = 'ваш-anon-key'; // замените на свой ключ
+        // ================================================================
+        // ИНИЦИАЛИЗАЦИЯ SUPABASE (ГАРАНТИРОВАННО ОДИН РАЗ)
+        // ================================================================
+        (function initSupabase() {
+            if (!window._supabaseClient) {
+                const url = 'https://lcgbpwowppwwpjjlphod.supabase.co';
+                const key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZ2Jwd293cHB3d3BqamxwaG9kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NDAwNTMsImV4cCI6MjEwNDIxNjA1M30.95VPot7saWmlgv1IzBop3E4x-ZxSc8HepqKdDLJa7JI';
+                window._supabaseClient = window.supabase.createClient(url, key);
+            }
+        })();
 
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        var supabase = window._supabaseClient;
 
-        // ================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==================
+        // ================================================================
+        // ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
+        // ================================================================
         window.tg = null;
         window.currentUser = null;
         window.isAdmin = false;
         window.telegramAvailable = false;
-        let currentCategoryId = null;
-        let selectedRating = 0;
-        let tempReviewFiles = [];
-        let tempWorkFile = null;
-        let currentViewImageSrc = null;
-        let scale = 1;
-        let startDistance = 0;
-        let startScale = 1;
-        let servicesData = [];
-        let portfolioCategoriesData = [];
-        let adminOrdersMode = 'services';
-        let sortableInstances = {};
-        let isOrderProcessing = false;
-        let currentDiscount = 0;
-        let lastSpinTime = localStorage.getItem('lastSpinTime') ? parseInt(localStorage.getItem('lastSpinTime')) : 0;
-        let lastSpinDiscount = localStorage.getItem('lastSpinDiscount') ? parseInt(localStorage.getItem('lastSpinDiscount')) : 0;
-        let canSpinNow = false;
-        let activePosts = [];
-        let viewedPosts = JSON.parse(localStorage.getItem('viewedPosts') || '[]');
-        let currentPostId = null;
-        let tempPostFile = null;
+        var currentCategoryId = null;
+        var selectedRating = 0;
+        var tempReviewFiles = [];
+        var tempWorkFile = null;
+        var currentViewImageSrc = null;
+        var scale = 1;
+        var startDistance = 0;
+        var startScale = 1;
+        var servicesData = [];
+        var portfolioCategoriesData = [];
+        var adminOrdersMode = 'services';
+        var sortableInstances = {};
+        var isOrderProcessing = false;
+        var currentDiscount = 0;
+        var lastSpinTime = localStorage.getItem('lastSpinTime') ? parseInt(localStorage.getItem('lastSpinTime')) : 0;
+        var lastSpinDiscount = localStorage.getItem('lastSpinDiscount') ? parseInt(localStorage.getItem('lastSpinDiscount')) : 0;
+        var canSpinNow = false;
+        var activePosts = [];
+        var viewedPosts = JSON.parse(localStorage.getItem('viewedPosts') || '[]');
+        var currentPostId = null;
+        var tempPostFile = null;
 
         currentDiscount = lastSpinDiscount;
 
-        // ================== TELEGRAM INIT ==================
+        // ================================================================
+        // TELEGRAM INIT
+        // ================================================================
         function initTelegram() {
-            const tg = window.Telegram?.WebApp;
+            var tg = window.Telegram?.WebApp;
             if (tg) {
                 window.telegramAvailable = true;
                 window.tg = tg;
@@ -337,13 +349,13 @@
                 tg.setHeaderColor('#0a050d');
                 tg.setBackgroundColor('#0a0012');
                 tg.MainButton.setParams({ text: 'НАПИСАТЬ ДИЗАЙНЕРУ', color: '#7c3aed', text_color: '#ffffff' });
-                const user = tg.initDataUnsafe?.user;
+                var user = tg.initDataUnsafe?.user;
                 window.currentUser = user;
                 if (user?.username?.toLowerCase() === 'mark1zell') {
                     window.isAdmin = true;
                     document.body.classList.add('admin-mode');
                 }
-                tg.MainButton.onClick(() => {
+                tg.MainButton.onClick(function() {
                     tg.sendData('Здравствуйте! Хочу обсудить заказ.');
                     tg.close();
                 });
@@ -352,28 +364,30 @@
             }
         }
 
-        // ================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==================
+        // ================================================================
+        // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (сжатие, загрузка)
+        // ================================================================
         function dataURLToBlob(dataUrl) {
-            const parts = dataUrl.split(',');
-            const mime = parts[0].match(/:(.*?);/)[1];
-            const bstr = atob(parts[1]);
-            let n = bstr.length;
-            const u8arr = new Uint8Array(n);
-            while (n--) {
-                u8arr[n] = bstr.charCodeAt(n);
-            }
-            return new Blob([u8arr], {type: mime});
+            var parts = dataUrl.split(',');
+            var mime = parts[0].match(/:(.*?);/)[1];
+            var bstr = atob(parts[1]);
+            var n = bstr.length;
+            var u8arr = new Uint8Array(n);
+            while (n--) { u8arr[n] = bstr.charCodeAt(n); }
+            return new Blob([u8arr], { type: mime });
         }
 
-        function compressImage(file, maxSize = 800, quality = 0.7) {
-            return new Promise((resolve) => {
-                const reader = new FileReader();
+        function compressImage(file, maxSize, quality) {
+            maxSize = maxSize || 800;
+            quality = quality || 0.7;
+            return new Promise(function(resolve) {
+                var reader = new FileReader();
                 reader.onload = function(e) {
-                    const img = new Image();
+                    var img = new Image();
                     img.onload = function() {
-                        const canvas = document.createElement('canvas');
-                        let width = img.width;
-                        let height = img.height;
+                        var canvas = document.createElement('canvas');
+                        var width = img.width;
+                        var height = img.height;
                         if (width > height && width > maxSize) {
                             height = height * maxSize / width;
                             width = maxSize;
@@ -383,38 +397,36 @@
                         }
                         canvas.width = width;
                         canvas.height = height;
-                        const ctx = canvas.getContext('2d');
+                        var ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0, width, height);
                         resolve(canvas.toDataURL('image/jpeg', quality));
                     };
-                    img.onerror = () => resolve(null);
+                    img.onerror = function() { resolve(null); };
                     img.src = e.target.result;
                 };
                 reader.readAsDataURL(file);
             });
         }
 
-        async function uploadFileToSupabase(file, folder) {
-            const timestamp = Date.now();
-            const fileName = `${timestamp}_${file.name}`;
-            const path = `${folder}/${fileName}`;
-            const { data, error } = await supabase.storage
-                .from('public')
-                .upload(path, file, {
-                    cacheControl: '3600',
-                    upsert: false
+        function uploadFileToSupabase(file, folder) {
+            var cleanName = file.name.replace(/[^\w\d\-_.]/g, '_');
+            var timestamp = Date.now();
+            var fileName = timestamp + '_' + cleanName;
+            var path = folder + '/' + fileName;
+            return window._supabaseClient.storage.from('public').upload(path, file, { cacheControl: '3600', upsert: false })
+                .then(function(res) {
+                    if (res.error) throw res.error;
+                    var publicUrl = window._supabaseClient.storage.from('public').getPublicUrl(path);
+                    return publicUrl.data.publicUrl;
                 });
-            if (error) throw error;
-            const { data: urlData } = supabase.storage
-                .from('public')
-                .getPublicUrl(path);
-            return urlData.publicUrl;
         }
 
-        // ================== FAQ, LEGAL, PRIVACY ==================
+        // ================================================================
+        // FAQ, LEGAL, PRIVACY
+        // ================================================================
         function openFaqModal() {
-            const modal = document.getElementById('modalOverlay');
-            const content = document.getElementById('modalContent');
+            var modal = document.getElementById('modalOverlay');
+            var content = document.getElementById('modalContent');
             content.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                     <h3>FAQ</h3>
@@ -436,8 +448,8 @@
         }
 
         function openLegalModal() {
-            const modal = document.getElementById('modalOverlay');
-            const content = document.getElementById('modalContent');
+            var modal = document.getElementById('modalOverlay');
+            var content = document.getElementById('modalContent');
             content.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                     <h3>Условия и реквизиты</h3>
@@ -446,24 +458,18 @@
                 <div style="line-height: 1.6; max-height: 60vh; overflow-y: auto;">
                     <p><strong>Описание товаров и услуг</strong><br>
                     Графический дизайн: оформление соцсетей, логотипы, баннеры, карточки маркетплейсов, веб-дизайн, дизайн приложений, презентации и др. Все услуги выполняются индивидуально, с учётом требований заказчика. Характеристики: высокое качество, соответствие брендбуку, передача исходников.</p>
-
                     <p><strong>Цены</strong><br>
                     Стоимость зависит от сложности и объёма работ. Диапазоны цен указаны в разделе «Услуги». Точная стоимость согласовывается до начала работы.</p>
-
                     <p><strong>Контакты</strong><br>
                     Telegram: @Mark1zell (личные сообщения)<br>
                     Email: keklolorbidollol321@gmail.com<br>
                     Телефон: +7 902 (900) 87-41</p>
-
                     <p><strong>Заказ</strong><br>
                     Заказ оформляется путём выбора услуги в приложении, после чего заказчик переходит в чат с ботом для уточнения деталей. Сроки исполнения – от 1 до 7 рабочих дней, в зависимости от задачи. Точный срок оговаривается до начала работы.</p>
-
                     <p><strong>Оплата</strong><br>
                     Работаю по 100% предоплате. Способы оплаты: банковская карта, СБП, электронные кошельки (через платёжный сервис).</p>
-
                     <p><strong>Доставка / Оказание услуг</strong><br>
                     Услуги оказываются удалённо. Готовые материалы передаются в электронном виде (файлы, ссылки). Физическая доставка не предусмотрена.</p>
-
                     <p><strong>Возврат и отказ от покупки</strong><br>
                     Заказчик вправе отказаться от услуги до момента начала её выполнения (до отправки первого промежуточного результата). Для этого необходимо написать в Telegram @Mark1zell или на email keklolorbidollol321@gmail.com с указанием причины отказа.<br>
                     Алгоритм возврата средств:<br>
@@ -472,11 +478,9 @@
                     3. Если услуга ещё не начата, возврат производится в полном объёме в течение 5 рабочих дней на те же реквизиты, с которых была произведена оплата.<br>
                     Если работа уже начата, возврат невозможен (согласно ст. 32 Закона о защите прав потребителей, исполнитель вправе удержать фактически понесённые расходы, но не более).<br>
                     Комиссии платёжных систем и банков не удерживаются.</p>
-
                     <p><strong>Реквизиты самозанятого</strong><br>
                     ФИО: Кузнецов Дмитрий Александрович<br>
                     ИНН: 710609555942</p>
-
                     <p><strong>Политика обработки персональных данных</strong><br>
                     Персональные данные (имя, Telegram ID, контактная информация) обрабатываются исключительно для исполнения заказа и связи с клиентом. Данные не передаются третьим лицам, за исключением случаев, предусмотренных законодательством РФ. Согласие на обработку даётся при оформлении заказа. Клиент может отозвать согласие, обратившись к @Mark1zell.</p>
                 </div>
@@ -485,8 +489,8 @@
         }
 
         function openPrivacyPolicy() {
-            const modal = document.getElementById('modalOverlay');
-            const content = document.getElementById('modalContent');
+            var modal = document.getElementById('modalOverlay');
+            var content = document.getElementById('modalContent');
             content.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                     <h3>Политика конфиденциальности</h3>
@@ -505,13 +509,15 @@
             modal.style.display = 'flex';
         }
 
-        // ================== КЕЙС ==================
-        const caseItems = ['10%', '15%', '25%', '50%'];
-        const caseProbabilities = [60, 25, 12, 3];
+        // ================================================================
+        // КЕЙС
+        // ================================================================
+        var caseItems = ['10%', '15%', '25%', '50%'];
+        var caseProbabilities = [60, 25, 12, 3];
 
         function openCaseModal() {
-            const modal = document.getElementById('modalOverlay');
-            const content = document.getElementById('modalContent');
+            var modal = document.getElementById('modalOverlay');
+            var content = document.getElementById('modalContent');
             content.innerHTML = `
                 <div class="case-modal">
                     <button class="close-btn" onclick="closeModal()">×</button>
@@ -532,7 +538,7 @@
         }
 
         function updateCaseTimer() {
-            const timerEl = document.getElementById('caseTimer');
+            var timerEl = document.getElementById('caseTimer');
             if (!timerEl) return;
             if (window.isAdmin) {
                 timerEl.textContent = 'Вы админ, можете крутить без ограничений';
@@ -540,29 +546,31 @@
             }
             if (canSpinNow) {
                 timerEl.textContent = 'Промокод активирован! Крутите сейчас';
-                if (document.getElementById('caseSpinBtn')) document.getElementById('caseSpinBtn').disabled = false;
+                var btn = document.getElementById('caseSpinBtn');
+                if (btn) btn.disabled = false;
                 return;
             }
-            const oneWeek = 7 * 24 * 60 * 60 * 1000;
-            const remaining = lastSpinTime ? oneWeek - (Date.now() - lastSpinTime) : 0;
+            var oneWeek = 7 * 24 * 60 * 60 * 1000;
+            var remaining = lastSpinTime ? oneWeek - (Date.now() - lastSpinTime) : 0;
             if (remaining <= 0) {
                 timerEl.textContent = 'Доступно для прокрута!';
-                if (document.getElementById('caseSpinBtn')) document.getElementById('caseSpinBtn').disabled = false;
+                var btn = document.getElementById('caseSpinBtn');
+                if (btn) btn.disabled = false;
                 return;
             }
-            const days = Math.floor(remaining / (24*60*60*1000));
-            const hours = Math.floor((remaining % (24*60*60*1000)) / (60*60*1000));
-            const minutes = Math.floor((remaining % (60*60*1000)) / (60*1000));
-            const seconds = Math.floor((remaining % (60*1000)) / 1000);
-            timerEl.textContent = `До следующего прокрута: ${days}д ${hours}ч ${minutes}м ${seconds}с`;
+            var days = Math.floor(remaining / (24*60*60*1000));
+            var hours = Math.floor((remaining % (24*60*60*1000)) / (60*60*1000));
+            var minutes = Math.floor((remaining % (60*60*1000)) / (60*1000));
+            var seconds = Math.floor((remaining % (60*1000)) / 1000);
+            timerEl.textContent = 'До следующего прокрута: ' + days + 'д ' + hours + 'ч ' + minutes + 'м ' + seconds + 'с';
             setTimeout(updateCaseTimer, 1000);
         }
 
         function initCaseStrip() {
-            const strip = document.getElementById('caseStrip');
+            var strip = document.getElementById('caseStrip');
             strip.innerHTML = '';
-            for (let i = 0; i < 20; i++) {
-                const item = document.createElement('div');
+            for (var i = 0; i < 20; i++) {
+                var item = document.createElement('div');
                 item.className = 'case-item';
                 item.textContent = caseItems[i % caseItems.length];
                 strip.appendChild(item);
@@ -570,50 +578,50 @@
         }
 
         function spinCase() {
-            const spinBtn = document.getElementById('caseSpinBtn');
+            var spinBtn = document.getElementById('caseSpinBtn');
             if (spinBtn.disabled) return;
             spinBtn.disabled = true;
-            const strip = document.getElementById('caseStrip');
-            const items = strip.children;
-            const itemWidth = items[0].offsetWidth + 10;
-            const totalItems = items.length;
+            var strip = document.getElementById('caseStrip');
+            var items = strip.children;
+            var itemWidth = items[0].offsetWidth + 10;
+            var totalItems = items.length;
 
-            const totalProb = caseProbabilities.reduce((a,b)=>a+b,0);
-            let r = Math.random() * totalProb;
-            let chosenIndex = 0;
-            for (let i=0; i<caseProbabilities.length; i++) {
+            var totalProb = caseProbabilities.reduce(function(a,b){ return a+b; }, 0);
+            var r = Math.random() * totalProb;
+            var chosenIndex = 0;
+            for (var i = 0; i < caseProbabilities.length; i++) {
                 r -= caseProbabilities[i];
                 if (r <= 0) { chosenIndex = i; break; }
             }
 
-            const repetitions = totalItems / caseItems.length;
-            const targetItemIndex = (repetitions - 1) * caseItems.length + chosenIndex;
+            var repetitions = totalItems / caseItems.length;
+            var targetItemIndex = (repetitions - 1) * caseItems.length + chosenIndex;
 
-            const containerWidth = document.getElementById('caseContainer').clientWidth;
-            const targetX = -(targetItemIndex * itemWidth) + (containerWidth - itemWidth) / 2;
-            const startX = strip.getBoundingClientRect().left - document.getElementById('caseContainer').getBoundingClientRect().left;
-            const duration = Math.random() * (5000 - 3000) + 3000;
-            const startTime = performance.now();
+            var containerWidth = document.getElementById('caseContainer').clientWidth;
+            var targetX = -(targetItemIndex * itemWidth) + (containerWidth - itemWidth) / 2;
+            var startX = strip.getBoundingClientRect().left - document.getElementById('caseContainer').getBoundingClientRect().left;
+            var duration = Math.random() * (5000 - 3000) + 3000;
+            var startTime = performance.now();
 
             function animate(now) {
-                const elapsed = now - startTime;
-                const progress = Math.min(elapsed / duration, 1);
-                const ease = 1 - Math.pow(1 - progress, 3);
-                const x = startX + (targetX - startX) * ease;
-                strip.style.transform = `translateX(${x}px)`;
+                var elapsed = now - startTime;
+                var progress = Math.min(elapsed / duration, 1);
+                var ease = 1 - Math.pow(1 - progress, 3);
+                var x = startX + (targetX - startX) * ease;
+                strip.style.transform = 'translateX(' + x + 'px)';
                 if (progress < 1) {
                     requestAnimationFrame(animate);
                 } else {
-                    const discount = parseInt(caseItems[chosenIndex]);
+                    var discount = parseInt(caseItems[chosenIndex]);
                     if (!window.isAdmin) {
                         applyDiscount(discount);
                         localStorage.setItem('lastSpinTime', Date.now());
                         localStorage.setItem('lastSpinDiscount', discount);
                         lastSpinTime = Date.now();
                         lastSpinDiscount = discount;
-                        alert(`Поздравляем! Ваша скидка: ${discount}%`);
+                        alert('Поздравляем! Ваша скидка: ' + discount + '%');
                     } else {
-                        alert(`Вы админ, скидка не применена (тестовый режим). Выпало: ${discount}%`);
+                        alert('Вы админ, скидка не применена (тестовый режим). Выпало: ' + discount + '%');
                     }
                     canSpinNow = false;
                     spinBtn.disabled = false;
@@ -625,7 +633,7 @@
         }
 
         function canSpin() {
-            const oneWeek = 7 * 24 * 60 * 60 * 1000;
+            var oneWeek = 7 * 24 * 60 * 60 * 1000;
             if (!lastSpinTime) return true;
             return (Date.now() - lastSpinTime) >= oneWeek;
         }
@@ -635,61 +643,61 @@
         }
 
         function openPromoInCase() {
-            const code = prompt('Введите промокод:');
-            if (!code) return;
-            applyPromo(code);
-        }
-
-        // ================== ПРОМОКОДЫ ==================
-        async function applyPromo(code) {
-            try {
-                const { data, error } = await supabase
-                    .from('promocodes')
-                    .select('*')
-                    .eq('code', code)
-                    .single();
-                if (error || !data) {
-                    alert('Промокод не найден');
-                    return;
-                }
-                if (data.used) {
-                    alert('Промокод уже использован');
-                    return;
-                }
-                if (data.type === 'wheel') {
-                    canSpinNow = true;
-                    alert('Промокод активирован! Теперь вы можете крутить кейс.');
-                    openCaseModal();
-                } else if (data.type === 'discount') {
-                    if (data.discount_percent !== undefined && data.discount_percent !== null) {
-                        applyDiscount(data.discount_percent);
-                        alert(`Скидка ${data.discount_percent}% применена!`);
-                    } else if (data.free) {
-                        applyDiscount(100);
-                        alert('Промокод даёт бесплатную услугу!');
-                    }
-                    await supabase
-                        .from('promocodes')
-                        .update({ used: true })
-                        .eq('code', code);
-                    closeModal();
-                    renderOrdersSection();
-                }
-            } catch (error) {
-                alert('Ошибка проверки промокода');
-                console.error(error);
-            }
-        }
-
-        function openPromoModal() {
-            const code = prompt('Введите промокод:');
+            var code = prompt('Введите промокод:');
             if (code) applyPromo(code);
         }
 
-        // ================== АДМИН-ПАНЕЛЬ ==================
+        // ================================================================
+        // ПРОМОКОДЫ
+        // ================================================================
+        function applyPromo(code) {
+            var supabase = window._supabaseClient;
+            supabase.from('promocodes').select('*').eq('code', code).single()
+                .then(function(res) {
+                    if (res.error || !res.data) {
+                        alert('Промокод не найден');
+                        return;
+                    }
+                    var data = res.data;
+                    if (data.used) {
+                        alert('Промокод уже использован');
+                        return;
+                    }
+                    if (data.type === 'wheel') {
+                        canSpinNow = true;
+                        alert('Промокод активирован! Теперь вы можете крутить кейс.');
+                        openCaseModal();
+                    } else if (data.type === 'discount') {
+                        if (data.discount_percent !== undefined && data.discount_percent !== null) {
+                            applyDiscount(data.discount_percent);
+                            alert('Скидка ' + data.discount_percent + '% применена!');
+                        } else if (data.free) {
+                            applyDiscount(100);
+                            alert('Промокод даёт бесплатную услугу!');
+                        }
+                        supabase.from('promocodes').update({ used: true }).eq('code', code).then(function() {
+                            closeModal();
+                            renderOrdersSection();
+                        });
+                    }
+                })
+                .catch(function(err) {
+                    alert('Ошибка проверки промокода');
+                    console.error(err);
+                });
+        }
+
+        function openPromoModal() {
+            var code = prompt('Введите промокод:');
+            if (code) applyPromo(code);
+        }
+
+        // ================================================================
+        // АДМИН-ПАНЕЛЬ
+        // ================================================================
         function openAdminPromoPanel() {
-            const modal = document.getElementById('modalOverlay');
-            const content = document.getElementById('modalContent');
+            var modal = document.getElementById('modalOverlay');
+            var content = document.getElementById('modalContent');
             content.innerHTML = `
                 <h3>Управление</h3>
                 <button class="btn" onclick="createPromo('wheel')">🎡 Промокод Фортуна</button>
@@ -700,43 +708,40 @@
             modal.style.display = 'flex';
         }
 
-        async function createPromo(type) {
-            const code = prompt('Введите промокод:');
+        function createPromo(type) {
+            var code = prompt('Введите промокод:');
             if (!code) return;
+            var supabase = window._supabaseClient;
             if (type === 'wheel') {
-                const { error } = await supabase
-                    .from('promocodes')
-                    .insert([{ code, type: 'wheel', used: false }]);
-                if (error) {
-                    alert('Ошибка: ' + error.message);
-                    return;
-                }
-                alert('Промокод на кейс создан!');
+                supabase.from('promocodes').insert([{ code: code, type: 'wheel', used: false }])
+                    .then(function(res) {
+                        if (res.error) { alert('Ошибка: ' + res.error.message); return; }
+                        alert('Промокод на кейс создан!');
+                    });
             } else if (type === 'discount') {
-                const discount = prompt('Введите процент скидки (или "free" для бесплатно):');
+                var discount = prompt('Введите процент скидки (или "free" для бесплатно):');
                 if (!discount) return;
-                let data = { code, type: 'discount', used: false };
+                var data = { code: code, type: 'discount', used: false };
                 if (discount.toLowerCase() === 'free') {
                     data.free = true;
                 } else {
                     data.discount_percent = parseInt(discount);
                 }
-                const { error } = await supabase
-                    .from('promocodes')
-                    .insert([data]);
-                if (error) {
-                    alert('Ошибка: ' + error.message);
-                    return;
-                }
-                alert('Промокод на скидку создан!');
+                supabase.from('promocodes').insert([data])
+                    .then(function(res) {
+                        if (res.error) { alert('Ошибка: ' + res.error.message); return; }
+                        alert('Промокод на скидку создан!');
+                    });
             }
             closeModal();
         }
 
-        // ================== УПРАВЛЕНИЕ ПОСТАМИ ==================
-        async function openPostManager() {
-            const modal = document.getElementById('modalOverlay');
-            const content = document.getElementById('modalContent');
+        // ================================================================
+        // УПРАВЛЕНИЕ ПОСТАМИ
+        // ================================================================
+        function openPostManager() {
+            var modal = document.getElementById('modalOverlay');
+            var content = document.getElementById('modalContent');
             content.innerHTML = `
                 <h3>Управление постами</h3>
                 <button class="btn" onclick="showCreatePostForm()">➕ Создать пост</button>
@@ -747,35 +752,32 @@
             loadPostsList();
         }
 
-        async function loadPostsList() {
-            const container = document.getElementById('postsList');
+        function loadPostsList() {
+            var container = document.getElementById('postsList');
             container.innerHTML = '';
-            const { data, error } = await supabase
-                .from('posts')
-                .select('*')
-                .eq('active', true);
-            if (error) {
-                container.innerHTML = '<p style="color:var(--text-muted)">Ошибка загрузки</p>';
-                return;
-            }
-            if (!data || data.length === 0) {
-                container.innerHTML = '<p style="color:var(--text-muted)">Нет активных постов</p>';
-                return;
-            }
-            data.forEach(post => {
-                const postEl = document.createElement('div');
-                postEl.className = 'admin-post-item';
-                postEl.innerHTML = `
-                    <span>${post.title || 'Без заголовка'}</span>
-                    <button onclick="deletePost(${post.id})">🗑️</button>
-                `;
-                container.appendChild(postEl);
-            });
+            var supabase = window._supabaseClient;
+            supabase.from('posts').select('*').eq('active', true)
+                .then(function(res) {
+                    if (res.error) {
+                        container.innerHTML = '<p style="color:var(--text-muted)">Ошибка загрузки</p>';
+                        return;
+                    }
+                    if (!res.data || res.data.length === 0) {
+                        container.innerHTML = '<p style="color:var(--text-muted)">Нет активных постов</p>';
+                        return;
+                    }
+                    res.data.forEach(function(post) {
+                        var postEl = document.createElement('div');
+                        postEl.className = 'admin-post-item';
+                        postEl.innerHTML = '<span>' + (post.title || 'Без заголовка') + '</span><button onclick="deletePost(' + post.id + ')">🗑️</button>';
+                        container.appendChild(postEl);
+                    });
+                });
         }
 
         function showCreatePostForm() {
-            const modal = document.getElementById('modalOverlay');
-            const content = document.getElementById('modalContent');
+            var modal = document.getElementById('modalOverlay');
+            var content = document.getElementById('modalContent');
             content.innerHTML = `
                 <h3>Создать пост</h3>
                 <input type="text" id="postTitle" placeholder="Заголовок">
@@ -793,10 +795,10 @@
         }
 
         function previewPostImage(event) {
-            const file = event.target.files[0];
+            var file = event.target.files[0];
             if (!file) return;
             tempPostFile = file;
-            const reader = new FileReader();
+            var reader = new FileReader();
             reader.onload = function(e) {
                 document.getElementById('postImagePreview').src = e.target.result;
                 document.getElementById('postImagePreview').style.display = 'block';
@@ -804,14 +806,14 @@
             reader.readAsDataURL(file);
         }
 
-        async function savePost() {
-            const title = document.getElementById('postTitle').value.trim();
-            const content = document.getElementById('postContent').value.trim();
-            const conditions = document.getElementById('postConditions').value.trim();
-            const link = document.getElementById('postLink').value.trim();
-            const activeUntil = document.getElementById('postActiveUntil').value.trim();
+        function savePost() {
+            var title = document.getElementById('postTitle').value.trim();
+            var content = document.getElementById('postContent').value.trim();
+            var conditions = document.getElementById('postConditions').value.trim();
+            var link = document.getElementById('postLink').value.trim();
+            var activeUntil = document.getElementById('postActiveUntil').value.trim();
             if (!title || !content) { alert('Заполните заголовок и текст'); return; }
-            let activeUntilDate = null;
+            var activeUntilDate = null;
             if (activeUntil !== '0' && activeUntil) {
                 activeUntilDate = new Date(activeUntil);
                 if (isNaN(activeUntilDate.getTime())) {
@@ -819,97 +821,101 @@
                     return;
                 }
             }
-            const postData = {
-                title,
-                content,
-                conditions,
-                link,
+            var postData = {
+                title: title,
+                content: content,
+                conditions: conditions,
+                link: link,
                 active: true,
                 active_until: activeUntilDate ? activeUntilDate.toISOString() : null
             };
+            var supabase = window._supabaseClient;
             if (tempPostFile) {
-                const compressedDataUrl = await compressImage(tempPostFile, 800, 0.7);
-                const blob = dataURLToBlob(compressedDataUrl);
-                const file = new File([blob], tempPostFile.name, { type: 'image/jpeg' });
-                try {
-                    const url = await uploadFileToSupabase(file, 'posts');
-                    postData.image = url;
-                } catch (error) {
-                    alert('Ошибка загрузки изображения: ' + error.message);
-                    return;
-                }
-                tempPostFile = null;
+                compressImage(tempPostFile, 800, 0.7)
+                    .then(function(compressedDataUrl) {
+                        var blob = dataURLToBlob(compressedDataUrl);
+                        var file = new File([blob], tempPostFile.name, { type: 'image/jpeg' });
+                        return uploadFileToSupabase(file, 'posts');
+                    })
+                    .then(function(url) {
+                        postData.image = url;
+                        tempPostFile = null;
+                        return supabase.from('posts').insert([postData]);
+                    })
+                    .then(function(res) {
+                        if (res.error) { alert('Ошибка сохранения: ' + res.error.message); return; }
+                        alert('Пост опубликован!');
+                        openPostManager();
+                    })
+                    .catch(function(err) {
+                        alert('Ошибка загрузки изображения: ' + err.message);
+                    });
+            } else {
+                supabase.from('posts').insert([postData])
+                    .then(function(res) {
+                        if (res.error) { alert('Ошибка сохранения: ' + res.error.message); return; }
+                        alert('Пост опубликован!');
+                        openPostManager();
+                    });
             }
-            const { error } = await supabase
-                .from('posts')
-                .insert([postData]);
-            if (error) {
-                alert('Ошибка сохранения: ' + error.message);
-                return;
-            }
-            alert('Пост опубликован!');
-            openPostManager();
         }
 
-        async function deletePost(id) {
+        function deletePost(id) {
             if (confirm('Удалить этот пост для всех?')) {
-                const { error } = await supabase
-                    .from('posts')
-                    .update({ active: false })
-                    .eq('id', id);
-                if (error) {
-                    alert('Ошибка: ' + error.message);
-                    return;
-                }
-                loadPostsList();
+                var supabase = window._supabaseClient;
+                supabase.from('posts').update({ active: false }).eq('id', id)
+                    .then(function() {
+                        loadPostsList();
+                    });
             }
         }
 
-        // ================== ПОКАЗ ПОСТОВ ПРИ ЗАГРУЗКЕ ==================
-        async function loadActivePosts() {
-            try {
-                const { data, error } = await supabase
-                    .from('posts')
-                    .select('*')
-                    .eq('active', true);
-                if (error) throw error;
-                activePosts = [];
-                data.forEach(post => {
-                    if (post.active_until && new Date(post.active_until) < new Date()) {
-                        supabase.from('posts').update({ active: false }).eq('id', post.id);
-                        return;
+        // ================================================================
+        // ПОКАЗ ПОСТОВ ПРИ ЗАГРУЗКЕ
+        // ================================================================
+        function loadActivePosts() {
+            var supabase = window._supabaseClient;
+            supabase.from('posts').select('*').eq('active', true)
+                .then(function(res) {
+                    if (res.error) throw res.error;
+                    activePosts = [];
+                    res.data.forEach(function(post) {
+                        if (post.active_until && new Date(post.active_until) < new Date()) {
+                            supabase.from('posts').update({ active: false }).eq('id', post.id);
+                            return;
+                        }
+                        activePosts.push(post);
+                    });
+                    if (activePosts.length > 0) {
+                        showPost(activePosts[0]);
                     }
-                    activePosts.push(post);
+                })
+                .catch(function(err) {
+                    console.error('Ошибка загрузки постов:', err);
                 });
-                if (activePosts.length > 0) {
-                    showPost(activePosts[0]);
-                }
-            } catch (error) {
-                console.error('Ошибка загрузки постов:', error);
-            }
         }
 
         function showPost(post) {
-            if (viewedPosts.includes(post.id.toString())) return;
+            if (viewedPosts.indexOf(post.id.toString()) !== -1) return;
             currentPostId = post.id;
-            const modal = document.getElementById('modalOverlay');
-            const content = document.getElementById('modalContent');
+            var modal = document.getElementById('modalOverlay');
+            var content = document.getElementById('modalContent');
             content.innerHTML = `
                 <div class="post-modal">
                     <button class="close-btn" onclick="askClosePost()">×</button>
                     <h3>${post.title || 'Объявление'}</h3>
-                    ${post.image ? `<img src="${post.image}" class="post-image">` : ''}
+                    ${post.image ? '<img src="' + post.image + '" class="post-image">' : ''}
                     <div class="post-content">${post.content}</div>
-                    ${post.conditions ? `<p><strong>Условия:</strong> ${post.conditions}</p>` : ''}
-                    ${post.link ? `<a class="post-link" href="${post.link}" target="_blank">Перейти к боту</a>` : ''}
+                    ${post.conditions ? '<p><strong>Условия:</strong> ' + post.conditions + '</p>' : ''}
+                    ${post.link ? '<a class="post-link" href="' + post.link + '" target="_blank">Перейти к боту</a>' : ''}
                 </div>
             `;
             modal.style.display = 'flex';
         }
 
         function askClosePost() {
-            const modal = document.getElementById('modalOverlay');
-            const content = document.getElementById('modalContent');
+            var modal = document.getElementById('modalOverlay');
+            var content = document.getElementById('modalContent');
             content.innerHTML = `
                 <div class="post-modal">
                     <button class="close-btn" onclick="closeModal()">×</button>
@@ -925,120 +931,158 @@
         }
 
         function confirmClosePost() {
-            const dontShow = document.getElementById('dontShowAgain').checked;
+            var dontShow = document.getElementById('dontShowAgain').checked;
             if (dontShow && currentPostId) {
-                if (!viewedPosts.includes(currentPostId.toString())) {
+                if (viewedPosts.indexOf(currentPostId.toString()) === -1) {
                     viewedPosts.push(currentPostId.toString());
                     localStorage.setItem('viewedPosts', JSON.stringify(viewedPosts));
                 }
             }
             closeModal();
-            const nextPost = activePosts.find(p => !viewedPosts.includes(p.id.toString()));
+            var nextPost = null;
+            for (var i = 0; i < activePosts.length; i++) {
+                if (viewedPosts.indexOf(activePosts[i].id.toString()) === -1) {
+                    nextPost = activePosts[i];
+                    break;
+                }
+            }
             if (nextPost) {
                 showPost(nextPost);
             }
         }
 
-        // ================== ИНИЦИАЛИЗАЦИЯ ДАННЫХ ==================
-        async function initDefaultServices() {
-            const { data, error } = await supabase
-                .from('services')
-                .select('*');
-            if (error) {
-                console.error('Ошибка проверки услуг:', error);
-                return;
-            }
-            if (!data || data.length === 0) {
-                const defaultServices = [
-                    { emoji: '🎨', name: 'Оформление соцсетей', description: 'VK, YouTube, Telegram: шапки, аватарки, обложки', price: 1000, price_to: 3000 },
-                    { emoji: '🎮', name: 'Дизайн игровых кланов', description: 'Логотипы, аватарки, шапки для кланов', price: 1500, price_to: 4000 },
-                    { emoji: '🏆', name: 'Дизайн турниров', description: 'Сетки, баннеры за призовые места, аватарки', price: 2000, price_to: 6000 },
-                    { emoji: '🛒', name: 'Карточки товаров', description: 'Wildberries, Ozon, Avito: инфографика', price: 800, price_to: 2000 },
-                    { emoji: '🔤', name: 'Типографика', description: 'Шрифтовые композиции, айдентика', price: 500, price_to: 1500 },
-                    { emoji: '📱', name: 'Дизайн мобильных приложений', description: 'UI/UX интерфейсы для iOS и Android', price: 5000, price_to: 15000 },
-                    { emoji: '🌐', name: 'Дизайн сайтов', description: 'Лендинги, многостраничники, корпоративные сайты', price: 3000, price_to: 10000 },
-                    { emoji: '🤖', name: 'Telegram Mini Apps', description: 'Дизайн и разработка интерфейсов для ботов', price: 7000, price_to: 20000 },
-                    { emoji: '🖼️', name: 'Постеры и баннеры', description: 'Рекламные постеры, промо-материалы', price: 800, price_to: 2500 },
-                    { emoji: '🎵', name: 'Обложки треков', description: 'Обложки для музыкальных релизов', price: 500, price_to: 1500 },
-                    { emoji: '▶️', name: 'Превью для YouTube', description: 'Яркие кликабельные превью', price: 400, price_to: 1200 },
-                    { emoji: '📊', name: 'Презентации', description: 'PowerPoint, Google Slides: оформление', price: 1000, price_to: 3000 },
-                    { emoji: '📄', name: 'Документы Word', description: 'Оформление, структурирование, шаблоны', price: 500, price_to: 1500 }
-                ];
-                for (const s of defaultServices) {
-                    await supabase.from('services').insert([s]);
-                }
-            }
+        // ================================================================
+        // ЗАГРУЗКА ДАННЫХ
+        // ================================================================
+        function initDefaultServices() {
+            var supabase = window._supabaseClient;
+            supabase.from('services').select('*')
+                .then(function(res) {
+                    if (res.error) {
+                        console.error('Ошибка проверки услуг:', res.error);
+                        return;
+                    }
+                    if (!res.data || res.data.length === 0) {
+                        var defaultServices = [
+                            { emoji: '🎨', name: 'Оформление соцсетей', description: 'VK, YouTube, Telegram: шапки, аватарки, обложки', price: 1000, price_to: 3000 },
+                            { emoji: '🎮', name: 'Дизайн игровых кланов', description: 'Логотипы, аватарки, шапки для кланов', price: 1500, price_to: 4000 },
+                            { emoji: '🏆', name: 'Дизайн турниров', description: 'Сетки, баннеры за призовые места, аватарки', price: 2000, price_to: 6000 },
+                            { emoji: '🛒', name: 'Карточки товаров', description: 'Wildberries, Ozon, Avito: инфографика', price: 800, price_to: 2000 },
+                            { emoji: '🔤', name: 'Типографика', description: 'Шрифтовые композиции, айдентика', price: 500, price_to: 1500 },
+                            { emoji: '📱', name: 'Дизайн мобильных приложений', description: 'UI/UX интерфейсы для iOS и Android', price: 5000, price_to: 15000 },
+                            { emoji: '🌐', name: 'Дизайн сайтов', description: 'Лендинги, многостраничники, корпоративные сайты', price: 3000, price_to: 10000 },
+                            { emoji: '🤖', name: 'Telegram Mini Apps', description: 'Дизайн и разработка интерфейсов для ботов', price: 7000, price_to: 20000 },
+                            { emoji: '🖼️', name: 'Постеры и баннеры', description: 'Рекламные постеры, промо-материалы', price: 800, price_to: 2500 },
+                            { emoji: '🎵', name: 'Обложки треков', description: 'Обложки для музыкальных релизов', price: 500, price_to: 1500 },
+                            { emoji: '▶️', name: 'Превью для YouTube', description: 'Яркие кликабельные превью', price: 400, price_to: 1200 },
+                            { emoji: '📊', name: 'Презентации', description: 'PowerPoint, Google Slides: оформление', price: 1000, price_to: 3000 },
+                            { emoji: '📄', name: 'Документы Word', description: 'Оформление, структурирование, шаблоны', price: 500, price_to: 1500 }
+                        ];
+                        defaultServices.forEach(function(s) {
+                            supabase.from('services').insert([s]);
+                        });
+                    }
+                });
         }
 
         function setupRealTimeListeners() {
-            // Загружаем about
+            var supabase = window._supabaseClient;
+            supabase.channel('portfolio_categories_changes')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'portfolio_categories' }, function() { loadPortfolioCategories(); })
+                .subscribe();
+            supabase.channel('services_changes')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'services' }, function() { loadServices(); })
+                .subscribe();
+            supabase.channel('reviews_changes')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews' }, function() { loadReviews(); })
+                .subscribe();
+            loadAbout();
+            loadPortfolioCategories();
+            loadServices();
+            loadReviews();
+            loadLogo();
+        }
+
+        function loadAbout() {
+            var supabase = window._supabaseClient;
             supabase.from('about').select('*').eq('id', 'main').single()
-                .then(({ data, error }) => {
-                    if (error) {
+                .then(function(res) {
+                    if (res.error && res.error.code === 'PGRST116') {
                         supabase.from('about').insert([{
                             id: 'main',
                             highlight: '«Создаю дизайн, который выделяет вас среди конкурентов»',
                             text1: 'Специализируюсь на графическом, веб- и игровом дизайне. Оформляю сообщества, создаю карточки для маркетплейсов, разрабатываю интерфейсы приложений и сайтов, а также Telegram Mini Apps.',
                             text2: 'Также делаю постеры, обложки, превью, презентации и документы. Работаю быстро и качественно, учитывая все пожелания.',
                             skills: ['Графический дизайн', 'Веб-дизайн', 'UI/UX', 'Киберспортивный дизайн', 'Типографика', 'Презентации', 'Моушн (изучаю)']
-                        }]);
+                        }]).then(function() { loadAbout(); });
                         return;
                     }
-                    if (data) {
-                        document.getElementById('aboutHighlight').textContent = data.highlight || '';
-                        document.getElementById('aboutText1').textContent = data.text1 || '';
-                        document.getElementById('aboutText2').textContent = data.text2 || '';
-                        document.getElementById('skillsList').innerHTML = (data.skills || []).map(s => `<span class="skill-badge">${s}</span>`).join('');
-                    }
-                });
-
-            // Категории портфолио
-            supabase.from('portfolio_categories').select('*').order('order', { ascending: true })
-                .then(({ data, error }) => {
-                    if (!error && data) {
-                        portfolioCategoriesData = data;
-                        renderPortfolioCategories(data);
-                    }
-                });
-
-            // Услуги
-            supabase.from('services').select('*').order('order', { ascending: true })
-                .then(({ data, error }) => {
-                    if (!error && data) {
-                        servicesData = data;
-                        renderOrdersSection();
-                    }
-                });
-
-            // Отзывы
-            supabase.from('reviews').select('*').order('timestamp', { ascending: false })
-                .then(({ data, error }) => {
-                    if (!error && data) {
-                        renderReviews(data);
-                    }
-                });
-
-            // Логотип
-            supabase.from('settings').select('*').eq('key', 'logo').single()
-                .then(({ data, error }) => {
-                    if (!error && data && data.value) {
-                        document.getElementById('logoImage').src = data.value;
+                    if (res.data) {
+                        document.getElementById('aboutHighlight').textContent = res.data.highlight || '';
+                        document.getElementById('aboutText1').textContent = res.data.text1 || '';
+                        document.getElementById('aboutText2').textContent = res.data.text2 || '';
+                        document.getElementById('skillsList').innerHTML = (res.data.skills || []).map(function(s) { return '<span class="skill-badge">' + s + '</span>'; }).join('');
                     }
                 });
         }
 
-        // ================== ПОРТФОЛИО ==================
+        function loadPortfolioCategories() {
+            var supabase = window._supabaseClient;
+            supabase.from('portfolio_categories').select('*').order('order', { ascending: true })
+                .then(function(res) {
+                    if (!res.error && res.data) {
+                        portfolioCategoriesData = res.data;
+                        renderPortfolioCategories(res.data);
+                    }
+                });
+        }
+
+        function loadServices() {
+            var supabase = window._supabaseClient;
+            supabase.from('services').select('*').order('order', { ascending: true })
+                .then(function(res) {
+                    if (!res.error && res.data) {
+                        servicesData = res.data;
+                        renderOrdersSection();
+                    }
+                });
+        }
+
+        function loadReviews() {
+            var supabase = window._supabaseClient;
+            supabase.from('reviews').select('*').order('timestamp', { ascending: false })
+                .then(function(res) {
+                    if (!res.error && res.data) {
+                        renderReviews(res.data);
+                    }
+                });
+        }
+
+        function loadLogo() {
+            var supabase = window._supabaseClient;
+            supabase.from('settings').select('*').eq('key', 'logo').single()
+                .then(function(res) {
+                    if (!res.error && res.data && res.data.value) {
+                        document.getElementById('logoImage').src = res.data.value;
+                    }
+                });
+        }
+
+        // ================================================================
+        // ПОРТФОЛИО
+        // ================================================================
         function renderPortfolioCategories(cats) {
-            const container = document.getElementById('portfolioCategories');
-            if (!container || container.style.display === 'none') return;
-            let html = '<div class="card"><h3>Портфолио</h3><div class="categories-grid" id="categoriesGrid">';
-            cats.forEach((cat, idx) => {
-                const coverStyle = cat.cover_image ? `style="background-image:url('${cat.cover_image}');"` : '';
-                const items = cat.items || [];
+            var container = document.getElementById('portfolioCategories');
+            if (!container) return;
+            container.style.display = 'block';
+            var html = '<div class="card"><h3>Портфолио</h3><div class="categories-grid" id="categoriesGrid">';
+            cats.forEach(function(cat, idx) {
+                var coverStyle = cat.cover_image ? 'style="background-image:url(\'' + cat.cover_image + '\');"' : '';
+                var items = cat.items || [];
                 html += `
                     <div class="category-card" data-id="${cat.id}" data-index="${idx}" onclick="openCategory(${cat.id})">
                         <div class="cover-bg" ${coverStyle}></div>
-                        <div class="folder-icon">${cat.icon}</div>
+                        <div class="folder-icon">${cat.icon || '📁'}</div>
                         <div class="category-name">${cat.name}</div>
                         <div class="work-count">${items.length} работ(ы)</div>
                         <div class="admin-actions">
@@ -1060,7 +1104,7 @@
         }
 
         function setupSortableForCategories() {
-            const grid = document.getElementById('categoriesGrid');
+            var grid = document.getElementById('categoriesGrid');
             if (!grid || !window.isAdmin) return;
             if (sortableInstances.categories) sortableInstances.categories.destroy();
             sortableInstances.categories = new Sortable(grid, {
@@ -1068,14 +1112,14 @@
                 delay: 200,
                 delayOnTouchOnly: true,
                 onEnd: function(evt) {
-                    const items = [...grid.children];
+                    var items = [].slice.call(grid.children);
                     updateOrder('portfolio_categories', items);
                 }
             });
         }
 
         function setupSortableForWorks() {
-            const grid = document.getElementById('worksGrid');
+            var grid = document.getElementById('worksGrid');
             if (!grid || !window.isAdmin) return;
             if (sortableInstances.works) sortableInstances.works.destroy();
             sortableInstances.works = new Sortable(grid, {
@@ -1083,15 +1127,15 @@
                 delay: 200,
                 delayOnTouchOnly: true,
                 onEnd: function(evt) {
-                    const fromIndex = evt.oldIndex;
-                    const toIndex = evt.newIndex;
+                    var fromIndex = evt.oldIndex;
+                    var toIndex = evt.newIndex;
                     updateWorksOrder(fromIndex, toIndex);
                 }
             });
         }
 
         function setupSortableForServices() {
-            const list = document.getElementById('servicesList');
+            var list = document.getElementById('servicesList');
             if (!list || !window.isAdmin) return;
             if (sortableInstances.services) sortableInstances.services.destroy();
             sortableInstances.services = new Sortable(list, {
@@ -1099,41 +1143,35 @@
                 delay: 200,
                 delayOnTouchOnly: true,
                 onEnd: function(evt) {
-                    const items = [...list.children];
+                    var items = [].slice.call(list.children);
                     updateOrder('services', items);
                 }
             });
         }
 
-        async function updateOrder(tableName, items) {
-            for (let i = 0; i < items.length; i++) {
-                const id = items[i].dataset.id;
-                await supabase
-                    .from(tableName)
-                    .update({ order: i })
-                    .eq('id', id);
-            }
+        function updateOrder(tableName, items) {
+            var supabase = window._supabaseClient;
+            items.forEach(function(item, index) {
+                var id = item.dataset.id;
+                supabase.from(tableName).update({ order: index }).eq('id', id);
+            });
         }
 
-        async function updateWorksOrder(fromIndex, toIndex) {
-            const { data: cat, error } = await supabase
-                .from('portfolio_categories')
-                .select('items')
-                .eq('id', currentCategoryId)
-                .single();
-            if (error) return;
-            const items = cat.items || [];
-            const [moved] = items.splice(fromIndex, 1);
-            items.splice(toIndex, 0, moved);
-            await supabase
-                .from('portfolio_categories')
-                .update({ items })
-                .eq('id', currentCategoryId);
+        function updateWorksOrder(fromIndex, toIndex) {
+            var supabase = window._supabaseClient;
+            supabase.from('portfolio_categories').select('items').eq('id', currentCategoryId).single()
+                .then(function(res) {
+                    if (res.error) return;
+                    var items = res.data.items || [];
+                    var moved = items.splice(fromIndex, 1)[0];
+                    items.splice(toIndex, 0, moved);
+                    supabase.from('portfolio_categories').update({ items: items }).eq('id', currentCategoryId);
+                });
         }
 
-        async function changeCover(categoryId) {
-            const modal = document.getElementById('modalOverlay');
-            const content = document.getElementById('modalContent');
+        function changeCover(categoryId) {
+            var modal = document.getElementById('modalOverlay');
+            var content = document.getElementById('modalContent');
             content.innerHTML = `
                 <h3>Изменить обложку</h3>
                 <input type="file" id="coverImageInput" accept="image/*" onchange="previewCoverImage(event)">
@@ -1146,10 +1184,10 @@
         }
 
         function previewCoverImage(event) {
-            const file = event.target.files[0];
+            var file = event.target.files[0];
             if (!file) return;
             window.tempCoverFile = file;
-            const reader = new FileReader();
+            var reader = new FileReader();
             reader.onload = function(e) {
                 document.getElementById('coverPreview').src = e.target.result;
                 document.getElementById('coverPreview').style.display = 'block';
@@ -1157,79 +1195,78 @@
             reader.readAsDataURL(file);
         }
 
-        async function saveCover(categoryId) {
+        function saveCover(categoryId) {
             if (!window.tempCoverFile) { alert('Загрузите изображение'); return; }
-            const compressedDataUrl = await compressImage(window.tempCoverFile, 600, 0.6);
-            const blob = dataURLToBlob(compressedDataUrl);
-            const file = new File([blob], window.tempCoverFile.name, { type: 'image/jpeg' });
-            try {
-                const url = await uploadFileToSupabase(file, 'covers');
-                await supabase
-                    .from('portfolio_categories')
-                    .update({ cover_image: url })
-                    .eq('id', categoryId);
-                window.tempCoverFile = null;
-                closeModal();
-            } catch (error) {
-                alert('Ошибка загрузки: ' + error.message);
-            }
-        }
-
-        async function deleteCategory(categoryId) {
-            if (confirm('Удалить папку и все работы внутри?')) {
-                await supabase
-                    .from('portfolio_categories')
-                    .delete()
-                    .eq('id', categoryId);
-            }
-        }
-
-        async function openCategory(categoryId) {
-            currentCategoryId = categoryId;
-            const { data: cat, error } = await supabase
-                .from('portfolio_categories')
-                .select('*')
-                .eq('id', categoryId)
-                .single();
-            if (error || !cat) return;
-            document.getElementById('portfolioCategories').style.display = 'none';
-            const worksContainer = document.getElementById('portfolioWorks');
-            worksContainer.style.display = 'block';
-            let html = `
-                <div class="card">
-                    <button class="btn" onclick="showPortfolioCategories()" style="margin-bottom:15px;">← Назад</button>
-                    <h3>${cat.icon} ${cat.name}</h3>
-                    <div class="works-grid" id="worksGrid">
-            `;
-            const items = cat.items || [];
-            if (items.length === 0) {
-                html += '<p style="color:var(--text-muted)">Нет работ</p>';
-            } else {
-                items.forEach((item, idx) => {
-                    html += `
-                        <div class="work-item" data-index="${idx}">
-                            <div class="work-image-wrapper">
-                                <img src="${item.image}" alt="${item.title}" onclick="viewImage('${item.image}', '${item.title}', true)" loading="lazy">
-                            </div>
-                            <div class="work-info">${item.title}</div>
-                            <div class="work-actions" style="left:8px; right:auto;">
-                                <button onclick="event.stopPropagation(); downloadWork('${item.image}', '${item.title}')" title="Скачать">⬇️</button>
-                            </div>
-                            ${window.isAdmin ? `
-                            <div class="work-actions" style="right:8px; left:auto;">
-                                <button onclick="editWork(${idx})">✏️</button>
-                                <button onclick="deleteWork(${idx})">🗑️</button>
-                            </div>` : ''}
-                        </div>
-                    `;
+            compressImage(window.tempCoverFile, 600, 0.6)
+                .then(function(compressedDataUrl) {
+                    var blob = dataURLToBlob(compressedDataUrl);
+                    var file = new File([blob], window.tempCoverFile.name, { type: 'image/jpeg' });
+                    return uploadFileToSupabase(file, 'covers');
+                })
+                .then(function(url) {
+                    return window._supabaseClient.from('portfolio_categories').update({ cover_image: url }).eq('id', categoryId);
+                })
+                .then(function() {
+                    window.tempCoverFile = null;
+                    closeModal();
+                })
+                .catch(function(err) {
+                    alert('Ошибка загрузки: ' + err.message);
                 });
+        }
+
+        function deleteCategory(categoryId) {
+            if (confirm('Удалить папку и все работы внутри?')) {
+                window._supabaseClient.from('portfolio_categories').delete().eq('id', categoryId);
             }
-            if (window.isAdmin) {
-                html += `<div class="add-work-btn" onclick="addWork()">+</div>`;
-            }
-            html += '</div></div>';
-            worksContainer.innerHTML = html;
-            if (window.isAdmin) setupSortableForWorks();
+        }
+
+        function openCategory(categoryId) {
+            currentCategoryId = categoryId;
+            var supabase = window._supabaseClient;
+            supabase.from('portfolio_categories').select('*').eq('id', categoryId).single()
+                .then(function(res) {
+                    if (res.error || !res.data) return;
+                    var cat = res.data;
+                    document.getElementById('portfolioCategories').style.display = 'none';
+                    var worksContainer = document.getElementById('portfolioWorks');
+                    worksContainer.style.display = 'block';
+                    var html = `
+                        <div class="card">
+                            <button class="btn" onclick="showPortfolioCategories()" style="margin-bottom:15px;">← Назад</button>
+                            <h3>${cat.icon} ${cat.name}</h3>
+                            <div class="works-grid" id="worksGrid">
+                    `;
+                    var items = cat.items || [];
+                    if (items.length === 0) {
+                        html += '<p style="color:var(--text-muted)">Нет работ</p>';
+                    } else {
+                        items.forEach(function(item, idx) {
+                            html += `
+                                <div class="work-item" data-index="${idx}">
+                                    <div class="work-image-wrapper">
+                                        <img src="${item.image}" alt="${item.title}" onclick="viewImage('${item.image}', '${item.title}', true)" loading="lazy">
+                                    </div>
+                                    <div class="work-info">${item.title}</div>
+                                    <div class="work-actions" style="left:8px; right:auto;">
+                                        <button onclick="event.stopPropagation(); downloadWork('${item.image}', '${item.title}')" title="Скачать">⬇️</button>
+                                    </div>
+                                    ${window.isAdmin ? `
+                                    <div class="work-actions" style="right:8px; left:auto;">
+                                        <button onclick="editWork(${idx})">✏️</button>
+                                        <button onclick="deleteWork(${idx})">🗑️</button>
+                                    </div>` : ''}
+                                </div>
+                            `;
+                        });
+                    }
+                    if (window.isAdmin) {
+                        html += `<div class="add-work-btn" onclick="addWork()">+</div>`;
+                    }
+                    html += '</div></div>';
+                    worksContainer.innerHTML = html;
+                    if (window.isAdmin) setupSortableForWorks();
+                });
         }
 
         function showPortfolioCategories() {
@@ -1241,11 +1278,10 @@
             alert('Редактирование работы пока не реализовано. Удалите и добавьте заново.');
         }
 
-        // ================== ДОБАВЛЕНИЕ РАБОТЫ ==================
         function addWork() {
             if (!currentCategoryId) { alert('Сначала откройте категорию'); return; }
-            const modal = document.getElementById('modalOverlay');
-            const content = document.getElementById('modalContent');
+            var modal = document.getElementById('modalOverlay');
+            var content = document.getElementById('modalContent');
             content.innerHTML = `
                 <h3>Добавить работу</h3>
                 <input type="file" id="workImageInput" accept="image/*" onchange="previewWorkImage(event)">
@@ -1259,10 +1295,10 @@
         }
 
         function previewWorkImage(event) {
-            const file = event.target.files[0];
+            var file = event.target.files[0];
             if (!file) return;
             tempWorkFile = file;
-            const reader = new FileReader();
+            var reader = new FileReader();
             reader.onload = function(e) {
                 document.getElementById('workImagePreview').src = e.target.result;
                 document.getElementById('workImagePreview').style.display = 'block';
@@ -1270,62 +1306,58 @@
             reader.readAsDataURL(file);
         }
 
-        async function saveWork() {
-            const title = document.getElementById('workTitleInput').value.trim();
+        function saveWork() {
+            var title = document.getElementById('workTitleInput').value.trim();
             if (!title) { alert('Введите название'); return; }
             if (!tempWorkFile) { alert('Загрузите изображение'); return; }
 
-            try {
-                const compressedDataUrl = await compressImage(tempWorkFile, 800, 0.7);
-                const blob = dataURLToBlob(compressedDataUrl);
-                const file = new File([blob], tempWorkFile.name, { type: 'image/jpeg' });
-                const url = await uploadFileToSupabase(file, `portfolio/${currentCategoryId}`);
-
-                const { data: cat, error } = await supabase
-                    .from('portfolio_categories')
-                    .select('items')
-                    .eq('id', currentCategoryId)
-                    .single();
-                if (error || !cat) {
-                    alert('Категория не найдена');
-                    return;
-                }
-                const items = cat.items || [];
-                items.push({ title, image: url });
-                await supabase
-                    .from('portfolio_categories')
-                    .update({ items })
-                    .eq('id', currentCategoryId);
-                tempWorkFile = null;
-                closeModal();
-                await openCategory(currentCategoryId);
-            } catch (error) {
-                alert('Ошибка: ' + error.message);
-            }
+            compressImage(tempWorkFile, 800, 0.7)
+                .then(function(compressedDataUrl) {
+                    var blob = dataURLToBlob(compressedDataUrl);
+                    var file = new File([blob], tempWorkFile.name, { type: 'image/jpeg' });
+                    return uploadFileToSupabase(file, 'portfolio/' + currentCategoryId);
+                })
+                .then(function(url) {
+                    return window._supabaseClient.from('portfolio_categories').select('items').eq('id', currentCategoryId).single();
+                })
+                .then(function(res) {
+                    if (res.error || !res.data) { alert('Категория не найдена'); return; }
+                    var items = res.data.items || [];
+                    items.push({ title: title, image: url });
+                    return window._supabaseClient.from('portfolio_categories').update({ items: items }).eq('id', currentCategoryId);
+                })
+                .then(function() {
+                    tempWorkFile = null;
+                    closeModal();
+                    openCategory(currentCategoryId);
+                })
+                .catch(function(err) {
+                    alert('Ошибка: ' + err.message);
+                });
         }
 
-        async function deleteWork(index) {
-            const { data: cat, error } = await supabase
-                .from('portfolio_categories')
-                .select('items')
-                .eq('id', currentCategoryId)
-                .single();
-            if (error || !cat) return;
-            const items = cat.items || [];
-            items.splice(index, 1);
-            await supabase
-                .from('portfolio_categories')
-                .update({ items })
-                .eq('id', currentCategoryId);
-            await openCategory(currentCategoryId);
+        function deleteWork(index) {
+            var supabase = window._supabaseClient;
+            supabase.from('portfolio_categories').select('items').eq('id', currentCategoryId).single()
+                .then(function(res) {
+                    if (res.error || !res.data) return;
+                    var items = res.data.items || [];
+                    items.splice(index, 1);
+                    supabase.from('portfolio_categories').update({ items: items }).eq('id', currentCategoryId)
+                        .then(function() {
+                            openCategory(currentCategoryId);
+                        });
+                });
         }
 
-        // ================== РАЗДЕЛ ЗАКАЗЫ ==================
+        // ================================================================
+        // РАЗДЕЛ ЗАКАЗЫ
+        // ================================================================
         function renderOrdersSection() {
-            const container = document.getElementById('ordersContent');
+            var container = document.getElementById('ordersContent');
             if (!container) return;
             if (window.isAdmin) {
-                let html = `
+                var html = `
                     <div style="display:flex; gap:10px; margin-bottom:15px;">
                         <button class="btn ${adminOrdersMode === 'services' ? 'active' : ''}" onclick="switchAdminMode('services')">Услуги</button>
                         <button class="btn ${adminOrdersMode === 'orders' ? 'active' : ''}" onclick="switchAdminMode('orders')">Заказы</button>
@@ -1339,42 +1371,40 @@
                 }
                 container.innerHTML = html;
                 if (adminOrdersMode === 'orders') {
-                    supabase.from('orders').select('*').order('timestamp', { ascending: false })
-                        .then(({ data, error }) => {
-                            if (!error && data) renderOrdersList(data);
+                    window._supabaseClient.from('orders').select('*').order('timestamp', { ascending: false })
+                        .then(function(res) {
+                            if (!res.error && res.data) renderOrdersList(res.data);
                         });
                 }
                 if (adminOrdersMode === 'services') {
                     setupSortableForServices();
                 }
             } else {
-                let html = '<h3 style="margin-bottom:15px;">Наши услуги</h3>';
+                var html = '<h3 style="margin-bottom:15px;">Наши услуги</h3>';
                 html += renderServicesForUser();
-                html += `<div style="margin-top:20px;">
-                    <button class="btn" onclick="openContactModal()">📩 Написать дизайнеру</button>
-                </div>`;
+                html += '<div style="margin-top:20px;"><button class="btn" onclick="openContactModal()">📩 Написать дизайнеру</button></div>';
                 container.innerHTML = html;
             }
         }
 
         function renderServicesForUser() {
             if (servicesData.length === 0) return '<p style="color:var(--text-muted)">Услуги пока не добавлены</p>';
-            let html = '<div class="order-list" style="display:flex; flex-direction:column; gap:12px;">';
-            servicesData.forEach(s => {
-                const basePrice = s.price || 0;
-                const basePriceTo = s.price_to || basePrice;
-                let priceText = '';
-                let discountApplied = false;
+            var html = '<div class="order-list" style="display:flex; flex-direction:column; gap:12px;">';
+            servicesData.forEach(function(s) {
+                var basePrice = s.price || 0;
+                var basePriceTo = s.price_to || basePrice;
+                var priceText = '';
+                var discountApplied = false;
                 if (currentDiscount > 0 && !(s.name === 'Telegram Mini Apps' && (currentDiscount === 50 || currentDiscount === 100))) {
                     discountApplied = true;
-                    const newFrom = Math.round(basePrice * (1 - currentDiscount / 100));
-                    const newTo = Math.round(basePriceTo * (1 - currentDiscount / 100));
+                    var newFrom = Math.round(basePrice * (1 - currentDiscount / 100));
+                    var newTo = Math.round(basePriceTo * (1 - currentDiscount / 100));
                     priceText = `
                         <span class="price-old">${basePrice}${basePriceTo && basePriceTo !== basePrice ? ' - ' + basePriceTo : ''}</span>
                         <span class="price-new">${newFrom}${newTo && newTo !== newFrom ? ' - ' + newTo : ''} ₽</span>
                     `;
                 } else {
-                    priceText = basePriceTo ? `от ${basePrice} до ${basePriceTo} ₽` : (basePrice ? `${basePrice} ₽` : 'Цена не указана');
+                    priceText = basePriceTo ? 'от ' + basePrice + ' до ' + basePriceTo + ' ₽' : (basePrice ? basePrice + ' ₽' : 'Цена не указана');
                 }
                 html += `
                     <div class="order-item" style="cursor:pointer;" onclick="placeOrder('${s.name}', ${discountApplied})">
@@ -1392,9 +1422,9 @@
         }
 
         function renderServicesForAdmin() {
-            let html = '<div class="order-list" id="servicesList" style="display:flex; flex-direction:column; gap:12px;">';
-            servicesData.forEach(s => {
-                const priceText = s.price_to ? `от ${s.price} до ${s.price_to} ₽` : (s.price ? `${s.price} ₽` : 'Цена не указана');
+            var html = '<div class="order-list" id="servicesList" style="display:flex; flex-direction:column; gap:12px;">';
+            servicesData.forEach(function(s) {
+                var priceText = s.price_to ? 'от ' + s.price + ' до ' + s.price_to + ' ₽' : (s.price ? s.price + ' ₽' : 'Цена не указана');
                 html += `
                     <div class="order-item" data-id="${s.id}" style="cursor: grab;">
                         <div class="order-info">
@@ -1410,7 +1440,7 @@
                 `;
             });
             html += '</div>';
-            html += `<div style="margin-top:15px;"><button class="btn" onclick="addService()">➕ Добавить услугу</button></div>`;
+            html += '<div style="margin-top:15px;"><button class="btn" onclick="addService()">➕ Добавить услугу</button></div>';
             return html;
         }
 
@@ -1420,20 +1450,20 @@
         }
 
         function renderOrdersList(orders) {
-            const container = document.getElementById('adminOrdersList');
+            var container = document.getElementById('adminOrdersList');
             if (!container) return;
-            let html = '';
+            var html = '';
             if (!orders || orders.length === 0) {
                 html = '<p style="color:var(--text-muted)">Нет заказов</p>';
             } else {
-                orders.forEach(order => {
-                    const userName = order.user_name || 'Пользователь';
-                    const userUsername = order.user_username || null;
+                orders.forEach(function(order) {
+                    var userName = order.user_name || 'Пользователь';
+                    var userUsername = order.user_username || null;
                     html += `
                         <div class="order-item">
                             <div class="order-info">
                                 <h4>${order.service}</h4>
-                                <p>От: ${userName} ${userUsername ? `(<a href="https://t.me/${userUsername}" target="_blank">@${userUsername}</a>)` : ''}</p>
+                                <p>От: ${userName} ${userUsername ? '(<a href="https://t.me/' + userUsername + '" target="_blank">@' + userUsername + '</a>)' : ''}</p>
                                 <p>${order.time}</p>
                             </div>
                             <button class="btn" onclick="deleteOrder(${order.id})">🗑️</button>
@@ -1444,10 +1474,12 @@
             container.innerHTML = html;
         }
 
-        // ================== УПРАВЛЕНИЕ УСЛУГАМИ ==================
+        // ================================================================
+        // УПРАВЛЕНИЕ УСЛУГАМИ
+        // ================================================================
         function addService() {
-            const modal = document.getElementById('modalOverlay');
-            const content = document.getElementById('modalContent');
+            var modal = document.getElementById('modalOverlay');
+            var content = document.getElementById('modalContent');
             content.innerHTML = `
                 <h3>Добавить услугу</h3>
                 <input type="text" id="serviceEmoji" placeholder="Эмодзи (например, 🎨)">
@@ -1461,91 +1493,82 @@
             modal.style.display = 'flex';
         }
 
-        async function saveNewService() {
-            const emoji = document.getElementById('serviceEmoji').value.trim() || '✨';
-            const name = document.getElementById('serviceName').value.trim();
-            const description = document.getElementById('serviceDescription').value.trim();
-            const priceFrom = document.getElementById('servicePriceFrom').value.trim();
-            const priceTo = document.getElementById('servicePriceTo').value.trim();
+        function saveNewService() {
+            var emoji = document.getElementById('serviceEmoji').value.trim() || '✨';
+            var name = document.getElementById('serviceName').value.trim();
+            var description = document.getElementById('serviceDescription').value.trim();
+            var priceFrom = document.getElementById('servicePriceFrom').value.trim();
+            var priceTo = document.getElementById('servicePriceTo').value.trim();
             if (!name) { alert('Введите название услуги'); return; }
-
-            const existing = servicesData.find(s => s.name.toLowerCase() === name.toLowerCase());
+            var existing = servicesData.find(function(s) { return s.name.toLowerCase() === name.toLowerCase(); });
             if (existing) {
                 alert('Услуга с таким названием уже существует');
                 return;
             }
-
-            const price = priceFrom ? parseFloat(priceFrom) : null;
-            const priceToVal = priceTo ? parseFloat(priceTo) : null;
-            const nextOrder = servicesData.length > 0 ? Math.max(...servicesData.map(s => s.order ?? 0)) + 1 : 0;
-            await supabase
-                .from('services')
-                .insert([{
-                    emoji, name, description,
-                    price: price,
-                    price_to: priceToVal,
-                    order: nextOrder
-                }]);
-            closeModal();
+            var price = priceFrom ? parseFloat(priceFrom) : null;
+            var priceToVal = priceTo ? parseFloat(priceTo) : null;
+            var nextOrder = servicesData.length > 0 ? Math.max.apply(null, servicesData.map(function(s) { return s.order || 0; })) + 1 : 0;
+            window._supabaseClient.from('services').insert([{
+                emoji: emoji, name: name, description: description,
+                price: price, price_to: priceToVal, order: nextOrder
+            }]).then(function() {
+                closeModal();
+            });
         }
 
-        async function editService(id) {
-            const { data: s, error } = await supabase
-                .from('services')
-                .select('*')
-                .eq('id', id)
-                .single();
-            if (error || !s) return;
-            const modal = document.getElementById('modalOverlay');
-            const content = document.getElementById('modalContent');
-            content.innerHTML = `
-                <h3>Редактировать услугу</h3>
-                <input type="text" id="serviceEmoji" placeholder="Эмодзи" value="${s.emoji}">
-                <input type="text" id="serviceName" placeholder="Название услуги" value="${s.name}">
-                <input type="text" id="serviceDescription" placeholder="Описание" value="${s.description}">
-                <input type="number" id="servicePriceFrom" placeholder="Цена от" value="${s.price || ''}">
-                <input type="number" id="servicePriceTo" placeholder="Цена до" value="${s.price_to || ''}">
-                <button class="btn" onclick="saveServiceChanges(${id})">Сохранить</button>
-                <button class="btn" onclick="closeModal()">Отмена</button>
-            `;
-            modal.style.display = 'flex';
+        function editService(id) {
+            var supabase = window._supabaseClient;
+            supabase.from('services').select('*').eq('id', id).single()
+                .then(function(res) {
+                    if (res.error || !res.data) return;
+                    var s = res.data;
+                    var modal = document.getElementById('modalOverlay');
+                    var content = document.getElementById('modalContent');
+                    content.innerHTML = `
+                        <h3>Редактировать услугу</h3>
+                        <input type="text" id="serviceEmoji" placeholder="Эмодзи" value="${s.emoji}">
+                        <input type="text" id="serviceName" placeholder="Название услуги" value="${s.name}">
+                        <input type="text" id="serviceDescription" placeholder="Описание" value="${s.description}">
+                        <input type="number" id="servicePriceFrom" placeholder="Цена от" value="${s.price || ''}">
+                        <input type="number" id="servicePriceTo" placeholder="Цена до" value="${s.price_to || ''}">
+                        <button class="btn" onclick="saveServiceChanges(${id})">Сохранить</button>
+                        <button class="btn" onclick="closeModal()">Отмена</button>
+                    `;
+                    modal.style.display = 'flex';
+                });
         }
 
-        async function saveServiceChanges(id) {
-            const emoji = document.getElementById('serviceEmoji').value.trim() || '✨';
-            const name = document.getElementById('serviceName').value.trim();
-            const description = document.getElementById('serviceDescription').value.trim();
-            const priceFrom = document.getElementById('servicePriceFrom').value.trim();
-            const priceTo = document.getElementById('servicePriceTo').value.trim();
+        function saveServiceChanges(id) {
+            var emoji = document.getElementById('serviceEmoji').value.trim() || '✨';
+            var name = document.getElementById('serviceName').value.trim();
+            var description = document.getElementById('serviceDescription').value.trim();
+            var priceFrom = document.getElementById('servicePriceFrom').value.trim();
+            var priceTo = document.getElementById('servicePriceTo').value.trim();
             if (!name) { alert('Введите название услуги'); return; }
-            const price = priceFrom ? parseFloat(priceFrom) : null;
-            const priceToVal = priceTo ? parseFloat(priceTo) : null;
-            await supabase
-                .from('services')
-                .update({
-                    emoji, name, description,
-                    price: price,
-                    price_to: priceToVal
-                })
-                .eq('id', id);
-            closeModal();
+            var price = priceFrom ? parseFloat(priceFrom) : null;
+            var priceToVal = priceTo ? parseFloat(priceTo) : null;
+            window._supabaseClient.from('services').update({
+                emoji: emoji, name: name, description: description,
+                price: price, price_to: priceToVal
+            }).eq('id', id).then(function() {
+                closeModal();
+            });
         }
 
-        async function deleteService(id) {
+        function deleteService(id) {
             if (confirm('Удалить услугу?')) {
-                await supabase
-                    .from('services')
-                    .delete()
-                    .eq('id', id);
+                window._supabaseClient.from('services').delete().eq('id', id);
             }
         }
 
-        // ================== ПОЛНОЭКРАННЫЙ ПРОСМОТР ==================
-        function viewImage(src, title, allowSave = false) {
+        // ================================================================
+        // ПОЛНОЭКРАННЫЙ ПРОСМОТР
+        // ================================================================
+        function viewImage(src, title, allowSave) {
             currentViewImageSrc = src;
-            const viewer = document.getElementById('imageViewer');
-            const img = document.getElementById('imageViewerImg');
-            const saveBtn = document.getElementById('imageViewerSaveBtn');
+            var viewer = document.getElementById('imageViewer');
+            var img = document.getElementById('imageViewerImg');
+            var saveBtn = document.getElementById('imageViewerSaveBtn');
             img.onload = function() { viewer.style.display = 'flex'; };
             img.onerror = function() { viewer.style.display = 'none'; };
             img.src = src;
@@ -1565,109 +1588,90 @@
 
         function saveCurrentImage() {
             if (!currentViewImageSrc) return;
-            if (currentViewImageSrc.startsWith('data:')) {
-                const base64 = currentViewImageSrc.split(',')[1];
-                const byteChars = atob(base64);
-                const byteNumbers = new Array(byteChars.length);
-                for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
-                const byteArray = new Uint8Array(byteNumbers);
-                const blob = new Blob([byteArray], {type: 'image/jpeg'});
-                const blobUrl = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = blobUrl;
-                a.download = 'image.jpg';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-            } else {
-                const a = document.createElement('a');
-                a.href = currentViewImageSrc;
-                a.download = 'image.jpg';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-            }
+            var a = document.createElement('a');
+            a.href = currentViewImageSrc;
+            a.download = 'image.jpg';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
         }
+
+        // Обработчики зума
+        document.addEventListener('DOMContentLoaded', function() {
+            var imageViewer = document.getElementById('imageViewer');
+            var img = document.getElementById('imageViewerImg');
+            var panX = 0, panY = 0;
+            var startPanX = 0, startPanY = 0;
+            var isPanning = false;
+
+            imageViewer.addEventListener('touchstart', function(e) {
+                if (e.touches.length === 2) {
+                    startDistance = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                    startScale = scale;
+                } else if (e.touches.length === 1 && scale > 1) {
+                    isPanning = true;
+                    startPanX = e.touches[0].clientX - panX;
+                    startPanY = e.touches[0].clientY - panY;
+                }
+            });
+            imageViewer.addEventListener('touchmove', function(e) {
+                if (e.touches.length === 2) {
+                    e.preventDefault();
+                    var currentDistance = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                    scale = Math.min(Math.max(startScale * currentDistance / startDistance, 1), 3);
+                    img.style.transform = 'scale(' + scale + ')';
+                    if (scale === 1) {
+                        panX = 0; panY = 0;
+                        img.style.left = '0px';
+                        img.style.top = '0px';
+                    } else {
+                        var maxX = (img.offsetWidth * scale - img.offsetWidth) / 2;
+                        var maxY = (img.offsetHeight * scale - img.offsetHeight) / 2;
+                        panX = Math.max(-maxX, Math.min(maxX, panX));
+                        panY = Math.max(-maxY, Math.min(maxY, panY));
+                        img.style.left = panX + 'px';
+                        img.style.top = panY + 'px';
+                    }
+                } else if (e.touches.length === 1 && isPanning) {
+                    e.preventDefault();
+                    panX = e.touches[0].clientX - startPanX;
+                    panY = e.touches[0].clientY - startPanY;
+                    var maxX = (img.offsetWidth * scale - img.offsetWidth) / 2;
+                    var maxY = (img.offsetHeight * scale - img.offsetHeight) / 2;
+                    panX = Math.max(-maxX, Math.min(maxX, panX));
+                    panY = Math.max(-maxY, Math.min(maxY, panY));
+                    img.style.left = panX + 'px';
+                    img.style.top = panY + 'px';
+                }
+            });
+            imageViewer.addEventListener('touchend', function() { isPanning = false; });
+            imageViewer.addEventListener('dblclick', function() {
+                scale = scale === 1 ? 2 : 1;
+                img.style.transform = 'scale(' + scale + ')';
+                if (scale === 1) {
+                    panX = 0; panY = 0;
+                    img.style.left = '0px';
+                    img.style.top = '0px';
+                }
+            });
+        });
 
         document.getElementById('imageViewerSaveBtn').addEventListener('click', saveCurrentImage);
         document.getElementById('imageViewerClose').addEventListener('click', closeImageViewer);
 
-        // Зум и панорамирование
-        const imageViewer = document.getElementById('imageViewer');
-        const imageViewerImg = document.getElementById('imageViewerImg');
-        let panX = 0, panY = 0;
-        let startPanX = 0, startPanY = 0;
-        let isPanning = false;
-
-        imageViewer.addEventListener('touchstart', (e) => {
-            if (e.touches.length === 2) {
-                startDistance = getDistance(e.touches[0], e.touches[1]);
-                startScale = scale;
-            } else if (e.touches.length === 1 && scale > 1) {
-                isPanning = true;
-                startPanX = e.touches[0].clientX - panX;
-                startPanY = e.touches[0].clientY - panY;
-            }
-        });
-        imageViewer.addEventListener('touchmove', (e) => {
-            if (e.touches.length === 2) {
-                e.preventDefault();
-                const currentDistance = getDistance(e.touches[0], e.touches[1]);
-                scale = Math.min(Math.max(startScale * currentDistance / startDistance, 1), 3);
-                imageViewerImg.style.transform = `scale(${scale})`;
-                if (scale === 1) {
-                    panX = 0; panY = 0;
-                    imageViewerImg.style.left = '0px';
-                    imageViewerImg.style.top = '0px';
-                } else {
-                    const maxX = (imageViewerImg.offsetWidth * scale - imageViewerImg.offsetWidth) / 2;
-                    const maxY = (imageViewerImg.offsetHeight * scale - imageViewerImg.offsetHeight) / 2;
-                    panX = Math.max(-maxX, Math.min(maxX, panX));
-                    panY = Math.max(-maxY, Math.min(maxY, panY));
-                    imageViewerImg.style.left = panX + 'px';
-                    imageViewerImg.style.top = panY + 'px';
-                }
-            } else if (e.touches.length === 1 && isPanning) {
-                e.preventDefault();
-                panX = e.touches[0].clientX - startPanX;
-                panY = e.touches[0].clientY - startPanY;
-                const maxX = (imageViewerImg.offsetWidth * scale - imageViewerImg.offsetWidth) / 2;
-                const maxY = (imageViewerImg.offsetHeight * scale - imageViewerImg.offsetHeight) / 2;
-                panX = Math.max(-maxX, Math.min(maxX, panX));
-                panY = Math.max(-maxY, Math.min(maxY, panY));
-                imageViewerImg.style.left = panX + 'px';
-                imageViewerImg.style.top = panY + 'px';
-            }
-        });
-        imageViewer.addEventListener('touchend', () => { isPanning = false; });
-        imageViewer.addEventListener('dblclick', () => {
-            scale = scale === 1 ? 2 : 1;
-            imageViewerImg.style.transform = `scale(${scale})`;
-            if (scale === 1) {
-                panX = 0; panY = 0;
-                imageViewerImg.style.left = '0px';
-                imageViewerImg.style.top = '0px';
-            }
-        });
-
-        function getDistance(touch1, touch2) {
-            const dx = touch1.clientX - touch2.clientX;
-            const dy = touch1.clientY - touch2.clientY;
-            return Math.sqrt(dx*dx + dy*dy);
-        }
-
-        // ================== ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ ==================
+        // ================================================================
+        // ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ
+        // ================================================================
         function placeOrder(service, discountApplied) {
             if (isOrderProcessing) return;
             isOrderProcessing = true;
-            setTimeout(() => { isOrderProcessing = false; }, 2000);
+            setTimeout(function() { isOrderProcessing = false; }, 2000);
 
-            const user = window.currentUser?.username || window.currentUser?.first_name || 'Пользователь';
-            const userName = window.currentUser?.first_name || window.currentUser?.username || 'Пользователь';
-            const userUsername = window.currentUser?.username || null;
-            const order = {
-                service,
+            var user = window.currentUser;
+            var userName = user?.first_name || user?.username || 'Пользователь';
+            var userUsername = user?.username || null;
+            var order = {
+                service: service,
                 user_name: userName,
                 user_username: userUsername,
                 time: new Date().toLocaleString(),
@@ -1675,28 +1679,25 @@
                 discount_applied: discountApplied || false,
                 discount_percent: discountApplied ? currentDiscount : 0
             };
-            supabase.from('orders').insert([order]);
-            
+            window._supabaseClient.from('orders').insert([order]);
             if (discountApplied) {
                 currentDiscount = 0;
                 localStorage.removeItem('lastSpinDiscount');
                 lastSpinDiscount = 0;
                 renderOrdersSection();
             }
-
-            const paymentUrl = 'https://your-payment-link.com/pay?service=' + encodeURIComponent(service);
-            const chatText = encodeURIComponent(`Я оплатил услугу: ${service}, хочу обговорить детали работы.`);
+            var chatText = encodeURIComponent('Я оплатил услугу: ' + service + ', хочу обговорить детали работы.');
             if (window.telegramAvailable && window.tg) {
-                window.tg.openTelegramLink(`https://t.me/Mark1zDesign_bot?text=${chatText}`);
-                window.tg.openLink(paymentUrl);
+                window.tg.openTelegramLink('https://t.me/Mark1zDesign_bot?text=' + chatText);
+                window.tg.openLink('https://your-payment-link.com/pay?service=' + encodeURIComponent(service));
             } else {
-                window.open(`https://t.me/Mark1zDesign_bot?text=${chatText}`, '_blank');
-                window.open(paymentUrl, '_blank');
+                window.open('https://t.me/Mark1zDesign_bot?text=' + chatText, '_blank');
+                window.open('https://your-payment-link.com/pay?service=' + encodeURIComponent(service), '_blank');
             }
         }
 
         function downloadWork(imageData, title) {
-            const a = document.createElement('a');
+            var a = document.createElement('a');
             a.href = imageData;
             a.download = title + '.jpg';
             document.body.appendChild(a);
@@ -1704,10 +1705,12 @@
             document.body.removeChild(a);
         }
 
-        // ================== ОТЗЫВЫ ==================
+        // ================================================================
+        // ОТЗЫВЫ
+        // ================================================================
         function openReviewModal() {
-            const modal = document.getElementById('modalOverlay');
-            const content = document.getElementById('modalContent');
+            var modal = document.getElementById('modalOverlay');
+            var content = document.getElementById('modalContent');
             content.innerHTML = `
                 <h3>Оставьте отзыв</h3>
                 <div id="starRating" style="font-size: 30px; cursor: pointer;">
@@ -1729,9 +1732,9 @@
             modal.style.display = 'flex';
             tempReviewFiles = [];
             selectedRating = 0;
-            document.querySelectorAll('#starRating span').forEach(star => {
-                star.addEventListener('click', () => {
-                    const value = parseInt(star.dataset.value);
+            document.querySelectorAll('#starRating span').forEach(function(star) {
+                star.addEventListener('click', function() {
+                    var value = parseInt(star.dataset.value);
                     selectedRating = value;
                     updateStarRating(value);
                 });
@@ -1739,147 +1742,138 @@
         }
 
         function updateStarRating(value) {
-            document.querySelectorAll('#starRating span').forEach(star => {
-                const starValue = parseInt(star.dataset.value);
+            document.querySelectorAll('#starRating span').forEach(function(star) {
+                var starValue = parseInt(star.dataset.value);
                 star.textContent = starValue <= value ? '★' : '☆';
                 star.style.color = starValue <= value ? '#fbbf24' : 'inherit';
             });
         }
 
-        async function handleReviewImages(event) {
-            const files = event.target.files;
+        function handleReviewImages(event) {
+            var files = event.target.files;
             if (!files || files.length === 0) return;
             if (files.length + tempReviewFiles.length > 3) {
                 alert('Можно прикрепить не более 3 изображений');
                 return;
             }
-            for (const file of files) {
+            for (var i = 0; i < files.length; i++) {
                 if (tempReviewFiles.length >= 3) break;
-                tempReviewFiles.push(file);
-                const reader = new FileReader();
+                tempReviewFiles.push(files[i]);
+                var reader = new FileReader();
                 reader.onload = function(e) {
-                    const preview = document.getElementById('reviewImagesPreview');
-                    const thumb = document.createElement('div');
+                    var preview = document.getElementById('reviewImagesPreview');
+                    var thumb = document.createElement('div');
                     thumb.className = 'preview-thumb';
-                    thumb.innerHTML = `
-                        <img src="${e.target.result}" alt="миниатюра">
-                        <button class="remove-btn" onclick="removeReviewImage(${tempReviewFiles.indexOf(file)})">×</button>
-                    `;
+                    thumb.innerHTML = '<img src="' + e.target.result + '" alt="миниатюра"><button class="remove-btn" onclick="removeReviewImage(' + (tempReviewFiles.indexOf(files[i])) + ')">×</button>';
                     preview.appendChild(thumb);
                 };
-                reader.readAsDataURL(file);
+                reader.readAsDataURL(files[i]);
             }
         }
 
         function removeReviewImage(index) {
             tempReviewFiles.splice(index, 1);
-            const preview = document.getElementById('reviewImagesPreview');
+            var preview = document.getElementById('reviewImagesPreview');
             preview.innerHTML = '';
-            tempReviewFiles.forEach((file, idx) => {
-                const reader = new FileReader();
+            tempReviewFiles.forEach(function(file, idx) {
+                var reader = new FileReader();
                 reader.onload = function(e) {
-                    const thumb = document.createElement('div');
+                    var thumb = document.createElement('div');
                     thumb.className = 'preview-thumb';
-                    thumb.innerHTML = `
-                        <img src="${e.target.result}" alt="миниатюра">
-                        <button class="remove-btn" onclick="removeReviewImage(${idx})">×</button>
-                    `;
+                    thumb.innerHTML = '<img src="' + e.target.result + '" alt="миниатюра"><button class="remove-btn" onclick="removeReviewImage(' + idx + ')">×</button>';
                     preview.appendChild(thumb);
                 };
                 reader.readAsDataURL(file);
             });
         }
 
-        async function submitReview() {
-            const text = document.getElementById('reviewText').value.trim();
+        function submitReview() {
+            var text = document.getElementById('reviewText').value.trim();
             if (!text) { alert('Введите текст отзыва'); return; }
             if (!selectedRating) { alert('Поставьте оценку'); return; }
-
-            const user = window.currentUser;
+            var user = window.currentUser;
             if (!user || !user.id) {
                 alert('Не удалось определить пользователя');
                 return;
             }
-
-            // Проверяем последний отзыв
-            const { data: lastReview, error } = await supabase
-                .from('user_last_review')
-                .select('timestamp')
-                .eq('user_id', user.id.toString())
-                .single();
-            if (!error && lastReview) {
-                const lastTimestamp = new Date(lastReview.timestamp).getTime();
-                const now = Date.now();
-                if (now - lastTimestamp < 3600000) {
-                    alert('Вы сможете оставить новый отзыв через 1 час после предыдущего.');
-                    return;
-                }
-            }
-
-            // Загружаем изображения в Storage
-            const imageUrls = [];
-            for (const file of tempReviewFiles) {
-                const compressedDataUrl = await compressImage(file, 600, 0.6);
-                const blob = dataURLToBlob(compressedDataUrl);
-                const uploadFile = new File([blob], file.name, { type: 'image/jpeg' });
-                try {
-                    const url = await uploadFileToSupabase(uploadFile, `reviews/${user.id}`);
-                    imageUrls.push(url);
-                } catch (error) {
-                    alert('Ошибка загрузки изображения: ' + error.message);
-                    return;
-                }
-            }
-
-            const authorName = user.first_name || user.username || 'Пользователь';
-            const authorUsername = user.username || null;
-            const photoUrl = user.photo_url || null;
-            const authorId = user.id;
-
-            const reviewData = {
-                author_name: authorName,
-                author_username: authorUsername,
-                author_id: authorId.toString(),
-                photo_url: photoUrl,
-                stars: selectedRating,
-                text: text,
-                images: imageUrls,
-                timestamp: new Date().toISOString()
-            };
-
-            await supabase.from('reviews').insert([reviewData]);
-            await supabase.from('user_last_review').upsert({
-                user_id: authorId.toString(),
-                timestamp: new Date().toISOString()
-            });
-            closeModal();
-            tempReviewFiles = [];
+            var supabase = window._supabaseClient;
+            supabase.from('user_last_review').select('timestamp').eq('user_id', user.id.toString()).single()
+                .then(function(res) {
+                    if (!res.error && res.data) {
+                        var lastTimestamp = new Date(res.data.timestamp).getTime();
+                        var now = Date.now();
+                        if (now - lastTimestamp < 3600000) {
+                            alert('Вы сможете оставить новый отзыв через 1 час после предыдущего.');
+                            return;
+                        }
+                    }
+                    var imageUrls = [];
+                    var uploadPromises = tempReviewFiles.map(function(file) {
+                        return compressImage(file, 600, 0.6)
+                            .then(function(compressedDataUrl) {
+                                var blob = dataURLToBlob(compressedDataUrl);
+                                var uploadFile = new File([blob], file.name, { type: 'image/jpeg' });
+                                return uploadFileToSupabase(uploadFile, 'reviews/' + user.id);
+                            });
+                    });
+                    return Promise.all(uploadPromises);
+                })
+                .then(function(urls) {
+                    var authorName = user.first_name || user.username || 'Пользователь';
+                    var authorUsername = user.username || null;
+                    var photoUrl = user.photo_url || null;
+                    var authorId = user.id;
+                    var reviewData = {
+                        author_name: authorName,
+                        author_username: authorUsername,
+                        author_id: authorId.toString(),
+                        photo_url: photoUrl,
+                        stars: selectedRating,
+                        text: text,
+                        images: urls || [],
+                        timestamp: new Date().toISOString()
+                    };
+                    return supabase.from('reviews').insert([reviewData]);
+                })
+                .then(function() {
+                    return supabase.from('user_last_review').upsert({
+                        user_id: user.id.toString(),
+                        timestamp: new Date().toISOString()
+                    });
+                })
+                .then(function() {
+                    closeModal();
+                    tempReviewFiles = [];
+                })
+                .catch(function(err) {
+                    alert('Ошибка: ' + err.message);
+                });
         }
 
         function renderReviews(reviews) {
-            const container = document.getElementById('reviewsContainer');
+            var container = document.getElementById('reviewsContainer');
             if (!container) return;
-            let html = `<h3 style="margin-bottom:15px;">Отзывы (${reviews.length})</h3>`;
-            reviews.forEach(review => {
-                const authorName = review.author_name || 'Пользователь';
-                const authorUsername = review.author_username || null;
-                const isAuthor = window.currentUser && (window.currentUser.id === review.author_id || window.currentUser.username === review.author_username);
-                let avatarHtml = `<div class="review-avatar">${(authorName && authorName !== 'Пользователь') ? authorName.charAt(0) : '👤'}</div>`;
-                if (review.photo_url) avatarHtml = `<div class="review-avatar"><img src="${review.photo_url}" alt="avatar"></div>`;
-                let imagesHtml = '';
+            var html = '<h3 style="margin-bottom:15px;">Отзывы (' + reviews.length + ')</h3>';
+            reviews.forEach(function(review) {
+                var authorName = review.author_name || 'Пользователь';
+                var authorUsername = review.author_username || null;
+                var isAuthor = window.currentUser && (window.currentUser.id === review.author_id || window.currentUser.username === review.author_username);
+                var avatarHtml = '<div class="review-avatar">' + ((authorName && authorName !== 'Пользователь') ? authorName.charAt(0) : '👤') + '</div>';
+                if (review.photo_url) avatarHtml = '<div class="review-avatar"><img src="' + review.photo_url + '" alt="avatar"></div>';
+                var imagesHtml = '';
                 if (review.images && review.images.length > 0) {
                     imagesHtml = '<div class="review-images">';
-                    review.images.forEach(img => {
-                        imagesHtml += `<img src="${img}" alt="отзыв" class="${review.images.length === 1 ? 'single' : ''}" onclick="viewImage('${img}', 'Отзыв', false)">`;
+                    review.images.forEach(function(img) {
+                        imagesHtml += '<img src="' + img + '" alt="отзыв" class="' + (review.images.length === 1 ? 'single' : '') + '" onclick="viewImage(\'' + img + '\', \'Отзыв\', false)">';
                     });
                     imagesHtml += '</div>';
                 }
-                let actionsHtml = '';
+                var actionsHtml = '';
                 if (window.isAdmin) {
-                    actionsHtml += `<button class="btn" onclick="editReview(${review.id})">✏️</button>`;
-                    actionsHtml += `<button class="btn" onclick="deleteReview(${review.id})">🗑️</button>`;
+                    actionsHtml += '<button class="btn" onclick="editReview(' + review.id + ')">✏️</button>';
+                    actionsHtml += '<button class="btn" onclick="deleteReview(' + review.id + ')">🗑️</button>';
                 } else if (isAuthor) {
-                    actionsHtml += `<button class="btn" onclick="deleteReview(${review.id})">🗑️ Удалить</button>`;
+                    actionsHtml += '<button class="btn" onclick="deleteReview(' + review.id + ')">🗑️ Удалить</button>';
                 }
                 html += `
                     <div class="card review-card">
@@ -1887,74 +1881,75 @@
                             ${avatarHtml}
                             <div>
                                 <strong>${authorName}</strong>
-                                ${authorUsername ? `<div style="font-size:12px; color:var(--text-muted);">@${authorUsername}</div>` : ''}
+                                ${authorUsername ? '<div style="font-size:12px; color:var(--text-muted);">@' + authorUsername + '</div>' : ''}
                                 <div class="stars">${'★'.repeat(review.stars)}${'☆'.repeat(5 - review.stars)}</div>
                             </div>
                         </div>
                         <p class="review-text">${review.text}</p>
                         ${imagesHtml}
-                        ${actionsHtml ? `<div style="margin-top:10px">${actionsHtml}</div>` : ''}
+                        ${actionsHtml ? '<div style="margin-top:10px">' + actionsHtml + '</div>' : ''}
                     </div>
                 `;
             });
             container.innerHTML = html;
         }
 
-        // ================== АДМИН-ФУНКЦИИ ==================
-        async function editAbout() {
-            const { data, error } = await supabase
-                .from('about')
-                .select('*')
-                .eq('id', 'main')
-                .single();
-            if (error || !data) return;
-            const newHighlight = prompt('Статус:', data.highlight);
-            if (newHighlight !== null) await supabase.from('about').update({ highlight: newHighlight }).eq('id', 'main');
-            const newText1 = prompt('Текст 1:', data.text1);
-            if (newText1 !== null) await supabase.from('about').update({ text1: newText1 }).eq('id', 'main');
-            const newText2 = prompt('Текст 2:', data.text2);
-            if (newText2 !== null) await supabase.from('about').update({ text2: newText2 }).eq('id', 'main');
+        // ================================================================
+        // АДМИН-ФУНКЦИИ
+        // ================================================================
+        function editAbout() {
+            var supabase = window._supabaseClient;
+            supabase.from('about').select('*').eq('id', 'main').single()
+                .then(function(res) {
+                    if (res.error || !res.data) return;
+                    var data = res.data;
+                    var newHighlight = prompt('Статус:', data.highlight);
+                    if (newHighlight !== null) supabase.from('about').update({ highlight: newHighlight }).eq('id', 'main');
+                    var newText1 = prompt('Текст 1:', data.text1);
+                    if (newText1 !== null) supabase.from('about').update({ text1: newText1 }).eq('id', 'main');
+                    var newText2 = prompt('Текст 2:', data.text2);
+                    if (newText2 !== null) supabase.from('about').update({ text2: newText2 }).eq('id', 'main');
+                });
         }
 
         function addCategory() {
-            const name = prompt('Название категории:');
+            var name = prompt('Название категории:');
             if (!name) return;
-            const icon = prompt('Эмодзи-иконка:');
+            var icon = prompt('Эмодзи-иконка:');
             if (!icon) return;
-            const nextOrder = portfolioCategoriesData.length > 0 ? Math.max(...portfolioCategoriesData.map(c => c.order ?? 0)) + 1 : 0;
-            supabase.from('portfolio_categories').insert([{ name, icon, items: [], order: nextOrder }]);
+            var nextOrder = portfolioCategoriesData.length > 0 ? Math.max.apply(null, portfolioCategoriesData.map(function(c) { return c.order || 0; })) + 1 : 0;
+            window._supabaseClient.from('portfolio_categories').insert([{ name: name, icon: icon, items: [], order: nextOrder }]);
         }
 
-        async function editReview(id) {
-            const newText = prompt('Новый текст отзыва:');
+        function editReview(id) {
+            var newText = prompt('Новый текст отзыва:');
             if (newText !== null) {
-                await supabase.from('reviews').update({ text: newText }).eq('id', id);
+                window._supabaseClient.from('reviews').update({ text: newText }).eq('id', id);
             }
         }
 
-        async function deleteReview(id) {
+        function deleteReview(id) {
             if (confirm('Удалить отзыв?')) {
-                const { data: review } = await supabase
-                    .from('reviews')
-                    .select('author_id')
-                    .eq('id', id)
-                    .single();
-                if (review && window.currentUser && review.author_id === window.currentUser.id.toString()) {
-                    await supabase.from('user_last_review').delete().eq('user_id', review.author_id);
-                }
-                await supabase.from('reviews').delete().eq('id', id);
+                var supabase = window._supabaseClient;
+                supabase.from('reviews').select('author_id').eq('id', id).single()
+                    .then(function(res) {
+                        if (res.data && window.currentUser && res.data.author_id === window.currentUser.id.toString()) {
+                            supabase.from('user_last_review').delete().eq('user_id', res.data.author_id);
+                        }
+                        supabase.from('reviews').delete().eq('id', id);
+                    });
             }
         }
 
-        async function deleteOrder(id) {
+        function deleteOrder(id) {
             if (confirm('Удалить заказ?')) {
-                await supabase.from('orders').delete().eq('id', id);
+                window._supabaseClient.from('orders').delete().eq('id', id);
             }
         }
 
         function clearOrders() {
             if (confirm('Очистить все заказы?')) {
-                supabase.from('orders').delete().neq('id', 0);
+                window._supabaseClient.from('orders').delete().neq('id', 0);
             }
         }
 
@@ -1962,10 +1957,12 @@
             document.getElementById('modalOverlay').style.display = 'none';
         }
 
-        // ================== СМЕНА ЛОГОТИПА ==================
+        // ================================================================
+        // СМЕНА ЛОГОТИПА
+        // ================================================================
         function changeLogo() {
-            const modal = document.getElementById('modalOverlay');
-            const content = document.getElementById('modalContent');
+            var modal = document.getElementById('modalOverlay');
+            var content = document.getElementById('modalContent');
             content.innerHTML = `
                 <h3>Сменить аватарку</h3>
                 <input type="file" id="logoInput" accept="image/*" onchange="previewLogoImage(event)">
@@ -1978,10 +1975,10 @@
         }
 
         function previewLogoImage(event) {
-            const file = event.target.files[0];
+            var file = event.target.files[0];
             if (!file) return;
             window.tempLogoFile = file;
-            const reader = new FileReader();
+            var reader = new FileReader();
             reader.onload = function(e) {
                 document.getElementById('logoPreview').src = e.target.result;
                 document.getElementById('logoPreview').style.display = 'block';
@@ -1989,26 +1986,33 @@
             reader.readAsDataURL(file);
         }
 
-        async function saveLogo() {
+        function saveLogo() {
             if (!window.tempLogoFile) { alert('Загрузите изображение'); return; }
-            const compressedDataUrl = await compressImage(window.tempLogoFile, 400, 0.6);
-            const blob = dataURLToBlob(compressedDataUrl);
-            const file = new File([blob], window.tempLogoFile.name, { type: 'image/jpeg' });
-            try {
-                const url = await uploadFileToSupabase(file, 'logo');
-                await supabase.from('settings').upsert({ key: 'logo', value: url });
-                window.tempLogoFile = null;
-                closeModal();
-                document.getElementById('logoImage').src = url;
-            } catch (error) {
-                alert('Ошибка загрузки: ' + error.message);
-            }
+            compressImage(window.tempLogoFile, 400, 0.6)
+                .then(function(compressedDataUrl) {
+                    var blob = dataURLToBlob(compressedDataUrl);
+                    var file = new File([blob], window.tempLogoFile.name, { type: 'image/jpeg' });
+                    return uploadFileToSupabase(file, 'logo');
+                })
+                .then(function(url) {
+                    return window._supabaseClient.from('settings').upsert({ key: 'logo', value: url });
+                })
+                .then(function() {
+                    window.tempLogoFile = null;
+                    closeModal();
+                    document.getElementById('logoImage').src = url;
+                })
+                .catch(function(err) {
+                    alert('Ошибка загрузки: ' + err.message);
+                });
         }
 
-        // ================== МОДАЛЬНОЕ ОКНО "НАПИСАТЬ ДИЗАЙНЕРУ" ==================
+        // ================================================================
+        // КОНТАКТНАЯ МОДАЛКА
+        // ================================================================
         function openContactModal() {
-            const modal = document.getElementById('modalOverlay');
-            const content = document.getElementById('modalContent');
+            var modal = document.getElementById('modalOverlay');
+            var content = document.getElementById('modalContent');
             content.innerHTML = `
                 <h3>Связаться с нами</h3>
                 <p>Выберите способ:</p>
@@ -2019,16 +2023,18 @@
             modal.style.display = 'flex';
         }
 
-        // ================== ВКЛАДКИ ==================
+        // ================================================================
+        // ВКЛАДКИ
+        // ================================================================
         function setupTabs() {
-            const tabs = document.querySelectorAll('.tab-btn');
-            const sections = document.querySelectorAll('.section');
-            tabs.forEach(tab => {
-                tab.addEventListener('click', () => {
-                    const target = tab.dataset.tab;
-                    tabs.forEach(t => t.classList.remove('active'));
+            var tabs = document.querySelectorAll('.tab-btn');
+            var sections = document.querySelectorAll('.section');
+            tabs.forEach(function(tab) {
+                tab.addEventListener('click', function() {
+                    var target = tab.dataset.tab;
+                    tabs.forEach(function(t) { t.classList.remove('active'); });
                     tab.classList.add('active');
-                    sections.forEach(s => s.classList.remove('active'));
+                    sections.forEach(function(s) { s.classList.remove('active'); });
                     document.getElementById(target).classList.add('active');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                     if (target === 'orders') renderOrdersSection();
@@ -2040,19 +2046,21 @@
             });
         }
 
-        // ================== ЗВЁЗДЫ И АСТЕРОИДЫ ==================
+        // ================================================================
+        // ЗВЁЗДЫ И АСТЕРОИДЫ
+        // ================================================================
         function createStars() {
-            const container = document.getElementById('starsContainer');
-            for (let i = 0; i < 45; i++) {
-                const star = document.createElement('div');
+            var container = document.getElementById('starsContainer');
+            for (var i = 0; i < 45; i++) {
+                var star = document.createElement('div');
                 star.classList.add('star');
-                const size = Math.random() * 2 + 1;
+                var size = Math.random() * 2 + 1;
                 star.style.width = size + 'px';
                 star.style.height = size + 'px';
                 star.style.left = Math.random() * 100 + '%';
                 star.style.top = Math.random() * 100 + '%';
-                const duration = Math.random() * 4 + 3;
-                const delay = Math.random() * 6;
+                var duration = Math.random() * 4 + 3;
+                var delay = Math.random() * 6;
                 star.style.setProperty('--duration', duration + 's');
                 star.style.setProperty('--delay', delay + 's');
                 container.appendChild(star);
@@ -2060,34 +2068,34 @@
         }
 
         function createAsteroids() {
-            const container = document.getElementById('asteroidContainer');
-            const asteroidsCount = 7;
-            for (let i = 0; i < asteroidsCount; i++) {
-                const asteroid = document.createElement('div');
+            var container = document.getElementById('asteroidContainer');
+            var count = 7;
+            for (var i = 0; i < count; i++) {
+                var asteroid = document.createElement('div');
                 asteroid.classList.add('asteroid');
-                const size = Math.random() * 3 + 2;
+                var size = Math.random() * 3 + 2;
                 asteroid.style.width = size + 'px';
                 asteroid.style.height = size + 'px';
                 asteroid.style.left = Math.random() * 100 + '%';
                 asteroid.style.top = Math.random() * 100 + '%';
-                const tx = (Math.random() - 0.5) * 200;
-                const ty = (Math.random() - 0.5) * 200;
+                var tx = (Math.random() - 0.5) * 200;
+                var ty = (Math.random() - 0.5) * 200;
                 asteroid.style.setProperty('--tx', tx + 'px');
                 asteroid.style.setProperty('--ty', ty + 'px');
-                const duration = Math.random() * 10 + 5;
+                var duration = Math.random() * 10 + 5;
                 asteroid.style.animationDuration = duration + 's';
-                const delay = Math.random() * 15;
+                var delay = Math.random() * 15;
                 asteroid.style.animationDelay = delay + 's';
                 container.appendChild(asteroid);
             }
         }
 
         function createLoadingStars() {
-            const container = document.getElementById('loadingStars');
-            for (let i = 0; i < 20; i++) {
-                const star = document.createElement('div');
+            var container = document.getElementById('loadingStars');
+            for (var i = 0; i < 20; i++) {
+                var star = document.createElement('div');
                 star.classList.add('loading-star');
-                const size = Math.random() * 3 + 1;
+                var size = Math.random() * 3 + 1;
                 star.style.width = size + 'px';
                 star.style.height = size + 'px';
                 star.style.left = Math.random() * 100 + '%';
@@ -2098,7 +2106,9 @@
             }
         }
 
-        // ================== ЗАПУСК ==================
+        // ================================================================
+        // ЗАПУСК
+        // ================================================================
         function init() {
             createStars();
             createAsteroids();
@@ -2108,12 +2118,9 @@
             setupRealTimeListeners();
             initTelegram();
             renderOrdersSection();
-            if (lastSpinDiscount > 0) {
-                applyDiscount(lastSpinDiscount);
-            }
+            if (lastSpinDiscount > 0) applyDiscount(lastSpinDiscount);
             loadActivePosts();
-
-            setTimeout(() => {
+            setTimeout(function() {
                 document.getElementById('loadingScreen').classList.add('hidden');
             }, 800);
         }
