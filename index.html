@@ -286,11 +286,19 @@
     </div>
 
     <script>
-        // ================== SUPABASE CONFIG ==================
-        const SUPABASE_URL = 'https://axplgeclfbqvvfykndkx.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF4cGxnZWNsZmJxdnZmeWtuZGt4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMyNzg2NjAsImV4cCI6MjA1ODg1NDY2MH0.Hldi26Ik2CeQVITWAG9trA15DXjFm_N4r7YFdXRsFkA';
+        // ================== ИНИЦИАЛИЗАЦИЯ SUPABASE (ТОЛЬКО ОДИН РАЗ) ==================
+        // Используем самовызывающуюся функцию, чтобы изолировать переменные
+        (function() {
+            // Проверяем, определена ли глобально supabase
+            if (typeof window.supabaseClient === 'undefined') {
+                const SUPABASE_URL = 'https://axplgeclfbqvvfykndkx.supabase.co';
+                const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF4cGxnZWNsZmJxdnZmeWtuZGt4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMyNzg2NjAsImV4cCI6MjA1ODg1NDY2MH0.Hldi26Ik2CeQVITWAG9trA15DXjFm_N4r7YFdXRsFkA';
+                window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            }
+        })();
 
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // Теперь везде используем window.supabaseClient
+        const supabase = window.supabaseClient;
 
         // ================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==================
         window.tg = null;
