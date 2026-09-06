@@ -263,7 +263,7 @@
         <div class="footer">
             <div>© Mark1z Design · Дмитрий Маркизов</div>
             <a href="#" onclick="openPrivacyPolicy()">Политика конфиденциальности</a>
-            <span class="version">V.2.1.2</span>
+            <span class="version">V.2.1.3</span>
         </div>
     </div>
     <div class="modal-overlay" id="modalOverlay">
@@ -832,73 +832,73 @@ function loadServiceOptionsForManager(serviceId) {
         });
 }
 
-        function renderServiceOptionsManager(serviceId, options, container) {
-            var html = `
-                <div style="margin-bottom:15px;">
-                    <button class="btn btn-sm" onclick="showAddOptionFormImproved(${serviceId})" style="background:linear-gradient(135deg, #10b981, #059669);">
-                        ➕ Добавить опцию
-                    </button>
-                </div>
-                <div id="optionsList" style="display:flex;flex-direction:column;gap:10px;">
-            `;
+function renderServiceOptionsManager(serviceId, options, container) {
+    var html = `
+        <div style="margin-bottom:15px;">
+            <button class="btn btn-sm" onclick="showAddOptionFormImproved(${serviceId})" style="background:linear-gradient(135deg, #10b981, #059669);">
+                ➕ Добавить опцию
+            </button>
+        </div>
+        <div id="optionsList" style="display:flex;flex-direction:column;gap:10px;">
+    `;
+    
+    if (options.length === 0) {
+        html += `
+            <div style="text-align:center;padding:30px;background:rgba(255,255,255,0.03);border-radius:12px;">
+                <p style="font-size:48px;margin-bottom:10px;">📋</p>
+                <p style="color:var(--text-muted);">Нет опций для этой услуги</p>
+                <p style="color:var(--text-muted);font-size:12px;">Добавьте первую опцию, чтобы клиенты могли заказывать</p>
+            </div>
+        `;
+    } else {
+        options.forEach(function(opt, idx) {
+            var typeIcon = { checkbox: '✅', quantity: '🔢', pages: '📄' }[opt.option_type] || '✅';
+            var typeLabel = { checkbox: 'Да/Нет', quantity: 'Количество', pages: 'Страницы' }[opt.option_type] || 'Да/Нет';
             
-            if (options.length === 0) {
-                html += `
-                    <div style="text-align:center;padding:30px;background:rgba(255,255,255,0.03);border-radius:12px;">
-                        <p style="font-size:48px;margin-bottom:10px;">📋</p>
-                        <p style="color:var(--text-muted);">Нет опций для этой услуги</p>
-                        <p style="color:var(--text-muted);font-size:12px;">Добавьте первую опцию, чтобы клиенты могли заказывать</p>
+            html += `
+                <div class="order-item admin-grab" data-id="${opt.id}" style="margin-bottom:0;cursor:grab;">
+                    <div class="order-info">
+                        <h4>${typeIcon} ${opt.name}</h4>
+                        <p>
+                            <strong>${opt.price} ₽</strong>
+                            ${opt.description ? ' · ' + opt.description : ''}
+                        </p>
+                        <p style="font-size:11px;color:var(--text-muted);">
+                            Тип: ${typeLabel}
+                            | Мин: ${opt.min_quantity || 1}
+                            | Макс: ${opt.max_quantity || 10}
+                            ${opt.discount_min_quantity ? '| Скидка от ' + opt.discount_min_quantity + ' шт: ' + opt.discount_price + ' ₽' : ''}
+                        </p>
                     </div>
-                `;
-            } else {
-                options.forEach(function(opt, idx) {
-                    var typeIcon = { checkbox: '✅', quantity: '🔢', pages: '📄' }[opt.option_type] || '✅';
-                    var typeLabel = { checkbox: 'Да/Нет', quantity: 'Количество', pages: 'Страницы' }[opt.option_type] || 'Да/Нет';
-                    
-                    html += `
-                        <div class="order-item admin-grab" data-id="${opt.id}" style="margin-bottom:0;cursor:grab;">
-                            <div class="order-info">
-                                <h4>${typeIcon} ${opt.name}</h4>
-                                <p>
-                                    <strong>${opt.price} ₽</strong>
-                                    ${opt.description ? ' · ' + opt.description : ''}
-                                </p>
-                                <p style="font-size:11px;color:var(--text-muted);">
-                                    Тип: ${typeLabel}
-                                    ${opt.min_quantity ? ' · Мин: ' + opt.min_quantity : ''}
-                                    ${opt.max_quantity ? ' · Макс: ' + opt.max_quantity : ''}
-                                    ${opt.discount_min_quantity ? ' · Скидка от ' + opt.discount_min_quantity + ' шт: ' + opt.discount_price + ' ₽' : ''}
-                                </p>
-                            </div>
-                            <div style="display:flex;gap:5px;">
-                                <button class="btn btn-sm" onclick="editOptionImproved(${opt.id}, ${serviceId})" title="Редактировать">✏️</button>
-                                <button class="btn btn-sm" onclick="deleteOptionFromManager(${opt.id}, ${serviceId})" title="Удалить" style="background:rgba(255,0,0,0.5);">🗑️</button>
-                            </div>
-                        </div>
-                    `;
+                    <div style="display:flex;gap:5px;">
+                        <button class="btn btn-sm" onclick="editOptionImproved(${opt.id}, ${serviceId})" title="Редактировать">✏️</button>
+                        <button class="btn btn-sm" onclick="deleteOptionFromManager(${opt.id}, ${serviceId})" title="Удалить" style="background:rgba(255,0,0,0.5);">🗑️</button>
+                    </div>
+                </div>
+            `;
+        });
+    }
+    
+    html += '</div>';
+    container.innerHTML = html;
+    
+    var list = document.getElementById('optionsList');
+    if (list && window.isAdmin) {
+        if (sortableInstances.options) sortableInstances.options.destroy();
+        sortableInstances.options = new Sortable(list, {
+            animation: 150,
+            delay: 200,
+            delayOnTouchOnly: true,
+            handle: '.order-info',
+            onEnd: function(evt) {
+                var items = [].slice.call(list.children).filter(function(el) {
+                    return el.dataset && el.dataset.id;
                 });
+                updateOptionsOrder(items);
             }
-            
-            html += '</div>';
-            container.innerHTML = html;
-            
-            var list = document.getElementById('optionsList');
-            if (list && window.isAdmin) {
-                if (sortableInstances.options) sortableInstances.options.destroy();
-                sortableInstances.options = new Sortable(list, {
-                    animation: 150,
-                    delay: 200,
-                    delayOnTouchOnly: true,
-                    handle: '.order-info',
-                    onEnd: function(evt) {
-                        var items = [].slice.call(list.children).filter(function(el) {
-                            return el.dataset && el.dataset.id;
-                        });
-                        updateOptionsOrder(items);
-                    }
-                });
-            }
-        }
+        });
+    }
+}
 
         function updateOptionsOrder(items) {
             var promises = [];
@@ -909,81 +909,82 @@ function loadServiceOptionsForManager(serviceId) {
             Promise.all(promises);
         }
 
-        function showAddOptionFormImproved(serviceId) {
-            var container = document.getElementById('serviceOptionsContent') || document.getElementById('optionManagerContent');
-            var formHtml = `
-                <div style="background:rgba(255,255,255,0.05);border-radius:16px;padding:20px;margin-bottom:20px;border:1px solid var(--card-border);">
-                    <h4 style="margin-bottom:15px;">➕ Новая опция</h4>
-                    
-                    <div style="margin-bottom:12px;">
-                        <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Название опции *</label>
-                        <input type="text" id="optName" placeholder="Например: Логотип" style="width:100%;">
+function showAddOptionFormImproved(serviceId) {
+    var container = document.getElementById('serviceOptionsContent') || document.getElementById('optionManagerContent');
+    var formHtml = `
+        <div style="background:rgba(255,255,255,0.05);border-radius:16px;padding:20px;margin-bottom:20px;border:1px solid var(--card-border);">
+            <h4 style="margin-bottom:15px;">➕ Новая опция</h4>
+            
+            <div style="margin-bottom:12px;">
+                <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Название опции *</label>
+                <input type="text" id="optName" placeholder="Например: Логотип" style="width:100%;">
+            </div>
+            
+            <div style="margin-bottom:12px;">
+                <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Цена (₽) *</label>
+                <input type="number" id="optPrice" placeholder="Например: 500" style="width:100%;">
+            </div>
+            
+            <div style="margin-bottom:12px;">
+                <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Описание (необязательно)</label>
+                <input type="text" id="optDescription" placeholder="Краткое описание опции" style="width:100%;">
+            </div>
+            
+            <div style="margin-bottom:12px;">
+                <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Тип опции</label>
+                <select id="optType" style="width:100%;">
+                    <option value="checkbox">✅ Да/Нет (чекбокс)</option>
+                    <option value="quantity">🔢 Количество</option>
+                    <option value="pages">📄 Страницы</option>
+                </select>
+            </div>
+            
+            <div id="quantityFields" style="display:block;">
+                <div style="display:flex;gap:8px;margin-bottom:12px;">
+                    <div style="flex:1;">
+                        <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Мин. количество</label>
+                        <input type="number" id="optMinQty" placeholder="1" value="1" style="width:100%;">
                     </div>
-                    
-                    <div style="margin-bottom:12px;">
-                        <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Цена (₽) *</label>
-                        <input type="number" id="optPrice" placeholder="Например: 500" style="width:100%;">
-                    </div>
-                    
-                    <div style="margin-bottom:12px;">
-                        <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Описание (необязательно)</label>
-                        <input type="text" id="optDescription" placeholder="Краткое описание опции" style="width:100%;">
-                    </div>
-                    
-                    <div style="margin-bottom:12px;">
-                        <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Тип опции</label>
-                        <select id="optType" style="width:100%;" onchange="toggleQuantityFields()">
-                            <option value="checkbox">✅ Да/Нет (чекбокс)</option>
-                            <option value="quantity">🔢 Количество</option>
-                            <option value="pages">📄 Страницы</option>
-                        </select>
-                    </div>
-                    
-                    <div id="quantityFields" style="display:none;">
-                        <div style="display:flex;gap:8px;margin-bottom:12px;">
-                            <div style="flex:1;">
-                                <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Мин. количество</label>
-                                <input type="number" id="optMinQty" placeholder="1" value="1" style="width:100%;">
-                            </div>
-                            <div style="flex:1;">
-                                <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Макс. количество</label>
-                                <input type="number" id="optMaxQty" placeholder="10" value="10" style="width:100%;">
-                            </div>
-                        </div>
-                        
-                        <div style="display:flex;gap:8px;margin-bottom:12px;">
-                            <div style="flex:1;">
-                                <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Кол-во для скидки</label>
-                                <input type="number" id="optDiscountMin" placeholder="Например: 3" style="width:100%;">
-                            </div>
-                            <div style="flex:1;">
-                                <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Цена со скидкой (₽)</label>
-                                <input type="number" id="optDiscountPrice" placeholder="Например: 400" style="width:100%;">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div style="display:flex;gap:10px;margin-top:15px;">
-                        <button class="btn" onclick="saveOptionImproved(${serviceId})" style="flex:1;background:linear-gradient(135deg, #10b981, #059669);">
-                            💾 Сохранить
-                        </button>
-                        <button class="btn" onclick="loadServiceOptionsForManager(${serviceId})" style="background:rgba(255,255,255,0.1);">
-                            Отмена
-                        </button>
+                    <div style="flex:1;">
+                        <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Макс. количество</label>
+                        <input type="number" id="optMaxQty" placeholder="10" value="10" style="width:100%;">
                     </div>
                 </div>
-            `;
+                
+                <div style="display:flex;gap:8px;margin-bottom:12px;">
+                    <div style="flex:1;">
+                        <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Кол-во для скидки</label>
+                        <input type="number" id="optDiscountMin" placeholder="Например: 3" style="width:100%;">
+                    </div>
+                    <div style="flex:1;">
+                        <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Цена со скидкой (₽)</label>
+                        <input type="number" id="optDiscountPrice" placeholder="Например: 400" style="width:100%;">
+                    </div>
+                </div>
+            </div>
             
-            container.innerHTML = formHtml + container.innerHTML;
-        }
+            <div style="display:flex;gap:10px;margin-top:15px;">
+                <button class="btn" onclick="saveOptionImproved(${serviceId})" style="flex:1;background:linear-gradient(135deg, #10b981, #059669);">
+                    💾 Сохранить
+                </button>
+                <button class="btn" onclick="loadServiceOptionsForManager(${serviceId})" style="background:rgba(255,255,255,0.1);">
+                    Отмена
+                </button>
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = formHtml + container.innerHTML;
+}
 
-        function toggleQuantityFields() {
-            var typeSelect = document.getElementById('optType');
-            var quantityFields = document.getElementById('quantityFields');
-            if (typeSelect && quantityFields) {
-                quantityFields.style.display = typeSelect.value === 'checkbox' ? 'none' : 'block';
-            }
-        }
+function toggleQuantityFields() {
+    var typeSelect = document.getElementById('optType');
+    var quantityFields = document.getElementById('quantityFields');
+    if (typeSelect && quantityFields) {
+        // Показываем поля количества для всех типов опций
+        quantityFields.style.display = 'block';
+    }
+}
 
 function saveOptionImproved(serviceId) {
     var name = document.getElementById('optName').value.trim();
@@ -1063,87 +1064,88 @@ function saveOptionImproved(serviceId) {
         });
 }
 
-        function editOptionImproved(optionId, serviceId) {
-            supabase.from('service_options').select('*').eq('id', optionId).single()
-                .then(function(res) {
-                    if (res.error || !res.data) return;
-                    var opt = res.data;
-                    var container = document.getElementById('serviceOptionsContent') || document.getElementById('optionManagerContent');
+function editOptionImproved(optionId, serviceId) {
+    supabase.from('service_options').select('*').eq('id', optionId).single()
+        .then(function(res) {
+            if (res.error || !res.data) return;
+            var opt = res.data;
+            var container = document.getElementById('serviceOptionsContent') || document.getElementById('optionManagerContent');
+            
+            var formHtml = `
+                <div style="background:rgba(255,255,255,0.05);border-radius:16px;padding:20px;margin-bottom:20px;border:1px solid var(--card-border);">
+                    <h4 style="margin-bottom:15px;">✏️ Редактировать опцию</h4>
                     
-                    var formHtml = `
-                        <div style="background:rgba(255,255,255,0.05);border-radius:16px;padding:20px;margin-bottom:20px;border:1px solid var(--card-border);">
-                            <h4 style="margin-bottom:15px;">✏️ Редактировать опцию</h4>
-                            
-                            <div style="margin-bottom:12px;">
-                                <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Название опции *</label>
-                                <input type="text" id="editOptName" value="${opt.name}" style="width:100%;">
+                    <div style="margin-bottom:12px;">
+                        <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Название опции *</label>
+                        <input type="text" id="editOptName" value="${opt.name}" style="width:100%;">
+                    </div>
+                    
+                    <div style="margin-bottom:12px;">
+                        <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Цена (₽) *</label>
+                        <input type="number" id="editOptPrice" value="${opt.price}" style="width:100%;">
+                    </div>
+                    
+                    <div style="margin-bottom:12px;">
+                        <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Описание</label>
+                        <input type="text" id="editOptDescription" value="${opt.description || ''}" style="width:100%;">
+                    </div>
+                    
+                    <div style="margin-bottom:12px;">
+                        <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Тип опции</label>
+                        <select id="editOptType" style="width:100%;">
+                            <option value="checkbox" ${opt.option_type === 'checkbox' ? 'selected' : ''}>✅ Да/Нет (чекбокс)</option>
+                            <option value="quantity" ${opt.option_type === 'quantity' ? 'selected' : ''}>🔢 Количество</option>
+                            <option value="pages" ${opt.option_type === 'pages' ? 'selected' : ''}>📄 Страницы</option>
+                        </select>
+                    </div>
+                    
+                    <div id="editQuantityFields" style="display:block;">
+                        <div style="display:flex;gap:8px;margin-bottom:12px;">
+                            <div style="flex:1;">
+                                <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Мин. количество</label>
+                                <input type="number" id="editOptMinQty" value="${opt.min_quantity || 1}" style="width:100%;">
                             </div>
-                            
-                            <div style="margin-bottom:12px;">
-                                <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Цена (₽) *</label>
-                                <input type="number" id="editOptPrice" value="${opt.price}" style="width:100%;">
-                            </div>
-                            
-                            <div style="margin-bottom:12px;">
-                                <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Описание</label>
-                                <input type="text" id="editOptDescription" value="${opt.description || ''}" style="width:100%;">
-                            </div>
-                            
-                            <div style="margin-bottom:12px;">
-                                <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Тип опции</label>
-                                <select id="editOptType" style="width:100%;" onchange="toggleEditQuantityFields()">
-                                    <option value="checkbox" ${opt.option_type === 'checkbox' ? 'selected' : ''}>✅ Да/Нет (чекбокс)</option>
-                                    <option value="quantity" ${opt.option_type === 'quantity' ? 'selected' : ''}>🔢 Количество</option>
-                                    <option value="pages" ${opt.option_type === 'pages' ? 'selected' : ''}>📄 Страницы</option>
-                                </select>
-                            </div>
-                            
-                            <div id="editQuantityFields" style="${opt.option_type === 'checkbox' ? 'display:none;' : ''}">
-                                <div style="display:flex;gap:8px;margin-bottom:12px;">
-                                    <div style="flex:1;">
-                                        <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Мин. количество</label>
-                                        <input type="number" id="editOptMinQty" value="${opt.min_quantity || 1}" style="width:100%;">
-                                    </div>
-                                    <div style="flex:1;">
-                                        <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Макс. количество</label>
-                                        <input type="number" id="editOptMaxQty" value="${opt.max_quantity || 10}" style="width:100%;">
-                                    </div>
-                                </div>
-                                
-                                <div style="display:flex;gap:8px;margin-bottom:12px;">
-                                    <div style="flex:1;">
-                                        <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Кол-во для скидки</label>
-                                        <input type="number" id="editOptDiscountMin" value="${opt.discount_min_quantity || ''}" style="width:100%;">
-                                    </div>
-                                    <div style="flex:1;">
-                                        <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Цена со скидкой (₽)</label>
-                                        <input type="number" id="editOptDiscountPrice" value="${opt.discount_price || ''}" style="width:100%;">
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div style="display:flex;gap:10px;margin-top:15px;">
-                                <button class="btn" onclick="updateOptionImproved(${optionId}, ${serviceId})" style="flex:1;">
-                                    💾 Сохранить изменения
-                                </button>
-                                <button class="btn" onclick="loadServiceOptionsForManager(${serviceId})" style="background:rgba(255,255,255,0.1);">
-                                    Отмена
-                                </button>
+                            <div style="flex:1;">
+                                <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Макс. количество</label>
+                                <input type="number" id="editOptMaxQty" value="${opt.max_quantity || 10}" style="width:100%;">
                             </div>
                         </div>
-                    `;
+                        
+                        <div style="display:flex;gap:8px;margin-bottom:12px;">
+                            <div style="flex:1;">
+                                <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Кол-во для скидки</label>
+                                <input type="number" id="editOptDiscountMin" value="${opt.discount_min_quantity || ''}" style="width:100%;">
+                            </div>
+                            <div style="flex:1;">
+                                <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Цена со скидкой (₽)</label>
+                                <input type="number" id="editOptDiscountPrice" value="${opt.discount_price || ''}" style="width:100%;">
+                            </div>
+                        </div>
+                    </div>
                     
-                    container.innerHTML = formHtml + container.innerHTML;
-                });
-        }
+                    <div style="display:flex;gap:10px;margin-top:15px;">
+                        <button class="btn" onclick="updateOptionImproved(${optionId}, ${serviceId})" style="flex:1;">
+                            💾 Сохранить изменения
+                        </button>
+                        <button class="btn" onclick="loadServiceOptionsForManager(${serviceId})" style="background:rgba(255,255,255,0.1);">
+                            Отмена
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML = formHtml + container.innerHTML;
+        });
+}
 
-        function toggleEditQuantityFields() {
-            var typeSelect = document.getElementById('editOptType');
-            var quantityFields = document.getElementById('editQuantityFields');
-            if (typeSelect && quantityFields) {
-                quantityFields.style.display = typeSelect.value === 'checkbox' ? 'none' : 'block';
-            }
-        }
+function toggleEditQuantityFields() {
+    var typeSelect = document.getElementById('editOptType');
+    var quantityFields = document.getElementById('editQuantityFields');
+    if (typeSelect && quantityFields) {
+        // Показываем поля количества для всех типов опций
+        quantityFields.style.display = 'block';
+    }
+}
 
         function updateOptionImproved(optionId, serviceId) {
             var name = document.getElementById('editOptName').value.trim();
@@ -1951,62 +1953,62 @@ function saveOptionImproved(serviceId) {
         // ================================================================
         // КОНСТРУКТОР ЗАКАЗА
         // ================================================================
-        function openOrderConstructor(serviceId) {
-            var service = servicesData.find(function(s) { return s.id == serviceId; });
-            if (!service) return;
+function openOrderConstructor(serviceId) {
+    var service = servicesData.find(function(s) { return s.id == serviceId; });
+    if (!service) return;
 
-            var options = serviceOptionsData.filter(function(o) { return o.service_id == serviceId; });
+    var options = serviceOptionsData.filter(function(o) { return o.service_id == serviceId; });
 
-            var modal = document.getElementById('modalOverlay');
-            var content = document.getElementById('modalContent');
+    var modal = document.getElementById('modalOverlay');
+    var content = document.getElementById('modalContent');
 
-            currentOrderService = service;
-            currentOrderOptions = options;
-            currentOrderQuantities = {};
-            currentOrderFiles = [];
-            currentOrderDescription = '';
+    currentOrderService = service;
+    currentOrderOptions = options;
+    currentOrderQuantities = {};
+    currentOrderFiles = [];
+    currentOrderDescription = '';
 
-            var html = `
-                <div style="max-height:75vh; overflow-y:auto;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                        <h3>${service.emoji} ${service.name}</h3>
-                        <button class="btn" onclick="closeModal()" style="margin:0;">×</button>
-                    </div>
-                    <p style="color:var(--text-muted); font-size:14px; margin-bottom:15px;">${service.description || ''}</p>
-                    <div id="orderOptionsContainer">
-            `;
+    var html = `
+        <div style="max-height:75vh; overflow-y:auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h3>${service.emoji} ${service.name}</h3>
+                <button class="btn" onclick="closeModal()" style="margin:0;">×</button>
+            </div>
+            <p style="color:var(--text-muted); font-size:14px; margin-bottom:15px;">${service.description || ''}</p>
+            <div id="orderOptionsContainer">
+    `;
 
-            if (options.length === 0) {
-                html += '<p style="color:var(--text-muted)">Для этой услуги пока нет опций. Свяжитесь с дизайнером для уточнения.</p>';
-            } else {
-                options.forEach(function(opt, idx) {
-                    var qty = currentOrderQuantities[opt.id] || (opt.min_quantity || 1);
-                    var typeLabel = { checkbox: '✅', quantity: '🔢', pages: '📄' }[opt.option_type] || '✅';
-                    
-                    html += `
-                        <div class="option-group" data-opt-id="${opt.id}">
-                            <div class="option-header" onclick="toggleOptionUI(${opt.id})">
-                                <div class="option-checkbox" id="checkbox_${opt.id}">
-                                    <span class="checkmark" id="checkmark_${opt.id}">✓</span>
-                                </div>
-                                <div class="option-info">
-                                    <div class="option-name">${opt.name} ${typeLabel}</div>
-                                    <div class="option-price">${opt.price} ₽ ${opt.description ? '· ' + opt.description : ''}</div>
-                                </div>
-                            </div>
-                            <div class="option-quantity" id="qtyControl_${opt.id}" style="display:none;">
-                                <button class="qty-btn" onclick="event.stopPropagation(); changeQuantity(${opt.id}, -1)">−</button>
-                                <span class="qty-display" id="qtyDisplay_${opt.id}">${qty}</span>
-                                <button class="qty-btn" onclick="event.stopPropagation(); changeQuantity(${opt.id}, 1)">+</button>
-                                <span class="price-detail" id="priceDisplay_${opt.id}">${opt.price} ₽ × ${qty} = ${opt.price * qty} ₽</span>
-                                ${opt.discount_min_quantity ? `<span class="discount-badge">скидка от ${opt.discount_min_quantity} шт.</span>` : ''}
-                            </div>
-                        </div>
-                    `;
-                });
-            }
-
+    if (options.length === 0) {
+        html += '<p style="color:var(--text-muted)">Для этой услуги пока нет опций. Свяжитесь с дизайнером для уточнения.</p>';
+    } else {
+        options.forEach(function(opt, idx) {
+            var qty = currentOrderQuantities[opt.id] || (opt.min_quantity || 1);
+            var typeLabel = { checkbox: '✅', quantity: '🔢', pages: '📄' }[opt.option_type] || '✅';
+            
             html += `
+                <div class="option-group" data-opt-id="${opt.id}">
+                    <div class="option-header" onclick="toggleOptionUI(${opt.id})">
+                        <div class="option-checkbox" id="checkbox_${opt.id}">
+                            <span class="checkmark" id="checkmark_${opt.id}">✓</span>
+                        </div>
+                        <div class="option-info">
+                            <div class="option-name">${opt.name} ${typeLabel}</div>
+                            <div class="option-price">${opt.price} ₽ ${opt.description ? '· ' + opt.description : ''}</div>
+                        </div>
+                    </div>
+                    <div class="option-quantity" id="qtyControl_${opt.id}" style="display:none;">
+                        <button class="qty-btn" onclick="event.stopPropagation(); changeQuantity(${opt.id}, -1)">−</button>
+                        <span class="qty-display" id="qtyDisplay_${opt.id}">${qty}</span>
+                        <button class="qty-btn" onclick="event.stopPropagation(); changeQuantity(${opt.id}, 1)">+</button>
+                        <span class="price-detail" id="priceDisplay_${opt.id}">${opt.price} ₽ × ${qty} = ${opt.price * qty} ₽</span>
+                        ${opt.discount_min_quantity ? `<span class="discount-badge">скидка от ${opt.discount_min_quantity} шт.</span>` : ''}
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    html += `
                     </div>
                     <div class="order-total">
                         Итого: <span id="orderTotalPrice">0</span> ₽
@@ -2021,41 +2023,41 @@ function saveOptionImproved(serviceId) {
                     </div>
                     <button class="btn" onclick="submitOrderWithOptions()" style="width:100%; margin-top:15px;">✅ Отправить заявку</button>
                 </div>
-            `;
+    `;
 
-            content.innerHTML = html;
-            modal.style.display = 'flex';
-            updateOrderTotal();
-        }
+    content.innerHTML = html;
+    modal.style.display = 'flex';
+    updateOrderTotal();
+}
 
-        function toggleOptionUI(optId) {
-            var checkbox = document.getElementById('checkbox_' + optId);
-            var checkmark = document.getElementById('checkmark_' + optId);
-            var qtyControl = document.getElementById('qtyControl_' + optId);
-            
-            if (!checkbox) return;
-            
-            var isActive = checkbox.classList.contains('active');
-            
-            if (isActive) {
-                checkbox.classList.remove('active');
-                checkbox.style.background = 'transparent';
-                checkbox.style.borderColor = 'rgba(255,255,255,0.2)';
-                checkmark.style.opacity = '0';
-                if (qtyControl) qtyControl.style.display = 'none';
-                currentOrderQuantities[optId] = 0;
-            } else {
-                checkbox.classList.add('active');
-                checkbox.style.background = 'linear-gradient(135deg, #7c3aed, #be185d)';
-                checkbox.style.borderColor = '#7c3aed';
-                checkmark.style.opacity = '1';
-                if (qtyControl) qtyControl.style.display = 'flex';
-                var opt = currentOrderOptions.find(function(o) { return o.id == optId; });
-                currentOrderQuantities[optId] = opt ? (opt.min_quantity || 1) : 1;
-            }
-            updateOrderTotal();
-            updateQuantityDisplay(optId);
-        }
+function toggleOptionUI(optId) {
+    var checkbox = document.getElementById('checkbox_' + optId);
+    var checkmark = document.getElementById('checkmark_' + optId);
+    var qtyControl = document.getElementById('qtyControl_' + optId);
+    
+    if (!checkbox) return;
+    
+    var isActive = checkbox.classList.contains('active');
+    
+    if (isActive) {
+        checkbox.classList.remove('active');
+        checkbox.style.background = 'transparent';
+        checkbox.style.borderColor = 'rgba(255,255,255,0.2)';
+        checkmark.style.opacity = '0';
+        if (qtyControl) qtyControl.style.display = 'none';
+        currentOrderQuantities[optId] = 0;
+    } else {
+        checkbox.classList.add('active');
+        checkbox.style.background = 'linear-gradient(135deg, #7c3aed, #be185d)';
+        checkbox.style.borderColor = '#7c3aed';
+        checkmark.style.opacity = '1';
+        if (qtyControl) qtyControl.style.display = 'flex';
+        var opt = currentOrderOptions.find(function(o) { return o.id == optId; });
+        currentOrderQuantities[optId] = opt ? (opt.min_quantity || 1) : 1;
+    }
+    updateOrderTotal();
+    updateQuantityDisplay(optId);
+}
 
         function changeQuantity(optId, delta) {
             var current = currentOrderQuantities[optId] || 0;
