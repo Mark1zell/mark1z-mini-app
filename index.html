@@ -15,6 +15,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
     <style>
+        /* ===== ПОЛНЫЙ CSS ===== */
         :root {
             --bg-start: #0a050d;
             --bg-mid: #100820;
@@ -210,7 +211,6 @@
         .post-checkbox input { width: auto; }
         .admin-post-item { display: flex; align-items: center; justify-content: space-between; padding: 10px; border: 1px solid var(--card-border); border-radius: 10px; margin-bottom: 10px; }
         .admin-post-item button { background: none; border: none; color: #f87171; cursor: pointer; font-size: 18px; }
-        /* Отключение контекстного меню на всех изображениях */
         img {
             -webkit-touch-callout: none !important;
             -webkit-user-drag: none !important;
@@ -306,7 +306,7 @@
 
     <script>
         // ================================================================
-        // ИНИЦИАЛИЗАЦИЯ SUPABASE (ГАРАНТИРОВАННО ОДИН РАЗ)
+        // ИНИЦИАЛИЗАЦИЯ SUPABASE
         // ================================================================
         (function initSupabase() {
             if (!window._supabaseClient) {
@@ -449,6 +449,19 @@
                 .catch(function(err) {
                     alert('Не удалось скачать изображение: ' + err.message);
                 });
+        }
+
+        // ================================================================
+        // ОБНОВЛЕНИЕ ПОРЯДКА (СОРТИРОВКА)
+        // ================================================================
+        function updateOrder(tableName, items) {
+            var promises = [];
+            var supabase = window._supabaseClient;
+            items.forEach(function(item, index) {
+                var id = item.dataset.id;
+                promises.push(supabase.from(tableName).update({ order: index }).eq('id', id));
+            });
+            return Promise.all(promises);
         }
 
         // ================================================================
@@ -1179,14 +1192,6 @@
             });
         }
 
-        function updateOrder(tableName, items) {
-            var supabase = window._supabaseClient;
-            items.forEach(function(item, index) {
-                var id = item.dataset.id;
-                supabase.from(tableName).update({ order: index }).eq('id', id);
-            });
-        }
-
         function updateWorksOrder(fromIndex, toIndex) {
             var supabase = window._supabaseClient;
             supabase.from('portfolio_categories').select('items').eq('id', currentCategoryId).single()
@@ -1381,7 +1386,218 @@
         }
 
         // ================================================================
-        // ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ (заказ, скачивание)
+        // РАЗДЕЛ ЗАКАЗЫ
+        // ================================================================
+        function renderOrdersSection() {
+            var container = document.getElementById('ordersContent');
+            if (!container) return;
+            if (window.isAdmin) {
+                var html = `
+                    <div style="display:flex; gap:10px; margin-bottom:15px;">
+                        <button class="btn ${adminOrdersMode === 'services' ? 'active' : ''}" onclick="switchAdminMode('services')">Услуги</button>
+                        <button class="btn ${adminOrdersMode === 'orders' ? 'active' : ''}" onclick="switchAdminMode('orders')">Заказы</button>
+                        <button class="btn" onclick="openAdminPromoPanel()">👑 Админ</button>
+                    </div>
+                `;
+                if (adminOrdersMode === 'services') {
+                    html += renderServicesForAdmin();
+                } else {
+                    html += '<div id="adminOrdersList"></div>';
+                }
+                container.innerHTML = html;
+                if (adminOrdersMode === 'orders') {
+                    window._supabaseClient.from('orders').select('*').order('timestamp', { ascending: false })
+                        .then(function(res) {
+                            if (!res.error && res.data) renderOrdersList(res.data);
+                        });
+                }
+                if (adminOrdersMode === 'services') {
+                    setupSortableForServices();
+                }
+            } else {
+                var html = '<h3 style="margin-bottom:15px;">Наши услуги</h3>';
+                html += renderServicesForUser();
+                html += '<div style="margin-top:20px;"><button class="btn" onclick="openContactModal()">📩 Написать дизайнеру</button></div>';
+                container.innerHTML = html;
+            }
+        }
+
+        function renderServicesForUser() {
+            if (servicesData.length === 0) return '<p style="color:var(--text-muted)">Услуги пока не добавлены</p>';
+            var html = '<div class="order-list" style="display:flex; flex-direction:column; gap:12px;">';
+            servicesData.forEach(function(s) {
+                var basePrice = s.price || 0;
+                var basePriceTo = s.price_to || basePrice;
+                var priceText = '';
+                var discountApplied = false;
+                if (currentDiscount > 0 && !(s.name === 'Telegram Mini Apps' && (currentDiscount === 50 || currentDiscount === 100))) {
+                    discountApplied = true;
+                    var newFrom = Math.round(basePrice * (1 - currentDiscount / 100));
+                    var newTo = Math.round(basePriceTo * (1 - currentDiscount / 100));
+                    priceText = `
+                        <span class="price-old">${basePrice}${basePriceTo && basePriceTo !== basePrice ? ' - ' + basePriceTo : ''}</span>
+                        <span class="price-new">${newFrom}${newTo && newTo !== newFrom ? ' - ' + newTo : ''} ₽</span>
+                    `;
+                } else {
+                    priceText = basePriceTo ? 'от ' + basePrice + ' до ' + basePriceTo + ' ₽' : (basePrice ? basePrice + ' ₽' : 'Цена не указана');
+                }
+                html += `
+                    <div class="order-item" style="cursor:pointer;" onclick="placeOrder('${s.name}', ${discountApplied})">
+                        <div class="order-info">
+                            <h4>${s.emoji} ${s.name}</h4>
+                            <p>${s.description}</p>
+                            <p>${priceText}</p>
+                        </div>
+                        <span style="font-size:24px;">➔</span>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            return html;
+        }
+
+        function renderServicesForAdmin() {
+            var html = '<div class="order-list" id="servicesList" style="display:flex; flex-direction:column; gap:12px;">';
+            servicesData.forEach(function(s) {
+                var priceText = s.price_to ? 'от ' + s.price + ' до ' + s.price_to + ' ₽' : (s.price ? s.price + ' ₽' : 'Цена не указана');
+                html += `
+                    <div class="order-item" data-id="${s.id}" style="cursor: grab;">
+                        <div class="order-info">
+                            <h4>${s.emoji} ${s.name}</h4>
+                            <p>${s.description}</p>
+                            <p style="color:var(--accent); font-weight:600;">${priceText}</p>
+                        </div>
+                        <div style="display:flex; gap:5px; align-items:center;">
+                            <button class="btn" onclick="editService(${s.id})">✏️</button>
+                            <button class="btn" onclick="deleteService(${s.id})">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            html += '<div style="margin-top:15px;"><button class="btn" onclick="addService()">➕ Добавить услугу</button></div>';
+            return html;
+        }
+
+        function switchAdminMode(mode) {
+            adminOrdersMode = mode;
+            renderOrdersSection();
+        }
+
+        function renderOrdersList(orders) {
+            var container = document.getElementById('adminOrdersList');
+            if (!container) return;
+            var html = '';
+            if (!orders || orders.length === 0) {
+                html = '<p style="color:var(--text-muted)">Нет заказов</p>';
+            } else {
+                orders.forEach(function(order) {
+                    var userName = order.user_name || 'Пользователь';
+                    var userUsername = order.user_username || null;
+                    html += `
+                        <div class="order-item">
+                            <div class="order-info">
+                                <h4>${order.service}</h4>
+                                <p>От: ${userName} ${userUsername ? '(<a href="https://t.me/' + userUsername + '" target="_blank">@' + userUsername + '</a>)' : ''}</p>
+                                <p>${order.time}</p>
+                            </div>
+                            <button class="btn" onclick="deleteOrder(${order.id})">🗑️</button>
+                        </div>
+                    `;
+                });
+            }
+            container.innerHTML = html;
+        }
+
+        // ================================================================
+        // УПРАВЛЕНИЕ УСЛУГАМИ (ИСПРАВЛЕНО)
+        // ================================================================
+        function addService() {
+            var modal = document.getElementById('modalOverlay');
+            var content = document.getElementById('modalContent');
+            content.innerHTML = `
+                <h3>Добавить услугу</h3>
+                <input type="text" id="serviceEmoji" placeholder="Эмодзи (например, 🎨)">
+                <input type="text" id="serviceName" placeholder="Название услуги">
+                <input type="text" id="serviceDescription" placeholder="Описание">
+                <input type="number" id="servicePriceFrom" placeholder="Цена от (₽)">
+                <input type="number" id="servicePriceTo" placeholder="Цена до (₽) (необязательно)">
+                <button class="btn" onclick="saveNewService()">Сохранить</button>
+                <button class="btn" onclick="closeModal()">Отмена</button>
+            `;
+            modal.style.display = 'flex';
+        }
+
+        function saveNewService() {
+            var emoji = document.getElementById('serviceEmoji').value.trim() || '✨';
+            var name = document.getElementById('serviceName').value.trim();
+            var description = document.getElementById('serviceDescription').value.trim();
+            var priceFrom = document.getElementById('servicePriceFrom').value.trim();
+            var priceTo = document.getElementById('servicePriceTo').value.trim();
+            if (!name) { alert('Введите название услуги'); return; }
+            var existing = servicesData.find(function(s) { return s.name.toLowerCase() === name.toLowerCase(); });
+            if (existing) {
+                alert('Услуга с таким названием уже существует');
+                return;
+            }
+            var price = priceFrom ? parseFloat(priceFrom) : null;
+            var priceToVal = priceTo ? parseFloat(priceTo) : null;
+            var nextOrder = servicesData.length > 0 ? Math.max.apply(null, servicesData.map(function(s) { return s.order || 0; })) + 1 : 0;
+            window._supabaseClient.from('services').insert([{
+                emoji: emoji, name: name, description: description,
+                price: price, price_to: priceToVal, order: nextOrder
+            }]).then(function() {
+                closeModal();
+            });
+        }
+
+        function editService(id) {
+            var supabase = window._supabaseClient;
+            supabase.from('services').select('*').eq('id', id).single()
+                .then(function(res) {
+                    if (res.error || !res.data) return;
+                    var s = res.data;
+                    var modal = document.getElementById('modalOverlay');
+                    var content = document.getElementById('modalContent');
+                    content.innerHTML = `
+                        <h3>Редактировать услугу</h3>
+                        <input type="text" id="serviceEmoji" placeholder="Эмодзи" value="${s.emoji}">
+                        <input type="text" id="serviceName" placeholder="Название услуги" value="${s.name}">
+                        <input type="text" id="serviceDescription" placeholder="Описание" value="${s.description}">
+                        <input type="number" id="servicePriceFrom" placeholder="Цена от" value="${s.price || ''}">
+                        <input type="number" id="servicePriceTo" placeholder="Цена до" value="${s.price_to || ''}">
+                        <button class="btn" onclick="saveServiceChanges(${id})">Сохранить</button>
+                        <button class="btn" onclick="closeModal()">Отмена</button>
+                    `;
+                    modal.style.display = 'flex';
+                });
+        }
+
+        function saveServiceChanges(id) {
+            var emoji = document.getElementById('serviceEmoji').value.trim() || '✨';
+            var name = document.getElementById('serviceName').value.trim();
+            var description = document.getElementById('serviceDescription').value.trim();
+            var priceFrom = document.getElementById('servicePriceFrom').value.trim();
+            var priceTo = document.getElementById('servicePriceTo').value.trim();
+            if (!name) { alert('Введите название услуги'); return; }
+            var price = priceFrom ? parseFloat(priceFrom) : null;
+            var priceToVal = priceTo ? parseFloat(priceTo) : null;
+            window._supabaseClient.from('services').update({
+                emoji: emoji, name: name, description: description,
+                price: price, price_to: priceToVal
+            }).eq('id', id).then(function() {
+                closeModal();
+            });
+        }
+
+        function deleteService(id) {
+            if (confirm('Удалить услугу?')) {
+                window._supabaseClient.from('services').delete().eq('id', id);
+            }
+        }
+
+        // ================================================================
+        // ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ
         // ================================================================
         function downloadWork(imageData, title) {
             downloadImage(imageData, title + '.jpg');
@@ -1422,7 +1638,7 @@
         }
 
         // ================================================================
-        // ОТЗЫВЫ
+        // ОТЗЫВЫ (ИСПРАВЛЕНО: после добавления вызываем loadReviews)
         // ================================================================
         function openReviewModal() {
             var modal = document.getElementById('modalOverlay');
@@ -1560,6 +1776,8 @@
                 .then(function() {
                     closeModal();
                     tempReviewFiles = [];
+                    // === ИСПРАВЛЕНИЕ: сразу обновляем отзывы ===
+                    loadReviews();
                 })
                 .catch(function(err) {
                     alert('Ошибка: ' + err.message);
@@ -1611,216 +1829,7 @@
         }
 
         // ================================================================
-        // УПРАВЛЕНИЕ УСЛУГАМИ (исправлено: правильные ID полей)
-        // ================================================================
-        function renderOrdersSection() {
-            var container = document.getElementById('ordersContent');
-            if (!container) return;
-            if (window.isAdmin) {
-                var html = `
-                    <div style="display:flex; gap:10px; margin-bottom:15px;">
-                        <button class="btn ${adminOrdersMode === 'services' ? 'active' : ''}" onclick="switchAdminMode('services')">Услуги</button>
-                        <button class="btn ${adminOrdersMode === 'orders' ? 'active' : ''}" onclick="switchAdminMode('orders')">Заказы</button>
-                        <button class="btn" onclick="openAdminPromoPanel()">👑 Админ</button>
-                    </div>
-                `;
-                if (adminOrdersMode === 'services') {
-                    html += renderServicesForAdmin();
-                } else {
-                    html += '<div id="adminOrdersList"></div>';
-                }
-                container.innerHTML = html;
-                if (adminOrdersMode === 'orders') {
-                    window._supabaseClient.from('orders').select('*').order('timestamp', { ascending: false })
-                        .then(function(res) {
-                            if (!res.error && res.data) renderOrdersList(res.data);
-                        });
-                }
-                if (adminOrdersMode === 'services') {
-                    setupSortableForServices();
-                }
-            } else {
-                var html = '<h3 style="margin-bottom:15px;">Наши услуги</h3>';
-                html += renderServicesForUser();
-                html += '<div style="margin-top:20px;"><button class="btn" onclick="openContactModal()">📩 Написать дизайнеру</button></div>';
-                container.innerHTML = html;
-            }
-        }
-
-        function renderServicesForUser() {
-            if (servicesData.length === 0) return '<p style="color:var(--text-muted)">Услуги пока не добавлены</p>';
-            var html = '<div class="order-list" style="display:flex; flex-direction:column; gap:12px;">';
-            servicesData.forEach(function(s) {
-                var basePrice = s.price || 0;
-                var basePriceTo = s.price_to || basePrice;
-                var priceText = '';
-                var discountApplied = false;
-                if (currentDiscount > 0 && !(s.name === 'Telegram Mini Apps' && (currentDiscount === 50 || currentDiscount === 100))) {
-                    discountApplied = true;
-                    var newFrom = Math.round(basePrice * (1 - currentDiscount / 100));
-                    var newTo = Math.round(basePriceTo * (1 - currentDiscount / 100));
-                    priceText = `
-                        <span class="price-old">${basePrice}${basePriceTo && basePriceTo !== basePrice ? ' - ' + basePriceTo : ''}</span>
-                        <span class="price-new">${newFrom}${newTo && newTo !== newFrom ? ' - ' + newTo : ''} ₽</span>
-                    `;
-                } else {
-                    priceText = basePriceTo ? 'от ' + basePrice + ' до ' + basePriceTo + ' ₽' : (basePrice ? basePrice + ' ₽' : 'Цена не указана');
-                }
-                html += `
-                    <div class="order-item" style="cursor:pointer;" onclick="placeOrder('${s.name}', ${discountApplied})">
-                        <div class="order-info">
-                            <h4>${s.emoji} ${s.name}</h4>
-                            <p>${s.description}</p>
-                            <p>${priceText}</p>
-                        </div>
-                        <span style="font-size:24px;">➔</span>
-                    </div>
-                `;
-            });
-            html += '</div>';
-            return html;
-        }
-
-        function renderServicesForAdmin() {
-            var html = '<div class="order-list" id="servicesList" style="display:flex; flex-direction:column; gap:12px;">';
-            servicesData.forEach(function(s) {
-                var priceText = s.price_to ? 'от ' + s.price + ' до ' + s.price_to + ' ₽' : (s.price ? s.price + ' ₽' : 'Цена не указана');
-                html += `
-                    <div class="order-item" data-id="${s.id}" style="cursor: grab;">
-                        <div class="order-info">
-                            <h4>${s.emoji} ${s.name}</h4>
-                            <p>${s.description}</p>
-                            <p style="color:var(--accent); font-weight:600;">${priceText}</p>
-                        </div>
-                        <div style="display:flex; gap:5px; align-items:center;">
-                            <button class="btn" onclick="editService(${s.id})">✏️</button>
-                            <button class="btn" onclick="deleteService(${s.id})">🗑️</button>
-                        </div>
-                    </div>
-                `;
-            });
-            html += '</div>';
-            html += '<div style="margin-top:15px;"><button class="btn" onclick="addService()">➕ Добавить услугу</button></div>';
-            return html;
-        }
-
-        function switchAdminMode(mode) {
-            adminOrdersMode = mode;
-            renderOrdersSection();
-        }
-
-        function renderOrdersList(orders) {
-            var container = document.getElementById('adminOrdersList');
-            if (!container) return;
-            var html = '';
-            if (!orders || orders.length === 0) {
-                html = '<p style="color:var(--text-muted)">Нет заказов</p>';
-            } else {
-                orders.forEach(function(order) {
-                    var userName = order.user_name || 'Пользователь';
-                    var userUsername = order.user_username || null;
-                    html += `
-                        <div class="order-item">
-                            <div class="order-info">
-                                <h4>${order.service}</h4>
-                                <p>От: ${userName} ${userUsername ? '(<a href="https://t.me/' + userUsername + '" target="_blank">@' + userUsername + '</a>)' : ''}</p>
-                                <p>${order.time}</p>
-                            </div>
-                            <button class="btn" onclick="deleteOrder(${order.id})">🗑️</button>
-                        </div>
-                    `;
-                });
-            }
-            container.innerHTML = html;
-        }
-
-        // ================== ДОБАВЛЕНИЕ УСЛУГИ (исправлено) ==================
-        function addService() {
-            var modal = document.getElementById('modalOverlay');
-            var content = document.getElementById('modalContent');
-            content.innerHTML = `
-                <h3>Добавить услугу</h3>
-                <input type="text" id="serviceEmoji" placeholder="Эмодзи (например, 🎨)">
-                <input type="text" id="serviceName" placeholder="Название услуги">
-                <input type="text" id="serviceDescription" placeholder="Описание">
-                <input type="number" id="servicePriceFrom" placeholder="Цена от (₽)">
-                <input type="number" id="servicePriceTo" placeholder="Цена до (₽) (необязательно)">
-                <button class="btn" onclick="saveNewService()">Сохранить</button>
-                <button class="btn" onclick="closeModal()">Отмена</button>
-            `;
-            modal.style.display = 'flex';
-        }
-
-        function saveNewService() {
-            var emoji = document.getElementById('serviceEmoji').value.trim() || '✨';
-            var name = document.getElementById('serviceName').value.trim();
-            var description = document.getElementById('serviceDescription').value.trim();
-            var priceFrom = document.getElementById('servicePriceFrom').value.trim();
-            var priceTo = document.getElementById('servicePriceTo').value.trim();
-            if (!name) { alert('Введите название услуги'); return; }
-            var existing = servicesData.find(function(s) { return s.name.toLowerCase() === name.toLowerCase(); });
-            if (existing) {
-                alert('Услуга с таким названием уже существует');
-                return;
-            }
-            var price = priceFrom ? parseFloat(priceFrom) : null;
-            var priceToVal = priceTo ? parseFloat(priceTo) : null;
-            var nextOrder = servicesData.length > 0 ? Math.max.apply(null, servicesData.map(function(s) { return s.order || 0; })) + 1 : 0;
-            window._supabaseClient.from('services').insert([{
-                emoji: emoji, name: name, description: description,
-                price: price, price_to: priceToVal, order: nextOrder
-            }]).then(function() {
-                closeModal();
-            });
-        }
-
-        function editService(id) {
-            var supabase = window._supabaseClient;
-            supabase.from('services').select('*').eq('id', id).single()
-                .then(function(res) {
-                    if (res.error || !res.data) return;
-                    var s = res.data;
-                    var modal = document.getElementById('modalOverlay');
-                    var content = document.getElementById('modalContent');
-                    content.innerHTML = `
-                        <h3>Редактировать услугу</h3>
-                        <input type="text" id="serviceEmoji" placeholder="Эмодзи" value="${s.emoji}">
-                        <input type="text" id="serviceName" placeholder="Название услуги" value="${s.name}">
-                        <input type="text" id="serviceDescription" placeholder="Описание" value="${s.description}">
-                        <input type="number" id="servicePriceFrom" placeholder="Цена от" value="${s.price || ''}">
-                        <input type="number" id="servicePriceTo" placeholder="Цена до" value="${s.price_to || ''}">
-                        <button class="btn" onclick="saveServiceChanges(${id})">Сохранить</button>
-                        <button class="btn" onclick="closeModal()">Отмена</button>
-                    `;
-                    modal.style.display = 'flex';
-                });
-        }
-
-        function saveServiceChanges(id) {
-            var emoji = document.getElementById('serviceEmoji').value.trim() || '✨';
-            var name = document.getElementById('serviceName').value.trim();
-            var description = document.getElementById('serviceDescription').value.trim();
-            var priceFrom = document.getElementById('servicePriceFrom').value.trim();
-            var priceTo = document.getElementById('servicePriceTo').value.trim();
-            if (!name) { alert('Введите название услуги'); return; }
-            var price = priceFrom ? parseFloat(priceFrom) : null;
-            var priceToVal = priceTo ? parseFloat(priceTo) : null;
-            window._supabaseClient.from('services').update({
-                emoji: emoji, name: name, description: description,
-                price: price, price_to: priceToVal
-            }).eq('id', id).then(function() {
-                closeModal();
-            });
-        }
-
-        function deleteService(id) {
-            if (confirm('Удалить услугу?')) {
-                window._supabaseClient.from('services').delete().eq('id', id);
-            }
-        }
-
-        // ================================================================
-        // АДМИН-ФУНКЦИИ (остальные)
+        // АДМИН-ФУНКЦИИ
         // ================================================================
         function editAbout() {
             var supabase = window._supabaseClient;
