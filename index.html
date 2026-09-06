@@ -288,7 +288,7 @@
         <div class="footer">
             <div>© Mark1z Design · Дмитрий Маркизов</div>
             <a href="#" onclick="openPrivacyPolicy()">Политика конфиденциальности</a>
-            <span class="version">V.1.0.2</span>
+            <span class="version">V.1.0.3</span>
         </div>
     </div>
 
@@ -346,7 +346,7 @@
         var viewedPosts = JSON.parse(localStorage.getItem('viewedPosts') || '[]');
         var currentPostId = null;
         var tempPostFile = null;
-        var categorySubscription = null; // для realtime подписки на категорию
+        var categorySubscription = null;
 
         currentDiscount = lastSpinDiscount;
 
@@ -431,10 +431,10 @@
                 .then(function(res) {
                     if (res.error) throw res.error;
                     var publicUrl = window._supabaseClient.storage.from('public').getPublicUrl(path);
-                    // Исправление: гарантируем, что возвращаем строку URL
-                    var url = publicUrl.data.publicUrl;
-                    if (!url) throw new Error('Не удалось получить URL загруженного файла');
-                    return url;
+                    if (!publicUrl.data || !publicUrl.data.publicUrl) {
+                        throw new Error('Не удалось получить URL загруженного файла');
+                    }
+                    return publicUrl.data.publicUrl;
                 });
         }
 
@@ -1003,7 +1003,7 @@
         }
 
         // ================================================================
-        // ЗАГРУЗКА ДАННЫХ (С REALTIME ПОДПИСКАМИ)
+        // ЗАГРУЗКА ДАННЫХ И REALTIME ПОДПИСКИ
         // ================================================================
         function initDefaultServices() {
             var supabase = window._supabaseClient;
@@ -1038,41 +1038,47 @@
 
         function setupRealTimeListeners() {
             var supabase = window._supabaseClient;
-            // Подписка на изменения категорий портфолио
+            // Категории портфолио
             supabase.channel('portfolio_categories_changes')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'portfolio_categories' }, function() {
                     loadPortfolioCategories();
-                    // Если открыта категория, обновляем её содержимое
                     if (currentCategoryId) {
                         openCategory(currentCategoryId);
                     }
                 })
-                .subscribe();
+                .subscribe(function(status, err) {
+                    if (err) console.error('Ошибка подписки на категории:', err);
+                });
 
-            // Подписка на изменения услуг
+            // Услуги
             supabase.channel('services_changes')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'services' }, function() {
                     loadServices();
                 })
-                .subscribe();
+                .subscribe(function(status, err) {
+                    if (err) console.error('Ошибка подписки на услуги:', err);
+                });
 
-            // Подписка на изменения отзывов
+            // Отзывы
             supabase.channel('reviews_changes')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews' }, function() {
                     loadReviews();
                 })
-                .subscribe();
+                .subscribe(function(status, err) {
+                    if (err) console.error('Ошибка подписки на отзывы:', err);
+                });
 
-            // Подписка на изменения постов (для админки)
+            // Посты (для админки)
             supabase.channel('posts_changes')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, function() {
-                    // Если открыт менеджер постов, обновляем список
                     var postsList = document.getElementById('postsList');
                     if (postsList && postsList.innerHTML !== '') {
                         loadPostsList();
                     }
                 })
-                .subscribe();
+                .subscribe(function(status, err) {
+                    if (err) console.error('Ошибка подписки на посты:', err);
+                });
 
             // Первичная загрузка
             loadAbout();
@@ -1148,7 +1154,7 @@
         }
 
         // ================================================================
-        // ПОРТФОЛИО (с подпиской на изменения внутри категории)
+        // ПОРТФОЛИО
         // ================================================================
         function renderPortfolioCategories(cats) {
             var container = document.getElementById('portfolioCategories');
@@ -1349,10 +1355,11 @@
                             table: 'portfolio_categories',
                             filter: 'id=eq.' + categoryId
                         }, function() {
-                            // Обновляем содержимое категории
                             openCategory(categoryId);
                         })
-                        .subscribe();
+                        .subscribe(function(status, err) {
+                            if (err) console.error('Ошибка подписки на категорию:', err);
+                        });
                 });
         }
 
@@ -1421,7 +1428,6 @@
                 .then(function() {
                     tempWorkFile = null;
                     closeModal();
-                    // Обновляем отображение категории
                     openCategory(currentCategoryId);
                 })
                 .catch(function(err) {
@@ -1696,7 +1702,7 @@
         }
 
         // ================================================================
-        // ОТЗЫВЫ
+        // ОТЗЫВЫ (ИСПРАВЛЕНИЕ: прерывание цепочки при таймере)
         // ================================================================
         function openReviewModal() {
             var modal = document.getElementById('modalOverlay');
@@ -1786,7 +1792,10 @@
                 alert('Не удалось определить пользователя');
                 return;
             }
+
             var supabase = window._supabaseClient;
+
+            // Проверка на 1 час
             supabase.from('user_last_review').select('timestamp').eq('user_id', user.id.toString()).single()
                 .then(function(res) {
                     if (!res.error && res.data) {
@@ -1794,9 +1803,11 @@
                         var now = Date.now();
                         if (now - lastTimestamp < 3600000) {
                             alert('Вы сможете оставить новый отзыв через 1 час после предыдущего.');
-                            return;
+                            // Прерываем цепочку, выбрасывая ошибку
+                            return Promise.reject('timeout');
                         }
                     }
+                    // Если всё ок, загружаем изображения
                     var imageUrls = [];
                     var uploadPromises = tempReviewFiles.map(function(file) {
                         return compressImage(file, 600, 0.6)
@@ -1834,11 +1845,14 @@
                 .then(function() {
                     closeModal();
                     tempReviewFiles = [];
-                    // Обновляем отзывы сразу
                     loadReviews();
                 })
                 .catch(function(err) {
-                    alert('Ошибка: ' + err.message);
+                    if (err === 'timeout') {
+                        // уже показан alert, ничего не делаем
+                    } else {
+                        alert('Ошибка: ' + err.message);
+                    }
                 });
         }
 
@@ -1903,7 +1917,8 @@
                         alert('Вы не можете удалить этот отзыв');
                         return;
                     }
-                    if (reviewAuthorId === currentUserId) {
+                    // Если автор или админ, удаляем запись о времени последнего отзыва, чтобы можно было оставить новый
+                    if (reviewAuthorId) {
                         supabase.from('user_last_review').delete().eq('user_id', reviewAuthorId);
                     }
                     supabase.from('reviews').delete().eq('id', id)
@@ -1917,7 +1932,7 @@
         }
 
         // ================================================================
-        // АДМИН-ФУНКЦИИ
+        // ОСТАЛЬНЫЕ АДМИН-ФУНКЦИИ
         // ================================================================
         function editAbout() {
             var supabase = window._supabaseClient;
