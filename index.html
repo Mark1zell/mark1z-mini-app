@@ -852,22 +852,20 @@ function renderServiceOptionsManager(serviceId, options, container) {
         `;
     } else {
         options.forEach(function(opt, idx) {
-            var typeIcon = { checkbox: '✅', quantity: '🔢', pages: '📄' }[opt.option_type] || '✅';
-            var typeLabel = { checkbox: 'Да/Нет', quantity: 'Количество', pages: 'Страницы' }[opt.option_type] || 'Да/Нет';
+            var maxQty = opt.max_quantity || 1;
+            var isSingle = maxQty <= 1;
             
             html += `
                 <div class="order-item admin-grab" data-id="${opt.id}" style="margin-bottom:0;cursor:grab;">
                     <div class="order-info">
-                        <h4>${typeIcon} ${opt.name}</h4>
+                        <h4>${opt.name}</h4>
                         <p>
                             <strong>${opt.price} ₽</strong>
                             ${opt.description ? ' · ' + opt.description : ''}
                         </p>
                         <p style="font-size:11px;color:var(--text-muted);">
-                            Тип: ${typeLabel}
-                            | Мин: ${opt.min_quantity || 1}
-                            | Макс: ${opt.max_quantity || 10}
-                            ${opt.discount_min_quantity ? '| Скидка от ' + opt.discount_min_quantity + ' шт: ' + opt.discount_price + ' ₽' : ''}
+                            ${isSingle ? 'Одиночная опция' : 'Количество: ' + (opt.min_quantity || 1) + ' - ' + maxQty}
+                            ${opt.discount_min_quantity ? ' | Скидка от ' + opt.discount_min_quantity + ' шт: ' + opt.discount_price + ' ₽' : ''}
                         </p>
                     </div>
                     <div style="display:flex;gap:5px;">
@@ -930,36 +928,26 @@ function showAddOptionFormImproved(serviceId) {
                 <input type="text" id="optDescription" placeholder="Краткое описание опции" style="width:100%;">
             </div>
             
-            <div style="margin-bottom:12px;">
-                <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Тип опции</label>
-                <select id="optType" style="width:100%;">
-                    <option value="checkbox">✅ Да/Нет (чекбокс)</option>
-                    <option value="quantity">🔢 Количество</option>
-                    <option value="pages">📄 Страницы</option>
-                </select>
+            <div style="display:flex;gap:8px;margin-bottom:12px;">
+                <div style="flex:1;">
+                    <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Мин. количество</label>
+                    <input type="number" id="optMinQty" placeholder="1" value="1" style="width:100%;">
+                </div>
+                <div style="flex:1;">
+                    <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Макс. количество</label>
+                    <input type="number" id="optMaxQty" placeholder="10" value="10" style="width:100%;">
+                    <p style="font-size:10px;color:var(--text-muted);margin-top:2px;">Поставьте 1, если опция одиночная (только галочка)</p>
+                </div>
             </div>
             
-            <div id="quantityFields" style="display:block;">
-                <div style="display:flex;gap:8px;margin-bottom:12px;">
-                    <div style="flex:1;">
-                        <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Мин. количество</label>
-                        <input type="number" id="optMinQty" placeholder="1" value="1" style="width:100%;">
-                    </div>
-                    <div style="flex:1;">
-                        <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Макс. количество</label>
-                        <input type="number" id="optMaxQty" placeholder="10" value="10" style="width:100%;">
-                    </div>
+            <div style="display:flex;gap:8px;margin-bottom:12px;">
+                <div style="flex:1;">
+                    <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Кол-во для скидки</label>
+                    <input type="number" id="optDiscountMin" placeholder="Например: 3" style="width:100%;">
                 </div>
-                
-                <div style="display:flex;gap:8px;margin-bottom:12px;">
-                    <div style="flex:1;">
-                        <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Кол-во для скидки</label>
-                        <input type="number" id="optDiscountMin" placeholder="Например: 3" style="width:100%;">
-                    </div>
-                    <div style="flex:1;">
-                        <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Цена со скидкой (₽)</label>
-                        <input type="number" id="optDiscountPrice" placeholder="Например: 400" style="width:100%;">
-                    </div>
+                <div style="flex:1;">
+                    <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Цена со скидкой (₽)</label>
+                    <input type="number" id="optDiscountPrice" placeholder="Например: 400" style="width:100%;">
                 </div>
             </div>
             
@@ -990,55 +978,42 @@ function saveOptionImproved(serviceId) {
     var name = document.getElementById('optName').value.trim();
     var price = document.getElementById('optPrice').value.trim();
     var description = document.getElementById('optDescription').value.trim();
-    var optionType = document.getElementById('optType').value;
     var minQty = document.getElementById('optMinQty')?.value.trim() || '1';
-    var maxQty = document.getElementById('optMaxQty')?.value.trim() || '10';
+    var maxQty = document.getElementById('optMaxQty')?.value.trim() || '1';
     var discountMin = document.getElementById('optDiscountMin')?.value.trim() || null;
     var discountPrice = document.getElementById('optDiscountPrice')?.value.trim() || null;
     
     if (!name) { alert('Введите название опции'); return; }
     if (!price) { alert('Введите цену'); return; }
     
-    console.log('Сохраняем опцию:', {
-        service_id: serviceId,
-        name: name,
-        price: parseInt(price),
-        description: description,
-        option_type: optionType,
-        min_quantity: parseInt(minQty),
-        max_quantity: parseInt(maxQty),
-        discount_min_quantity: discountMin ? parseInt(discountMin) : null,
-        discount_price: discountPrice ? parseInt(discountPrice) : null
-    });
+    // Если макс. количество не указано или меньше 1, ставим 1
+    var finalMaxQty = parseInt(maxQty) || 1;
+    if (finalMaxQty < 1) finalMaxQty = 1;
     
-    // Сначала получаем максимальный order
+    // Если мин. количество больше макс., ставим мин = макс
+    var finalMinQty = parseInt(minQty) || 1;
+    if (finalMinQty < 1) finalMinQty = 1;
+    if (finalMinQty > finalMaxQty) finalMinQty = finalMaxQty;
+    
     supabase.from('service_options')
         .select('order')
         .eq('service_id', serviceId)
         .order('order', { ascending: false })
         .limit(1)
         .then(function(res) {
-            if (res.error) {
-                console.error('Ошибка при получении order:', res.error);
-                throw res.error;
-            }
-            
             var nextOrder = 0;
             if (res.data && res.data.length > 0 && res.data[0].order !== null && res.data[0].order !== undefined) {
                 nextOrder = res.data[0].order + 1;
             }
             
-            console.log('Следующий order:', nextOrder);
-            
-            // Вставляем новую опцию
             return supabase.from('service_options').insert([{
                 service_id: serviceId,
                 name: name,
                 price: parseInt(price),
                 description: description || '',
-                option_type: optionType,
-                min_quantity: parseInt(minQty) || 1,
-                max_quantity: parseInt(maxQty) || 10,
+                option_type: 'checkbox', // По умолчанию checkbox, но с количеством если max > 1
+                min_quantity: finalMinQty,
+                max_quantity: finalMaxQty,
                 discount_min_quantity: discountMin ? parseInt(discountMin) : null,
                 discount_price: discountPrice ? parseInt(discountPrice) : null,
                 order: nextOrder
@@ -1046,20 +1021,15 @@ function saveOptionImproved(serviceId) {
         })
         .then(function(res) {
             if (res.error) {
-                console.error('Ошибка при вставке:', res.error);
                 alert('Ошибка при сохранении: ' + res.error.message);
                 return;
             }
             
-            console.log('Опция успешно сохранена');
             alert('✅ Опция успешно добавлена!');
-            
-            // Перезагружаем список опций
             loadServiceOptionsForManager(serviceId);
             loadServiceOptions();
         })
         .catch(function(err) {
-            console.error('Ошибка:', err);
             alert('Ошибка: ' + err.message);
         });
 }
@@ -1090,36 +1060,26 @@ function editOptionImproved(optionId, serviceId) {
                         <input type="text" id="editOptDescription" value="${opt.description || ''}" style="width:100%;">
                     </div>
                     
-                    <div style="margin-bottom:12px;">
-                        <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Тип опции</label>
-                        <select id="editOptType" style="width:100%;">
-                            <option value="checkbox" ${opt.option_type === 'checkbox' ? 'selected' : ''}>✅ Да/Нет (чекбокс)</option>
-                            <option value="quantity" ${opt.option_type === 'quantity' ? 'selected' : ''}>🔢 Количество</option>
-                            <option value="pages" ${opt.option_type === 'pages' ? 'selected' : ''}>📄 Страницы</option>
-                        </select>
+                    <div style="display:flex;gap:8px;margin-bottom:12px;">
+                        <div style="flex:1;">
+                            <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Мин. количество</label>
+                            <input type="number" id="editOptMinQty" value="${opt.min_quantity || 1}" style="width:100%;">
+                        </div>
+                        <div style="flex:1;">
+                            <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Макс. количество</label>
+                            <input type="number" id="editOptMaxQty" value="${opt.max_quantity || 10}" style="width:100%;">
+                            <p style="font-size:10px;color:var(--text-muted);margin-top:2px;">Поставьте 1, если опция одиночная (только галочка)</p>
+                        </div>
                     </div>
                     
-                    <div id="editQuantityFields" style="display:block;">
-                        <div style="display:flex;gap:8px;margin-bottom:12px;">
-                            <div style="flex:1;">
-                                <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Мин. количество</label>
-                                <input type="number" id="editOptMinQty" value="${opt.min_quantity || 1}" style="width:100%;">
-                            </div>
-                            <div style="flex:1;">
-                                <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Макс. количество</label>
-                                <input type="number" id="editOptMaxQty" value="${opt.max_quantity || 10}" style="width:100%;">
-                            </div>
+                    <div style="display:flex;gap:8px;margin-bottom:12px;">
+                        <div style="flex:1;">
+                            <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Кол-во для скидки</label>
+                            <input type="number" id="editOptDiscountMin" value="${opt.discount_min_quantity || ''}" style="width:100%;">
                         </div>
-                        
-                        <div style="display:flex;gap:8px;margin-bottom:12px;">
-                            <div style="flex:1;">
-                                <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Кол-во для скидки</label>
-                                <input type="number" id="editOptDiscountMin" value="${opt.discount_min_quantity || ''}" style="width:100%;">
-                            </div>
-                            <div style="flex:1;">
-                                <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Цена со скидкой (₽)</label>
-                                <input type="number" id="editOptDiscountPrice" value="${opt.discount_price || ''}" style="width:100%;">
-                            </div>
+                        <div style="flex:1;">
+                            <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Цена со скидкой (₽)</label>
+                            <input type="number" id="editOptDiscountPrice" value="${opt.discount_price || ''}" style="width:100%;">
                         </div>
                     </div>
                     
@@ -1137,7 +1097,6 @@ function editOptionImproved(optionId, serviceId) {
             container.innerHTML = formHtml + container.innerHTML;
         });
 }
-
 function toggleEditQuantityFields() {
     var typeSelect = document.getElementById('editOptType');
     var quantityFields = document.getElementById('editQuantityFields');
@@ -1147,37 +1106,48 @@ function toggleEditQuantityFields() {
     }
 }
 
-        function updateOptionImproved(optionId, serviceId) {
-            var name = document.getElementById('editOptName').value.trim();
-            var price = document.getElementById('editOptPrice').value.trim();
-            var description = document.getElementById('editOptDescription').value.trim();
-            var optionType = document.getElementById('editOptType').value;
-            var minQty = document.getElementById('editOptMinQty')?.value.trim() || '1';
-            var maxQty = document.getElementById('editOptMaxQty')?.value.trim() || '10';
-            var discountMin = document.getElementById('editOptDiscountMin')?.value.trim() || null;
-            var discountPrice = document.getElementById('editOptDiscountPrice')?.value.trim() || null;
+function updateOptionImproved(optionId, serviceId) {
+    var name = document.getElementById('editOptName').value.trim();
+    var price = document.getElementById('editOptPrice').value.trim();
+    var description = document.getElementById('editOptDescription').value.trim();
+    var minQty = document.getElementById('editOptMinQty')?.value.trim() || '1';
+    var maxQty = document.getElementById('editOptMaxQty')?.value.trim() || '1';
+    var discountMin = document.getElementById('editOptDiscountMin')?.value.trim() || null;
+    var discountPrice = document.getElementById('editOptDiscountPrice')?.value.trim() || null;
+    
+    if (!name) { alert('Введите название опции'); return; }
+    if (!price) { alert('Введите цену'); return; }
+    
+    var finalMaxQty = parseInt(maxQty) || 1;
+    if (finalMaxQty < 1) finalMaxQty = 1;
+    
+    var finalMinQty = parseInt(minQty) || 1;
+    if (finalMinQty < 1) finalMinQty = 1;
+    if (finalMinQty > finalMaxQty) finalMinQty = finalMaxQty;
+    
+    supabase.from('service_options').update({
+        name: name,
+        price: parseInt(price),
+        description: description || '',
+        min_quantity: finalMinQty,
+        max_quantity: finalMaxQty,
+        discount_min_quantity: discountMin ? parseInt(discountMin) : null,
+        discount_price: discountPrice ? parseInt(discountPrice) : null
+    }).eq('id', optionId)
+        .then(function(res) {
+            if (res.error) {
+                alert('Ошибка при обновлении: ' + res.error.message);
+                return;
+            }
             
-            if (!name) { alert('Введите название опции'); return; }
-            if (!price) { alert('Введите цену'); return; }
-            
-            supabase.from('service_options').update({
-                name: name,
-                price: parseInt(price),
-                description: description,
-                option_type: optionType,
-                min_quantity: parseInt(minQty),
-                max_quantity: parseInt(maxQty),
-                discount_min_quantity: discountMin ? parseInt(discountMin) : null,
-                discount_price: discountPrice ? parseInt(discountPrice) : null
-            }).eq('id', optionId)
-                .then(function() {
-                    loadServiceOptionsForManager(serviceId);
-                    loadServiceOptions();
-                })
-                .catch(function(err) {
-                    alert('Ошибка: ' + err.message);
-                });
-        }
+            alert('✅ Опция успешно обновлена!');
+            loadServiceOptionsForManager(serviceId);
+            loadServiceOptions();
+        })
+        .catch(function(err) {
+            alert('Ошибка: ' + err.message);
+        });
+}
 
         function deleteOptionFromManager(optionId, serviceId) {
             if (!confirm('Удалить эту опцию?')) return;
@@ -1982,8 +1952,8 @@ function openOrderConstructor(serviceId) {
         html += '<p style="color:var(--text-muted)">Для этой услуги пока нет опций. Свяжитесь с дизайнером для уточнения.</p>';
     } else {
         options.forEach(function(opt, idx) {
-            var qty = currentOrderQuantities[opt.id] || (opt.min_quantity || 1);
-            var typeLabel = { checkbox: '✅', quantity: '🔢', pages: '📄' }[opt.option_type] || '✅';
+            var maxQty = opt.max_quantity || 1;
+            var isSingle = maxQty <= 1; // Если максимум 1, то показываем только чекбокс
             
             html += `
                 <div class="option-group" data-opt-id="${opt.id}">
@@ -1992,17 +1962,19 @@ function openOrderConstructor(serviceId) {
                             <span class="checkmark" id="checkmark_${opt.id}">✓</span>
                         </div>
                         <div class="option-info">
-                            <div class="option-name">${opt.name} ${typeLabel}</div>
+                            <div class="option-name">${opt.name}</div>
                             <div class="option-price">${opt.price} ₽ ${opt.description ? '· ' + opt.description : ''}</div>
                         </div>
                     </div>
+                    ${!isSingle ? `
                     <div class="option-quantity" id="qtyControl_${opt.id}" style="display:none;">
                         <button class="qty-btn" onclick="event.stopPropagation(); changeQuantity(${opt.id}, -1)">−</button>
-                        <span class="qty-display" id="qtyDisplay_${opt.id}">${qty}</span>
+                        <span class="qty-display" id="qtyDisplay_${opt.id}">${opt.min_quantity || 1}</span>
                         <button class="qty-btn" onclick="event.stopPropagation(); changeQuantity(${opt.id}, 1)">+</button>
-                        <span class="price-detail" id="priceDisplay_${opt.id}">${opt.price} ₽ × ${qty} = ${opt.price * qty} ₽</span>
+                        <span class="price-detail" id="priceDisplay_${opt.id}">${opt.price} ₽ × ${opt.min_quantity || 1} = ${opt.price * (opt.min_quantity || 1)} ₽</span>
                         ${opt.discount_min_quantity ? `<span class="discount-badge">скидка от ${opt.discount_min_quantity} шт.</span>` : ''}
                     </div>
+                    ` : ''}
                 </div>
             `;
         });
@@ -2037,9 +2009,16 @@ function toggleOptionUI(optId) {
     
     if (!checkbox) return;
     
+    var opt = currentOrderOptions.find(function(o) { return o.id == optId; });
+    if (!opt) return;
+    
+    var maxQty = opt.max_quantity || 1;
+    var isSingle = maxQty <= 1;
+    
     var isActive = checkbox.classList.contains('active');
     
     if (isActive) {
+        // Деактивируем
         checkbox.classList.remove('active');
         checkbox.style.background = 'transparent';
         checkbox.style.borderColor = 'rgba(255,255,255,0.2)';
@@ -2047,64 +2026,99 @@ function toggleOptionUI(optId) {
         if (qtyControl) qtyControl.style.display = 'none';
         currentOrderQuantities[optId] = 0;
     } else {
+        // Активируем
         checkbox.classList.add('active');
         checkbox.style.background = 'linear-gradient(135deg, #7c3aed, #be185d)';
         checkbox.style.borderColor = '#7c3aed';
         checkmark.style.opacity = '1';
-        if (qtyControl) qtyControl.style.display = 'flex';
-        var opt = currentOrderOptions.find(function(o) { return o.id == optId; });
-        currentOrderQuantities[optId] = opt ? (opt.min_quantity || 1) : 1;
+        
+        if (isSingle) {
+            // Если максимум 1, то количество = 1
+            currentOrderQuantities[optId] = 1;
+        } else {
+            // Иначе показываем контрол количества
+            if (qtyControl) qtyControl.style.display = 'flex';
+            currentOrderQuantities[optId] = opt.min_quantity || 1;
+        }
     }
     updateOrderTotal();
     updateQuantityDisplay(optId);
 }
 
-        function changeQuantity(optId, delta) {
-            var current = currentOrderQuantities[optId] || 0;
-            var opt = currentOrderOptions.find(function(o) { return o.id == optId; });
-            if (!opt) return;
-            
-            var newQty = Math.max(0, current + delta);
-            if (newQty === 0) {
-                var checkbox = document.getElementById('checkbox_' + optId);
-                if (checkbox && checkbox.classList.contains('active')) {
-                    toggleOptionUI(optId);
-                    return;
-                }
-            }
-            
-            if (opt.max_quantity && newQty > opt.max_quantity) {
-                alert('Максимум ' + opt.max_quantity + ' шт.');
-                return;
-            }
-            
-            currentOrderQuantities[optId] = newQty;
-            updateQuantityDisplay(optId);
-            updateOrderTotal();
+function changeQuantity(optId, delta) {
+    var current = currentOrderQuantities[optId] || 0;
+    var opt = currentOrderOptions.find(function(o) { return o.id == optId; });
+    if (!opt) return;
+    
+    var maxQty = opt.max_quantity || 1;
+    var isSingle = maxQty <= 1;
+    
+    // Если максимум 1, то количество менять нельзя
+    if (isSingle) {
+        return;
+    }
+    
+    var newQty = Math.max(0, current + delta);
+    if (newQty === 0) {
+        var checkbox = document.getElementById('checkbox_' + optId);
+        if (checkbox && checkbox.classList.contains('active')) {
+            toggleOptionUI(optId);
+            return;
         }
+    }
+    
+    if (opt.max_quantity && newQty > opt.max_quantity) {
+        alert('Максимум ' + opt.max_quantity + ' шт.');
+        return;
+    }
+    
+    if (newQty < (opt.min_quantity || 1)) {
+        alert('Минимум ' + (opt.min_quantity || 1) + ' шт.');
+        return;
+    }
+    
+    currentOrderQuantities[optId] = newQty;
+    updateQuantityDisplay(optId);
+    updateOrderTotal();
+}
 
-        function updateQuantityDisplay(optId) {
-            var display = document.getElementById('qtyDisplay_' + optId);
-            var priceDisplay = document.getElementById('priceDisplay_' + optId);
-            if (display) {
-                display.textContent = currentOrderQuantities[optId] || 0;
-            }
-            var opt = currentOrderOptions.find(function(o) { return o.id == optId; });
-            if (opt && priceDisplay) {
-                var qty = currentOrderQuantities[optId] || 0;
-                var price = opt.price;
-                var total = price * qty;
-                var discountText = '';
-                
-                if (opt.discount_min_quantity && qty >= opt.discount_min_quantity && opt.discount_price) {
-                    price = opt.discount_price;
-                    total = price * qty;
-                    discountText = ' <span style="color:#fbbf24;font-size:12px;">(скидка ' + opt.discount_price + ' ₽/шт.)</span>';
-                }
-                
-                priceDisplay.innerHTML = price + ' ₽ × ' + qty + ' = ' + total + ' ₽' + discountText;
-            }
+function updateQuantityDisplay(optId) {
+    var display = document.getElementById('qtyDisplay_' + optId);
+    var priceDisplay = document.getElementById('priceDisplay_' + optId);
+    
+    var opt = currentOrderOptions.find(function(o) { return o.id == optId; });
+    if (!opt) return;
+    
+    var qty = currentOrderQuantities[optId] || 0;
+    var maxQty = opt.max_quantity || 1;
+    var isSingle = maxQty <= 1;
+    
+    if (isSingle) {
+        // Для одиночных опций не показываем количество
+        if (display) display.textContent = qty > 0 ? '1' : '0';
+        if (priceDisplay) {
+            var total = qty > 0 ? opt.price : 0;
+            priceDisplay.textContent = qty > 0 ? opt.price + ' ₽' : '0 ₽';
         }
+    } else {
+        // Для множественных опций показываем количество
+        if (display) display.textContent = qty;
+        
+        var price = opt.price;
+        var total = price * qty;
+        var discountText = '';
+        
+        if (opt.discount_min_quantity && qty >= opt.discount_min_quantity && opt.discount_price) {
+            price = opt.discount_price;
+            total = price * qty;
+            discountText = ' <span style="color:#fbbf24;font-size:12px;">(скидка ' + opt.discount_price + ' ₽/шт.)</span>';
+        }
+        
+        if (priceDisplay) {
+            priceDisplay.innerHTML = price + ' ₽ × ' + qty + ' = ' + total + ' ₽' + discountText;
+        }
+    }
+}
 
         function updateOrderTotal() {
             var total = 0;
