@@ -8,6 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
+        /* ===== БАЗОВЫЕ СТИЛИ ===== */
         :root {
             --bg-start: #0a050d;
             --bg-mid: #100820;
@@ -40,6 +41,7 @@
             user-drag: none !important;
             pointer-events: auto;
         }
+        /* ===== ЗВЁЗДЫ ===== */
         .stars-container { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0; }
         .star { position:absolute; background:rgba(255,255,255,0.7); border-radius:50%; opacity:0; animation: twinkle var(--duration) ease-in-out infinite; animation-delay: var(--delay); }
         @keyframes twinkle { 0%,100%{opacity:0; transform:scale(0.3)} 50%{opacity:0.3; transform:scale(1)} }
@@ -47,6 +49,7 @@
         .asteroid { position:absolute; background: radial-gradient(circle, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 70%); border-radius:50%; width:4px; height:4px; opacity:0; animation: flyAsteroid linear infinite; }
         @keyframes flyAsteroid { 0% { transform: translate(0,0) scale(0.5); opacity:0; } 10% { opacity:0.6; } 90% { opacity:0.6; } 100% { transform: translate(var(--tx), var(--ty)) scale(1.5); opacity:0; } }
         .app-container { position:relative; z-index:1; max-width:600px; margin:0 auto; }
+        /* ===== HEADER ===== */
         .header { text-align:center; padding:30px 0 20px; position: relative; }
         .header .faq-button { position:absolute; top:20px; right:20px; background: rgba(124,58,237,0.3); border:1px solid var(--card-border); color:#fff; width:40px; height:40px; border-radius:50%; font-size:20px; cursor:pointer; transition:all 0.3s; }
         .header .faq-button:hover { background: rgba(124,58,237,0.6); }
@@ -59,18 +62,22 @@
         .brand-name { font-size:30px; font-weight:800; background:linear-gradient(to right, #a78bfa, #c084fc, #a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; animation: brandGlow 6s ease-in-out infinite; }
         @keyframes brandGlow { 0%,100%{filter:drop-shadow(0 0 4px rgba(124,58,237,0.3))} 50%{filter:drop-shadow(0 0 8px rgba(124,58,237,0.5))} }
         .tagline { color:var(--text-muted); font-size:13px; letter-spacing:2px; text-transform:uppercase; }
+        /* ===== ВКЛАДКИ ===== */
         .tabs { display:flex; background:rgba(10,5,18,0.8); backdrop-filter:blur(20px); border:1px solid var(--card-border); border-radius:40px; padding:6px; margin:25px 0; }
         .tab-btn { flex:1; padding:12px 6px; background:transparent; border:none; color:var(--text-muted); font-weight:600; border-radius:32px; cursor:pointer; transition:all 0.3s; }
         .tab-btn.active { background:linear-gradient(135deg, rgba(124,58,237,0.7), rgba(190,24,93,0.7)); color:#fff; }
         .section { display:none; animation: fadeIn 0.4s; }
         .section.active { display:block; }
         @keyframes fadeIn { from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none} }
+        /* ===== КАРТОЧКИ ===== */
         .card { background:var(--card-bg); backdrop-filter:blur(10px); border:1px solid var(--card-border); border-radius:var(--radius); padding:24px; margin-bottom:16px; box-shadow:var(--shadow); }
         .card h3 { font-size:21px; font-weight:700; margin-bottom:12px; color:#e9d5ff; }
         .btn { background: linear-gradient(135deg, var(--primary), var(--secondary)); color:#fff; border:none; padding:10px 20px; border-radius:20px; font-weight:600; cursor:pointer; transition: transform 0.2s, box-shadow 0.2s; display:inline-block; margin:5px; text-decoration:none; font-size:14px; }
         .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(124,58,237,0.5); }
         .btn:active { transform: scale(0.96); }
         .btn:disabled { opacity:0.5; pointer-events:none; }
+        .btn-sm { padding:6px 12px; font-size:12px; }
+        /* ===== ПОРТФОЛИО ===== */
         .categories-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
         .category-card { background: rgba(15,7,25,0.8); border:1px solid var(--card-border); border-radius:var(--radius); padding:20px; text-align:center; cursor:pointer; transition: transform 0.3s, border-color 0.3s; position:relative; overflow:hidden; }
         .category-card:hover { transform: scale(1.02); border-color: var(--primary); }
@@ -100,47 +107,21 @@
             display: block;
             cursor: pointer;
         }
-        .work-item .work-info {
-            padding: 8px;
-            font-size: 12px;
-            color: var(--text-muted);
-            text-align: center;
-            flex-shrink: 0;
-        }
-        .work-item .work-actions {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            display: flex;
-            gap: 5px;
-            z-index: 2;
-        }
-        .work-actions button {
-            background: rgba(0,0,0,0.6);
-            border: none;
-            color: white;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-        }
+        .work-item .work-info { padding: 8px; font-size:12px; color:var(--text-muted); text-align:center; flex-shrink:0; }
+        .work-item .work-actions { position:absolute; top:8px; right:8px; display:flex; gap:5px; z-index:2; }
+        .work-actions button { background:rgba(0,0,0,0.6); border:none; color:white; border-radius:50%; width:30px; height:30px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:14px; }
         .add-work-btn { display:flex; align-items:center; justify-content:center; aspect-ratio:1/1; background: rgba(124,58,237,0.2); border:2px dashed var(--primary); border-radius:var(--radius); cursor:pointer; font-size:32px; color:var(--primary); transition: background 0.3s; }
         .add-work-btn:hover { background: rgba(124,58,237,0.3); }
-        .modal-overlay { position:fixed; inset:0; background: rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; z-index:1000; }
-        .modal { background:#1a0b2e; border:1px solid var(--card-border); border-radius:var(--radius); padding:24px; width:90%; max-width:400px; max-height:80vh; overflow-y:auto; position:relative; }
-        .modal input, .modal textarea { width:100%; padding:10px; margin-bottom:10px; background:rgba(255,255,255,0.05); border:1px solid var(--card-border); border-radius:10px; color:#fff; }
+        /* ===== МОДАЛЬНОЕ ОКНО ===== */
+        .modal-overlay { position:fixed; inset:0; background: rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; z-index:1000; padding:16px; }
+        .modal { background:#1a0b2e; border:1px solid var(--card-border); border-radius:var(--radius); padding:24px; width:100%; max-width:500px; max-height:90vh; overflow-y:auto; position:relative; }
+        .modal input, .modal textarea, .modal select { width:100%; padding:10px; margin-bottom:10px; background:rgba(255,255,255,0.05); border:1px solid var(--card-border); border-radius:10px; color:#fff; font-size:14px; }
+        .modal textarea { min-height:80px; resize:vertical; }
         .modal button { margin-right:10px; }
         .modal img.preview { max-width:100%; max-height:200px; object-fit:contain; margin-bottom:10px; border-radius:10px; display:none; }
         .admin-only { display:none; }
         .admin-mode .admin-only { display:inline-block; }
-        .resume-highlight { font-size:16px; font-weight:600; font-style:italic; color:#e9d5ff; margin:12px 0; padding:14px 16px; background: rgba(124,58,237,0.15); border-left:3px solid var(--primary); border-radius:12px; }
-        .skills-list { display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
-        .skill-badge { background: rgba(124,58,237,0.2); border:1px solid rgba(124,58,237,0.3); padding:8px 14px; border-radius:20px; font-size:13px; font-weight:500; color:#ddd6fe; }
-        .experience-badge { display:inline-block; background:linear-gradient(135deg, var(--primary), var(--secondary)); padding:6px 14px; border-radius:20px; font-weight:700; color:#fff; font-size:14px; margin-left:8px; }
+        /* ===== ОТЗЫВЫ ===== */
         .review-card { padding:20px; position:relative; }
         .review-author { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
         .review-avatar { width:40px; height:40px; border-radius:50%; background: linear-gradient(135deg, #7c3aed, #be185d); display:flex; align-items:center; justify-content:center; font-weight:700; color:white; overflow:hidden; flex-shrink:0; }
@@ -150,56 +131,72 @@
         .review-images img { width:60px; height:60px; object-fit:cover; border-radius:8px; cursor:pointer; border:1px solid var(--card-border); }
         .review-images img.single { width:100%; height:auto; max-height:300px; object-fit:contain; }
         .stars { color:#fbbf24; letter-spacing:2px; }
-        .review-footer { display:flex; align-items:center; gap:15px; margin-top:12px; flex-wrap:wrap; }
-        .like-btn { 
-            background:transparent; border:none; color:var(--text-muted); font-size:18px; cursor:pointer; 
-            display:flex; align-items:center; gap:4px; padding:4px 10px; border-radius:20px; 
-            transition: all 0.15s ease; position:relative; 
+        .review-footer { display:flex; align-items:center; gap:12px; margin-top:12px; flex-wrap:wrap; }
+        .like-btn {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 30px;
+            padding: 6px 14px;
+            font-size: 15px;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
         }
-        .like-btn:active { transform: scale(0.85); }
-        .like-btn .count { font-size:14px; font-weight:500; }
-        .like-btn.heart { color:#ff3b30; }
-        .like-btn.fire { color:#ff9500; }
-        .like-btn.plus { color:#34c759; }
-        .like-btn .emoji { transition: transform 0.2s ease; display:inline-block; }
-        .like-btn:active .emoji { transform: scale(1.5); }
-        .like-btn.animating .emoji { animation: pop 0.3s ease; }
-        @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.6); } 100% { transform: scale(1); } }
-        .admin-reply { 
-            margin-top:10px; padding:10px 14px; background:rgba(124,58,237,0.08); 
-            border-left:2px solid var(--primary); border-radius:8px; font-size:13px; color:var(--text-muted);
-            display: flex; justify-content: space-between; align-items: flex-start; gap:8px;
-        }
+        .like-btn:active { transform: scale(0.9); }
+        .like-btn .emoji { font-size:16px; display:inline-block; transition:transform 0.15s ease; }
+        .like-btn .count { font-size:13px; font-weight:500; min-width:12px; }
+        .like-btn.active { background: linear-gradient(135deg, rgba(124,58,237,0.5), rgba(190,24,93,0.5)); border-color: rgba(124,58,237,0.4); color:#fff; }
+        .like-btn.animating .emoji { animation: pop 0.35s ease; }
+        @keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.5); } 100% { transform: scale(1); } }
+        .review-actions { display:flex; gap:5px; }
+        .review-actions button { background:rgba(255,255,255,0.05); border:none; color:var(--text-muted); padding:4px 10px; border-radius:12px; font-size:12px; cursor:pointer; transition:background 0.2s; }
+        .review-actions button:hover { background:rgba(255,255,255,0.1); }
+        .admin-reply { margin-top:10px; padding:10px 14px; background:rgba(124,58,237,0.08); border-left:2px solid var(--primary); border-radius:8px; font-size:13px; color:var(--text-muted); display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
         .admin-reply .reply-text { flex:1; }
         .admin-reply strong { color:#a78bfa; font-weight:600; }
-        .admin-reply .edit-reply-btn {
-            background: transparent; border: none; color: var(--text-muted); 
-            cursor: pointer; font-size: 14px; padding: 2px 6px; border-radius: 4px;
-            transition: background 0.2s;
-            flex-shrink: 0;
-        }
-        .admin-reply .edit-reply-btn:hover { background: rgba(255,255,255,0.05); }
+        .admin-reply .edit-reply-btn { background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-size:14px; padding:2px 6px; border-radius:4px; transition:background 0.2s; flex-shrink:0; }
+        .admin-reply .edit-reply-btn:hover { background:rgba(255,255,255,0.05); }
         .admin-reply-edit { display:flex; gap:8px; width:100%; margin-top:8px; }
         .admin-reply-edit textarea { flex:1; padding:8px; border:1px solid var(--card-border); border-radius:8px; background:rgba(0,0,0,0.3); color:var(--text); font-size:13px; resize:vertical; min-height:50px; }
         .admin-reply-edit button { padding:8px 16px; font-size:12px; }
+        /* ===== ЗАКАЗЫ ===== */
         .order-list { display:flex; flex-direction:column; gap:12px; }
-        .order-item { display:flex; align-items:center; justify-content:space-between; padding:16px 18px; background: rgba(15,7,25,0.8); border:1px solid var(--card-border); border-radius:16px; cursor: grab; }
+        .order-item { display:flex; align-items:center; justify-content:space-between; padding:16px 18px; background: rgba(15,7,25,0.8); border:1px solid var(--card-border); border-radius:16px; cursor: pointer; transition: border-color 0.2s; }
+        .order-item:hover { border-color: var(--primary); }
         .order-info h4 { font-size:16px; font-weight:600; }
         .order-info p { font-size:12px; color:var(--text-muted); margin-top:4px; }
         .order-info a { color:var(--accent); text-decoration:none; }
         .price-old { text-decoration: line-through; color: var(--text-muted); margin-right: 5px; }
         .price-new { color: var(--accent); font-weight: 700; }
+        /* ===== КОНСТРУКТОР ЗАКАЗА ===== */
+        .option-group { margin-bottom:16px; }
+        .option-group label { display:flex; align-items:center; gap:10px; padding:10px 14px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:12px; cursor:pointer; transition:all 0.2s; }
+        .option-group label:hover { background:rgba(255,255,255,0.06); }
+        .option-group label input[type="checkbox"] { width:18px; height:18px; accent-color:var(--primary); cursor:pointer; flex-shrink:0; }
+        .option-group .option-info { flex:1; }
+        .option-group .option-name { font-size:14px; font-weight:500; }
+        .option-group .option-price { font-size:13px; color:var(--text-muted); }
+        .option-group .quantity-control { display:flex; align-items:center; gap:8px; margin-top:6px; margin-left:28px; }
+        .option-group .quantity-control button { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.08); border-radius:8px; color:#fff; width:28px; height:28px; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center; transition:background 0.2s; }
+        .option-group .quantity-control button:hover { background:rgba(255,255,255,0.12); }
+        .option-group .quantity-control span { min-width:24px; text-align:center; font-weight:500; }
+        .order-total { margin-top:20px; padding-top:16px; border-top:1px solid var(--card-border); text-align:right; font-size:18px; font-weight:700; color:#e9d5ff; }
+        .order-total span { color:var(--accent); }
+        .reference-upload { margin-top:12px; }
+        .reference-upload .preview-thumb { position:relative; display:inline-block; margin:4px; }
+        .reference-upload .preview-thumb img { width:60px; height:60px; object-fit:cover; border-radius:8px; border:1px solid var(--card-border); }
+        .reference-upload .preview-thumb .remove-btn { position:absolute; top:-6px; right:-6px; background:rgba(255,0,0,0.8); color:#fff; border:none; border-radius:50%; width:18px; height:18px; cursor:pointer; font-size:10px; display:flex; align-items:center; justify-content:center; }
+        /* ===== ОСТАЛЬНЫЕ СТИЛИ ===== */
+        .resume-highlight { font-size:16px; font-weight:600; font-style:italic; color:#e9d5ff; margin:12px 0; padding:14px 16px; background: rgba(124,58,237,0.15); border-left:3px solid var(--primary); border-radius:12px; }
+        .skills-list { display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
+        .skill-badge { background: rgba(124,58,237,0.2); border:1px solid rgba(124,58,237,0.3); padding:8px 14px; border-radius:20px; font-size:13px; font-weight:500; color:#ddd6fe; }
+        .experience-badge { display:inline-block; background:linear-gradient(135deg, var(--primary), var(--secondary)); padding:6px 14px; border-radius:20px; font-weight:700; color:#fff; font-size:14px; margin-left:8px; }
         .footer { text-align:center; margin-top:30px; padding:10px; color:var(--text-muted); font-size:12px; opacity:0.7; position:relative; }
         .footer a { color: var(--accent); text-decoration: none; }
-        .footer .version {
-            position: absolute;
-            bottom: 5px;
-            right: 10px;
-            font-size: 10px;
-            opacity: 0.5;
-            color: var(--text-muted);
-            pointer-events: none;
-        }
+        .footer .version { position:absolute; bottom:5px; right:10px; font-size:10px; opacity:0.5; color:var(--text-muted); pointer-events:none; }
         #imageViewer { position:fixed; inset:0; background:rgba(0,0,0,0.9); display:none; align-items:center; justify-content:center; z-index:2000; flex-direction:column; overflow:hidden; touch-action:none; }
         #imageViewer img { max-width:95%; max-height:85%; object-fit:contain; transition: transform 0.2s; transform-origin:center; position:relative; }
         #imageViewer .save-btn { margin-top:15px; }
@@ -217,7 +214,6 @@
         .preview-thumb { position: relative; display: inline-block; margin: 5px; }
         .preview-thumb img { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid var(--card-border); }
         .preview-thumb .remove-btn { position: absolute; top: -8px; left: -8px; background: rgba(255, 0, 0, 0.8); color: white; border: none; width: 20px; height: 20px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; padding: 0; }
-
         .case-container { position: relative; width: 100%; max-width: 400px; margin: 20px auto; overflow: hidden; }
         .case-strip { display: flex; transition: transform 0.1s linear; }
         .case-item { min-width: 120px; height: 100px; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; color: #fff; background: linear-gradient(145deg, #2a1a3e, #1a0b2e); border: 2px solid var(--card-border); border-radius: 16px; margin: 0 5px; }
@@ -225,7 +221,6 @@
         .case-modal { text-align: center; }
         .case-modal .close-btn { position: absolute; top: 10px; right: 10px; background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; }
         .case-timer { margin: 10px 0; font-size: 14px; color: #fbbf24; }
-
         .post-modal { text-align: center; }
         .post-modal .close-btn { position: absolute; top: 10px; right: 10px; background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; }
         .post-content { margin: 15px 0; line-height: 1.5; }
@@ -235,17 +230,12 @@
         .post-checkbox input { width: auto; }
         .admin-post-item { display: flex; align-items: center; justify-content: space-between; padding: 10px; border: 1px solid var(--card-border); border-radius: 10px; margin-bottom: 10px; }
         .admin-post-item button { background: none; border: none; color: #f87171; cursor: pointer; font-size: 18px; }
-        img {
-            -webkit-touch-callout: none !important;
-            -webkit-user-drag: none !important;
-            user-drag: none !important;
-        }
-        .review-actions { display:flex; gap:5px; }
-        .review-actions button { background:rgba(255,255,255,0.05); border:none; color:var(--text-muted); padding:4px 10px; border-radius:12px; font-size:12px; cursor:pointer; transition:background 0.2s; }
-        .review-actions button:hover { background:rgba(255,255,255,0.1); }
+        .order-item.admin-grab { cursor: grab; }
+        .order-item.admin-grab:active { cursor: grabbing; }
     </style>
 </head>
 <body oncontextmenu="return false;">
+    <!-- ===== ЗАГРУЗОЧНЫЙ ЭКРАН ===== -->
     <div id="loadingScreen">
         <div class="loading-stars" id="loadingStars"></div>
         <div style="text-align: center; position: relative; z-index: 1;">
@@ -254,9 +244,11 @@
         </div>
     </div>
 
+    <!-- ===== ЗВЁЗДЫ И АСТЕРОИДЫ ===== -->
     <div class="stars-container" id="starsContainer"></div>
     <div class="asteroid-container" id="asteroidContainer"></div>
 
+    <!-- ===== ОСНОВНОЙ КОНТЕЙНЕР ===== -->
     <div class="app-container">
         <div class="header">
             <button class="faq-button" onclick="openFaqModal()">?</button>
@@ -265,7 +257,7 @@
             <div class="logo" id="logoContainer">
                 <img id="logoImage" src="https://i.ibb.co/3y8vZHQz/2026-09-02-025009694.png" alt="Avatar">
                 <div class="admin-only" style="position:absolute; top:5px; right:5px;">
-                    <button class="btn" style="padding:5px 8px; font-size:12px;" onclick="changeLogo()">🖼️</button>
+                    <button class="btn btn-sm" style="padding:5px 8px; font-size:12px;" onclick="changeLogo()">🖼️</button>
                 </div>
             </div>
             <h1 class="brand-name">Mark1z Design</h1>
@@ -288,7 +280,7 @@
                 <p id="aboutText2"></p>
                 <div class="skills-list" id="skillsList"></div>
                 <div class="admin-only" style="margin-top:10px">
-                    <button class="btn" onclick="editAbout()">Редактировать</button>
+                    <button class="btn btn-sm" onclick="editAbout()">Редактировать</button>
                 </div>
             </div>
         </section>
@@ -312,14 +304,16 @@
         <div class="footer">
             <div>© Mark1z Design · Дмитрий Маркизов</div>
             <a href="#" onclick="openPrivacyPolicy()">Политика конфиденциальности</a>
-            <span class="version">V.1.0.6</span>
+            <span class="version">V.2.0.0</span>
         </div>
     </div>
 
+    <!-- ===== МОДАЛЬНОЕ ОКНО ===== -->
     <div class="modal-overlay" id="modalOverlay">
         <div class="modal" id="modalContent"></div>
     </div>
 
+    <!-- ===== ПРОСМОТР ИЗОБРАЖЕНИЙ ===== -->
     <div id="imageViewer">
         <button id="imageViewerClose" onclick="closeImageViewer()">×</button>
         <img id="imageViewerImg" src="" alt="Просмотр">
@@ -328,7 +322,7 @@
 
     <script>
         // ================================================================
-        // ИНИЦИАЛИЗАЦИЯ SUPABASE
+        // SUPABASE INIT
         // ================================================================
         if (typeof window._supabaseClient === 'undefined') {
             const url = 'https://lcgbpwowppwwpjjlphod.supabase.co';
@@ -354,6 +348,7 @@
         var startDistance = 0;
         var startScale = 1;
         var servicesData = [];
+        var serviceOptionsData = [];
         var portfolioCategoriesData = [];
         var adminOrdersMode = 'services';
         var sortableInstances = {};
@@ -367,6 +362,12 @@
         var currentPostId = null;
         var tempPostFile = null;
         var categorySubscription = null;
+        // Данные конструктора заказа
+        var currentOrderService = null;
+        var currentOrderOptions = [];
+        var currentOrderQuantities = {};
+        var currentOrderFiles = [];
+        var currentOrderDescription = '';
 
         currentDiscount = lastSpinDiscount;
 
@@ -442,7 +443,6 @@
             });
         }
 
-        // ИСПРАВЛЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ (работает для всего)
         function uploadFileToSupabase(file, folder) {
             var cleanName = file.name.replace(/[^\w\d\-_.]/g, '_');
             var timestamp = Date.now();
@@ -527,30 +527,24 @@
                     <p><strong>Описание товаров и услуг</strong><br>
                     Графический дизайн: оформление соцсетей, логотипы, баннеры, карточки маркетплейсов, веб-дизайн, дизайн приложений, презентации и др. Все услуги выполняются индивидуально, с учётом требований заказчика. Характеристики: высокое качество, соответствие брендбуку, передача исходников.</p>
                     <p><strong>Цены</strong><br>
-                    Стоимость зависит от сложности и объёма работ. Диапазоны цен указаны в разделе «Услуги». Точная стоимость согласовывается до начала работы.</p>
+                    Стоимость зависит от выбранных опций и рассчитывается автоматически в конструкторе заказа.</p>
                     <p><strong>Контакты</strong><br>
                     Telegram: @Mark1zell (личные сообщения)<br>
                     Email: keklolorbidollol321@gmail.com<br>
                     Телефон: +7 902 (900) 87-41</p>
                     <p><strong>Заказ</strong><br>
-                    Заказ оформляется путём выбора услуги в приложении, после чего заказчик переходит в чат с ботом для уточнения деталей. Сроки исполнения – от 1 до 7 рабочих дней, в зависимости от задачи. Точный срок оговаривается до начала работы.</p>
+                    Заказ оформляется через конструктор, где пользователь выбирает опции, указывает количество и оставляет ТЗ.</p>
                     <p><strong>Оплата</strong><br>
-                    Работаю по 100% предоплате. Способы оплаты: банковская карта, СБП, электронные кошельки (через платёжный сервис).</p>
+                    Работаю по 100% предоплате. После оформления заказа я выставляю счёт на согласованную сумму.</p>
                     <p><strong>Доставка / Оказание услуг</strong><br>
-                    Услуги оказываются удалённо. Готовые материалы передаются в электронном виде (файлы, ссылки). Физическая доставка не предусмотрена.</p>
+                    Услуги оказываются удалённо. Готовые материалы передаются в электронном виде (файлы, ссылки).</p>
                     <p><strong>Возврат и отказ от покупки</strong><br>
-                    Заказчик вправе отказаться от услуги до момента начала её выполнения (до отправки первого промежуточного результата). Для этого необходимо написать в Telegram @Mark1zell или на email keklolorbidollol321@gmail.com с указанием причины отказа.<br>
-                    Алгоритм возврата средств:<br>
-                    1. Обращение с требованием возврата направляется в течение 3 дней с момента оплаты.<br>
-                    2. Обращение рассматривается в течение 2 рабочих дней.<br>
-                    3. Если услуга ещё не начата, возврат производится в полном объёме в течение 5 рабочих дней на те же реквизиты, с которых была произведена оплата.<br>
-                    Если работа уже начата, возврат невозможен (согласно ст. 32 Закона о защите прав потребителей, исполнитель вправе удержать фактически понесённые расходы, но не более).<br>
-                    Комиссии платёжных систем и банков не удерживаются.</p>
+                    Заказчик вправе отказаться от услуги до момента начала её выполнения (до отправки первого промежуточного результата). Для этого необходимо написать в Telegram @Mark1zell или на email keklolorbidollol321@gmail.com с указанием причины отказа.</p>
                     <p><strong>Реквизиты самозанятого</strong><br>
                     ФИО: Кузнецов Дмитрий Александрович<br>
                     ИНН: 710609555942</p>
                     <p><strong>Политика обработки персональных данных</strong><br>
-                    Персональные данные (имя, Telegram ID, контактная информация) обрабатываются исключительно для исполнения заказа и связи с клиентом. Данные не передаются третьим лицам, за исключением случаев, предусмотренных законодательством РФ. Согласие на обработку даётся при оформлении заказа. Клиент может отозвать согласие, обратившись к @Mark1zell.</p>
+                    Персональные данные (имя, Telegram ID, контактная информация) обрабатываются исключительно для исполнения заказа и связи с клиентом. Данные не передаются третьим лицам.</p>
                 </div>
             `;
             modal.style.display = 'flex';
@@ -770,6 +764,7 @@
                 <button class="btn" onclick="createPromo('wheel')">🎡 Промокод Фортуна</button>
                 <button class="btn" onclick="createPromo('discount')">🏷️ Промокод скидки</button>
                 <button class="btn" onclick="openPostManager()">📢 Управление постами</button>
+                <button class="btn" onclick="openOptionManager()">⚙️ Управление опциями услуг</button>
                 <button class="btn" onclick="closeModal()">Закрыть</button>
             `;
             modal.style.display = 'flex';
@@ -800,6 +795,209 @@
                     });
             }
             closeModal();
+        }
+
+        // ================================================================
+        // УПРАВЛЕНИЕ ОПЦИЯМИ УСЛУГ
+        // ================================================================
+        function openOptionManager() {
+            var modal = document.getElementById('modalOverlay');
+            var content = document.getElementById('modalContent');
+            var html = `
+                <h3>Управление опциями услуг</h3>
+                <p style="color:var(--text-muted); font-size:13px; margin-bottom:15px;">
+                    Выберите услугу, чтобы добавить/редактировать её опции.
+                </p>
+                <select id="optionServiceSelect" style="margin-bottom:15px;">
+                    <option value="">Выберите услугу...</option>
+            `;
+            servicesData.forEach(function(s) {
+                html += `<option value="${s.id}">${s.emoji} ${s.name}</option>`;
+            });
+            html += `
+                </select>
+                <div id="optionManagerContent"></div>
+                <button class="btn" onclick="closeModal()">Закрыть</button>
+            `;
+            content.innerHTML = html;
+            modal.style.display = 'flex';
+
+            document.getElementById('optionServiceSelect').addEventListener('change', function() {
+                var serviceId = this.value;
+                if (serviceId) loadOptionsForService(serviceId);
+            });
+        }
+
+        function loadOptionsForService(serviceId) {
+            var container = document.getElementById('optionManagerContent');
+            container.innerHTML = '<p style="color:var(--text-muted)">Загрузка...</p>';
+
+            supabase.from('service_options').select('*').eq('service_id', serviceId).order('order', { ascending: true })
+                .then(function(res) {
+                    if (res.error) {
+                        container.innerHTML = '<p style="color:var(--text-muted)">Ошибка загрузки</p>';
+                        return;
+                    }
+                    var options = res.data || [];
+                    var html = `
+                        <div style="margin-bottom:15px;">
+                            <button class="btn btn-sm" onclick="showAddOptionForm(${serviceId})">➕ Добавить опцию</button>
+                        </div>
+                        <div id="optionsList">
+                    `;
+                    if (options.length === 0) {
+                        html += '<p style="color:var(--text-muted)">Нет опций для этой услуги</p>';
+                    } else {
+                        options.forEach(function(opt, idx) {
+                            html += `
+                                <div class="order-item" data-id="${opt.id}" style="cursor:grab; margin-bottom:8px;">
+                                    <div class="order-info">
+                                        <h4>${opt.name}</h4>
+                                        <p>${opt.price} ₽ ${opt.description ? '· ' + opt.description : ''}</p>
+                                    </div>
+                                    <div>
+                                        <button class="btn btn-sm" onclick="editOption(${opt.id})">✏️</button>
+                                        <button class="btn btn-sm" onclick="deleteOption(${opt.id})">🗑️</button>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    }
+                    html += '</div>';
+                    container.innerHTML = html;
+
+                    // Сортировка опций
+                    var list = document.getElementById('optionsList');
+                    if (list && window.isAdmin) {
+                        if (sortableInstances.options) sortableInstances.options.destroy();
+                        sortableInstances.options = new Sortable(list, {
+                            animation: 150,
+                            delay: 200,
+                            delayOnTouchOnly: true,
+                            onEnd: function(evt) {
+                                var items = [].slice.call(list.children).filter(function(el) {
+                                    return el.dataset && el.dataset.id;
+                                });
+                                updateOptionsOrder(items);
+                            }
+                        });
+                    }
+                });
+        }
+
+        function updateOptionsOrder(items) {
+            var promises = [];
+            items.forEach(function(item, index) {
+                var id = item.dataset.id;
+                promises.push(supabase.from('service_options').update({ order: index }).eq('id', id));
+            });
+            Promise.all(promises);
+        }
+
+        function showAddOptionForm(serviceId) {
+            var container = document.getElementById('optionManagerContent');
+            var formHtml = `
+                <div style="background:rgba(255,255,255,0.03); border-radius:12px; padding:16px; margin-top:10px;">
+                    <h4>Добавить опцию</h4>
+                    <input type="text" id="optName" placeholder="Название опции (например, Аватарка)">
+                    <input type="number" id="optPrice" placeholder="Цена (₽)">
+                    <input type="text" id="optDescription" placeholder="Описание (необязательно)">
+                    <button class="btn btn-sm" onclick="saveOption(${serviceId})">Сохранить</button>
+                    <button class="btn btn-sm" onclick="loadOptionsForService(${serviceId})" style="background:rgba(255,255,255,0.1);">Отмена</button>
+                </div>
+            `;
+            // Вставляем форму в начало контейнера
+            var containerHtml = container.innerHTML;
+            container.innerHTML = formHtml + containerHtml;
+        }
+
+        function saveOption(serviceId) {
+            var name = document.getElementById('optName').value.trim();
+            var price = document.getElementById('optPrice').value.trim();
+            var description = document.getElementById('optDescription').value.trim();
+            if (!name) { alert('Введите название'); return; }
+            if (!price) { alert('Введите цену'); return; }
+
+            supabase.from('service_options').select('order').eq('service_id', serviceId).order('order', { ascending: false }).limit(1)
+                .then(function(res) {
+                    var nextOrder = (res.data && res.data.length > 0) ? (res.data[0].order || 0) + 1 : 0;
+                    return supabase.from('service_options').insert([{
+                        service_id: serviceId,
+                        name: name,
+                        price: parseInt(price),
+                        description: description,
+                        order: nextOrder
+                    }]);
+                })
+                .then(function() {
+                    loadOptionsForService(serviceId);
+                })
+                .catch(function(err) {
+                    alert('Ошибка: ' + err.message);
+                });
+        }
+
+        function editOption(optionId) {
+            supabase.from('service_options').select('*').eq('id', optionId).single()
+                .then(function(res) {
+                    if (res.error || !res.data) return;
+                    var opt = res.data;
+                    var serviceId = opt.service_id;
+                    var container = document.getElementById('optionManagerContent');
+                    var formHtml = `
+                        <div style="background:rgba(255,255,255,0.03); border-radius:12px; padding:16px; margin-top:10px;">
+                            <h4>Редактировать опцию</h4>
+                            <input type="text" id="editOptName" placeholder="Название" value="${opt.name}">
+                            <input type="number" id="editOptPrice" placeholder="Цена (₽)" value="${opt.price}">
+                            <input type="text" id="editOptDescription" placeholder="Описание" value="${opt.description || ''}">
+                            <button class="btn btn-sm" onclick="updateOption(${optionId}, ${serviceId})">Сохранить</button>
+                            <button class="btn btn-sm" onclick="loadOptionsForService(${serviceId})" style="background:rgba(255,255,255,0.1);">Отмена</button>
+                        </div>
+                    `;
+                    // Заменяем первый элемент списка на форму
+                    var list = document.getElementById('optionsList');
+                    if (list) {
+                        list.innerHTML = formHtml + list.innerHTML;
+                    } else {
+                        container.innerHTML = formHtml + container.innerHTML;
+                    }
+                });
+        }
+
+        function updateOption(optionId, serviceId) {
+            var name = document.getElementById('editOptName').value.trim();
+            var price = document.getElementById('editOptPrice').value.trim();
+            var description = document.getElementById('editOptDescription').value.trim();
+            if (!name) { alert('Введите название'); return; }
+            if (!price) { alert('Введите цену'); return; }
+
+            supabase.from('service_options').update({
+                name: name,
+                price: parseInt(price),
+                description: description
+            }).eq('id', optionId)
+                .then(function() {
+                    loadOptionsForService(serviceId);
+                })
+                .catch(function(err) {
+                    alert('Ошибка: ' + err.message);
+                });
+        }
+
+        function deleteOption(optionId) {
+            if (!confirm('Удалить опцию?')) return;
+            supabase.from('service_options').select('service_id').eq('id', optionId).single()
+                .then(function(res) {
+                    if (res.error) return;
+                    var serviceId = res.data.service_id;
+                    return supabase.from('service_options').delete().eq('id', optionId)
+                        .then(function() {
+                            loadOptionsForService(serviceId);
+                        });
+                })
+                .catch(function(err) {
+                    alert('Ошибка: ' + err.message);
+                });
         }
 
         // ================================================================
@@ -1025,23 +1223,94 @@
                     }
                     if (!res.data || res.data.length === 0) {
                         var defaultServices = [
-                            { emoji: '🎨', name: 'Оформление соцсетей', description: 'VK, YouTube, Telegram: шапки, аватарки, обложки', price: 1000, price_to: 3000 },
-                            { emoji: '🎮', name: 'Дизайн игровых кланов', description: 'Логотипы, аватарки, шапки для кланов', price: 1500, price_to: 4000 },
-                            { emoji: '🏆', name: 'Дизайн турниров', description: 'Сетки, баннеры за призовые места, аватарки', price: 2000, price_to: 6000 },
-                            { emoji: '🛒', name: 'Карточки товаров', description: 'Wildberries, Ozon, Avito: инфографика', price: 800, price_to: 2000 },
-                            { emoji: '🔤', name: 'Типографика', description: 'Шрифтовые композиции, айдентика', price: 500, price_to: 1500 },
-                            { emoji: '📱', name: 'Дизайн мобильных приложений', description: 'UI/UX интерфейсы для iOS и Android', price: 5000, price_to: 15000 },
-                            { emoji: '🌐', name: 'Дизайн сайтов', description: 'Лендинги, многостраничники, корпоративные сайты', price: 3000, price_to: 10000 },
-                            { emoji: '🤖', name: 'Telegram Mini Apps', description: 'Дизайн и разработка интерфейсов для ботов', price: 7000, price_to: 20000 },
-                            { emoji: '🖼️', name: 'Постеры и баннеры', description: 'Рекламные постеры, промо-материалы', price: 800, price_to: 2500 },
-                            { emoji: '🎵', name: 'Обложки треков', description: 'Обложки для музыкальных релизов', price: 500, price_to: 1500 },
-                            { emoji: '▶️', name: 'Превью для YouTube', description: 'Яркие кликабельные превью', price: 400, price_to: 1200 },
-                            { emoji: '📊', name: 'Презентации', description: 'PowerPoint, Google Slides: оформление', price: 1000, price_to: 3000 },
-                            { emoji: '📄', name: 'Документы Word', description: 'Оформление, структурирование, шаблоны', price: 500, price_to: 1500 }
+                            { emoji: '🎨', name: 'Оформление соцсетей', description: 'Шапка + аватарка + обложка для VK/YouTube/Telegram', price: 0 },
+                            { emoji: '🎮', name: 'Дизайн игровых кланов', description: 'Логотип + аватарка + шапка для клана', price: 0 },
+                            { emoji: '🏆', name: 'Дизайн турниров', description: 'Сетка + баннер за призовые места', price: 0 },
+                            { emoji: '🛒', name: 'Карточки товаров', description: 'Инфографика для Wildberries/Ozon/Avito', price: 0 },
+                            { emoji: '🔤', name: 'Типографика', description: 'Шрифтовая композиция, айдентика', price: 0 },
+                            { emoji: '📱', name: 'Дизайн мобильных приложений', description: 'UI/UX интерфейс для iOS/Android', price: 0 },
+                            { emoji: '🌐', name: 'Дизайн сайтов', description: 'Лендинг или многостраничный сайт', price: 0 },
+                            { emoji: '🤖', name: 'Telegram Mini Apps', description: 'Дизайн + адаптивная верстка интерфейса бота', price: 0 },
+                            { emoji: '🖼️', name: 'Постеры и баннеры', description: 'Рекламный постер или баннер', price: 0 },
+                            { emoji: '🎵', name: 'Обложки треков', description: 'Обложка для музыкального релиза', price: 0 },
+                            { emoji: '▶️', name: 'Превью для YouTube', description: 'Кликабельное превью для видео', price: 0 },
+                            { emoji: '📊', name: 'Презентации', description: 'Оформление презентации (до 10 слайдов)', price: 0 },
+                            { emoji: '📄', name: 'Документы Word', description: 'Оформление и структурирование документа', price: 0 }
                         ];
                         defaultServices.forEach(function(s) {
                             supabase.from('services').insert([s]);
                         });
+                    }
+                });
+        }
+
+        function initDefaultServiceOptions() {
+            supabase.from('service_options').select('*')
+                .then(function(res) {
+                    if (res.error) return;
+                    if (!res.data || res.data.length === 0) {
+                        // Получаем услуги, чтобы привязать опции
+                        supabase.from('services').select('id, name')
+                            .then(function(servicesRes) {
+                                if (servicesRes.error) return;
+                                var servicesMap = {};
+                                servicesRes.data.forEach(function(s) {
+                                    servicesMap[s.name] = s.id;
+                                });
+
+                                var defaultOptions = [
+                                    // Оформление соцсетей
+                                    { name: 'Аватарка', price: 400, service_name: 'Оформление соцсетей' },
+                                    { name: 'Шапка', price: 450, service_name: 'Оформление соцсетей' },
+                                    { name: 'Логотип', price: 700, service_name: 'Оформление соцсетей' },
+                                    { name: 'Баннер', price: 400, service_name: 'Оформление соцсетей' },
+                                    // Дизайн кланов
+                                    { name: 'Логотип клана', price: 700, service_name: 'Дизайн игровых кланов' },
+                                    { name: 'Аватарка клана', price: 400, service_name: 'Дизайн игровых кланов' },
+                                    { name: 'Шапка клана', price: 450, service_name: 'Дизайн игровых кланов' },
+                                    { name: 'Баннер клана', price: 400, service_name: 'Дизайн игровых кланов' },
+                                    // Турниры
+                                    { name: 'Сетка турнира', price: 800, service_name: 'Дизайн турниров' },
+                                    { name: 'Баннер призовых мест', price: 600, service_name: 'Дизайн турниров' },
+                                    { name: 'Аватарка турнира', price: 400, service_name: 'Дизайн турниров' },
+                                    // Карточки
+                                    { name: 'Карточка товара', price: 800, service_name: 'Карточки товаров' },
+                                    // Типографика
+                                    { name: 'Шрифтовая композиция', price: 1000, service_name: 'Типографика' },
+                                    // Мобильные приложения
+                                    { name: 'Один экран (UI)', price: 5000, service_name: 'Дизайн мобильных приложений' },
+                                    // Сайты
+                                    { name: 'Лендинг (до 3 блоков)', price: 8000, service_name: 'Дизайн сайтов' },
+                                    { name: 'Многостраничный сайт (за страницу)', price: 4000, service_name: 'Дизайн сайтов' },
+                                    // Mini Apps
+                                    { name: 'Дизайн интерфейса', price: 5000, service_name: 'Telegram Mini Apps' },
+                                    { name: 'Адаптивная верстка', price: 5000, service_name: 'Telegram Mini Apps' },
+                                    // Постеры
+                                    { name: 'Постер А3', price: 1500, service_name: 'Постеры и баннеры' },
+                                    { name: 'Постер А4', price: 1000, service_name: 'Постеры и баннеры' },
+                                    // Обложки треков
+                                    { name: 'Обложка трека', price: 1000, service_name: 'Обложки треков' },
+                                    // Превью
+                                    { name: 'Превью для YouTube', price: 800, service_name: 'Превью для YouTube' },
+                                    // Презентации
+                                    { name: 'Презентация (до 10 слайдов)', price: 2500, service_name: 'Презентации' },
+                                    // Документы
+                                    { name: 'Оформление документа', price: 1000, service_name: 'Документы Word' }
+                                ];
+
+                                var order = 0;
+                                defaultOptions.forEach(function(opt) {
+                                    var serviceId = servicesMap[opt.service_name];
+                                    if (serviceId) {
+                                        supabase.from('service_options').insert([{
+                                            service_id: serviceId,
+                                            name: opt.name,
+                                            price: opt.price,
+                                            order: order++
+                                        }]);
+                                    }
+                                });
+                            });
                     }
                 });
         }
@@ -1056,7 +1325,6 @@
                 })
                 .subscribe(function(status, err) {
                     if (err) console.error('Ошибка подписки на категории:', err);
-                    else console.log('Подписка на категории:', status);
                 });
 
             // Услуги
@@ -1065,10 +1333,15 @@
                     console.log('Изменение в услугах:', payload);
                     loadServices();
                 })
-                .subscribe(function(status, err) {
-                    if (err) console.error('Ошибка подписки на услуги:', err);
-                    else console.log('Подписка на услуги:', status);
-                });
+                .subscribe();
+
+            // Опции услуг
+            supabase.channel('service_options_changes')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'service_options' }, function(payload) {
+                    console.log('Изменение в опциях:', payload);
+                    loadServiceOptions();
+                })
+                .subscribe();
 
             // Отзывы
             supabase.channel('reviews_changes')
@@ -1076,27 +1349,19 @@
                     console.log('Изменение в отзывах:', payload);
                     loadReviews();
                 })
-                .subscribe(function(status, err) {
-                    if (err) console.error('Ошибка подписки на отзывы:', err);
-                    else console.log('Подписка на отзывы:', status);
-                });
+                .subscribe();
 
             // Посты
             supabase.channel('posts_changes')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, function(payload) {
-                    console.log('Изменение в постах:', payload);
                     var postsList = document.getElementById('postsList');
                     if (postsList && postsList.innerHTML !== '') loadPostsList();
                 })
-                .subscribe(function(status, err) {
-                    if (err) console.error('Ошибка подписки на посты:', err);
-                    else console.log('Подписка на посты:', status);
-                });
+                .subscribe();
 
             // Заказы
             supabase.channel('orders_changes')
                 .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, function(payload) {
-                    console.log('Новый заказ:', payload);
                     if (adminOrdersMode === 'orders') {
                         supabase.from('orders').select('*').order('timestamp', { ascending: false })
                             .then(function(res) {
@@ -1104,14 +1369,12 @@
                             });
                     }
                 })
-                .subscribe(function(status, err) {
-                    if (err) console.error('Ошибка подписки на заказы:', err);
-                    else console.log('Подписка на заказы:', status);
-                });
+                .subscribe();
 
             loadAbout();
             loadPortfolioCategories();
             loadServices();
+            loadServiceOptions();
             loadReviews();
             loadLogo();
         }
@@ -1158,6 +1421,15 @@
                 });
         }
 
+        function loadServiceOptions() {
+            supabase.from('service_options').select('*').order('order', { ascending: true })
+                .then(function(res) {
+                    if (!res.error && res.data) {
+                        serviceOptionsData = res.data;
+                    }
+                });
+        }
+
         function loadReviews() {
             supabase.from('reviews').select('*').order('timestamp', { ascending: false })
                 .then(function(res) {
@@ -1177,7 +1449,7 @@
         }
 
         // ================================================================
-        // ПОРТФОЛИО
+        // ПОРТФОЛИО (все функции без изменений)
         // ================================================================
         function renderPortfolioCategories(cats) {
             var container = document.getElementById('portfolioCategories');
@@ -1194,8 +1466,8 @@
                         <div class="category-name">${cat.name}</div>
                         <div class="work-count">${items.length} работ(ы)</div>
                         <div class="admin-actions">
-                            <button class="btn" style="padding:5px 8px; font-size:12px;" onclick="event.stopPropagation(); changeCover(${cat.id})">🖼️</button>
-                            <button class="btn" style="padding:5px 8px; font-size:12px;" onclick="event.stopPropagation(); deleteCategory(${cat.id})">🗑️</button>
+                            <button class="btn btn-sm" onclick="event.stopPropagation(); changeCover(${cat.id})">🖼️</button>
+                            <button class="btn btn-sm" onclick="event.stopPropagation(); deleteCategory(${cat.id})">🗑️</button>
                         </div>
                     </div>
                 `;
@@ -1238,21 +1510,6 @@
                     var fromIndex = evt.oldIndex;
                     var toIndex = evt.newIndex;
                     updateWorksOrder(fromIndex, toIndex);
-                }
-            });
-        }
-
-        function setupSortableForServices() {
-            var list = document.getElementById('servicesList');
-            if (!list || !window.isAdmin) return;
-            if (sortableInstances.services) sortableInstances.services.destroy();
-            sortableInstances.services = new Sortable(list, {
-                animation: 150,
-                delay: 200,
-                delayOnTouchOnly: true,
-                onEnd: function(evt) {
-                    var items = [].slice.call(list.children);
-                    updateOrder('services', items);
                 }
             });
         }
@@ -1467,6 +1724,300 @@
         }
 
         // ================================================================
+        // КОНСТРУКТОР ЗАКАЗА (ОВЕРЛЕЙ)
+        // ================================================================
+        function openOrderConstructor(serviceId) {
+            var service = servicesData.find(function(s) { return s.id == serviceId; });
+            if (!service) return;
+
+            var options = serviceOptionsData.filter(function(o) { return o.service_id == serviceId; });
+
+            var modal = document.getElementById('modalOverlay');
+            var content = document.getElementById('modalContent');
+
+            currentOrderService = service;
+            currentOrderOptions = options;
+            currentOrderQuantities = {};
+            currentOrderFiles = [];
+            currentOrderDescription = '';
+
+            var html = `
+                <div style="max-height:75vh; overflow-y:auto;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                        <h3>${service.emoji} ${service.name}</h3>
+                        <button class="btn" onclick="closeModal()" style="margin:0;">×</button>
+                    </div>
+                    <p style="color:var(--text-muted); font-size:14px; margin-bottom:15px;">${service.description || ''}</p>
+                    <div id="orderOptionsContainer">
+            `;
+
+            if (options.length === 0) {
+                html += '<p style="color:var(--text-muted)">Для этой услуги пока нет опций. Свяжитесь с дизайнером для уточнения.</p>';
+            } else {
+                options.forEach(function(opt, idx) {
+                    var qty = currentOrderQuantities[opt.id] || 1;
+                    html += `
+                        <div class="option-group" data-opt-id="${opt.id}">
+                            <label>
+                                <input type="checkbox" onchange="toggleOption(${opt.id}, this.checked)">
+                                <div class="option-info">
+                                    <div class="option-name">${opt.name}</div>
+                                    <div class="option-price">${opt.price} ₽ ${opt.description ? '· ' + opt.description : ''}</div>
+                                </div>
+                            </label>
+                            <div class="quantity-control" id="qtyControl_${opt.id}" style="display:none;">
+                                <button onclick="changeQuantity(${opt.id}, -1)">−</button>
+                                <span id="qtyDisplay_${opt.id}">${qty}</span>
+                                <button onclick="changeQuantity(${opt.id}, 1)">+</button>
+                                <span style="font-size:12px; color:var(--text-muted); margin-left:8px;" id="priceDisplay_${opt.id}">${opt.price} ₽</span>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            html += `
+                    </div>
+                    <div class="order-total">
+                        Итого: <span id="orderTotalPrice">0</span> ₽
+                    </div>
+                    <div style="margin-top:15px;">
+                        <textarea id="orderDescription" placeholder="Опишите ваше ТЗ (что нужно сделать, стиль, цвета, примеры...)" style="min-height:80px;"></textarea>
+                    </div>
+                    <div class="reference-upload">
+                        <p style="color:var(--text-muted); font-size:13px; margin-bottom:8px;">📎 Прикрепить референсы (до 3 изображений)</p>
+                        <input type="file" id="refInput" accept="image/*" multiple onchange="handleRefFiles(event)">
+                        <div id="refPreview" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;"></div>
+                    </div>
+                    <button class="btn" onclick="submitOrderWithOptions()" style="width:100%; margin-top:15px;">✅ Отправить заявку</button>
+                </div>
+            `;
+
+            content.innerHTML = html;
+            modal.style.display = 'flex';
+
+            // Если есть опции, выбираем первую по умолчанию
+            if (options.length > 0) {
+                var firstCheckbox = content.querySelector('.option-group input[type="checkbox"]');
+                if (firstCheckbox) {
+                    firstCheckbox.checked = true;
+                    toggleOption(options[0].id, true);
+                }
+            }
+
+            // Обновляем цену
+            updateOrderTotal();
+        }
+
+        function toggleOption(optId, checked) {
+            var qtyControl = document.getElementById('qtyControl_' + optId);
+            if (qtyControl) {
+                qtyControl.style.display = checked ? 'flex' : 'none';
+            }
+            if (!checked) {
+                currentOrderQuantities[optId] = 0;
+            } else {
+                if (!currentOrderQuantities[optId] || currentOrderQuantities[optId] === 0) {
+                    currentOrderQuantities[optId] = 1;
+                }
+            }
+            updateOrderTotal();
+            updateQuantityDisplay(optId);
+        }
+
+        function changeQuantity(optId, delta) {
+            var current = currentOrderQuantities[optId] || 0;
+            var newQty = Math.max(0, current + delta);
+            if (newQty === 0) {
+                // Снимаем галочку
+                var container = document.querySelector('.option-group[data-opt-id="' + optId + '"]');
+                if (container) {
+                    var checkbox = container.querySelector('input[type="checkbox"]');
+                    if (checkbox) {
+                        checkbox.checked = false;
+                        toggleOption(optId, false);
+                        return;
+                    }
+                }
+            }
+            currentOrderQuantities[optId] = newQty;
+            updateQuantityDisplay(optId);
+            updateOrderTotal();
+        }
+
+        function updateQuantityDisplay(optId) {
+            var display = document.getElementById('qtyDisplay_' + optId);
+            var priceDisplay = document.getElementById('priceDisplay_' + optId);
+            if (display) {
+                display.textContent = currentOrderQuantities[optId] || 0;
+            }
+            var opt = currentOrderOptions.find(function(o) { return o.id == optId; });
+            if (opt && priceDisplay) {
+                var qty = currentOrderQuantities[optId] || 0;
+                var total = opt.price * qty;
+                // Применяем скидки при количестве
+                if (opt.name === 'Баннер' && qty >= 2) {
+                    var discountPrice = qty >= 4 ? 300 : 350;
+                    total = discountPrice * qty;
+                    priceDisplay.textContent = discountPrice + ' ₽ × ' + qty + ' = ' + total + ' ₽ (скидка)';
+                } else if (opt.name === 'Карточка товара' && qty >= 3) {
+                    var discountPrice = qty >= 5 ? 600 : 700;
+                    total = discountPrice * qty;
+                    priceDisplay.textContent = discountPrice + ' ₽ × ' + qty + ' = ' + total + ' ₽ (скидка)';
+                } else {
+                    priceDisplay.textContent = opt.price + ' ₽ × ' + qty + ' = ' + total + ' ₽';
+                }
+            }
+        }
+
+        function updateOrderTotal() {
+            var total = 0;
+            currentOrderOptions.forEach(function(opt) {
+                var qty = currentOrderQuantities[opt.id] || 0;
+                if (qty > 0) {
+                    var price = opt.price;
+                    // Скидки
+                    if (opt.name === 'Баннер') {
+                        if (qty >= 4) price = 300;
+                        else if (qty >= 2) price = 350;
+                    } else if (opt.name === 'Карточка товара') {
+                        if (qty >= 5) price = 600;
+                        else if (qty >= 3) price = 700;
+                    }
+                    total += price * qty;
+                }
+            });
+            var totalEl = document.getElementById('orderTotalPrice');
+            if (totalEl) {
+                totalEl.textContent = total;
+            }
+        }
+
+        function handleRefFiles(event) {
+            var files = event.target.files;
+            if (!files || files.length === 0) return;
+            if (files.length + currentOrderFiles.length > 3) {
+                alert('Можно прикрепить не более 3 референсов');
+                return;
+            }
+            for (var i = 0; i < files.length; i++) {
+                if (currentOrderFiles.length >= 3) break;
+                currentOrderFiles.push(files[i]);
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    var preview = document.getElementById('refPreview');
+                    var thumb = document.createElement('div');
+                    thumb.className = 'preview-thumb';
+                    thumb.innerHTML = '<img src="' + e.target.result + '" alt="референс"><button class="remove-btn" onclick="removeRef(' + (currentOrderFiles.indexOf(files[i])) + ')">×</button>';
+                    preview.appendChild(thumb);
+                };
+                reader.readAsDataURL(files[i]);
+            }
+            event.target.value = '';
+        }
+
+        function removeRef(index) {
+            currentOrderFiles.splice(index, 1);
+            var preview = document.getElementById('refPreview');
+            preview.innerHTML = '';
+            currentOrderFiles.forEach(function(file, idx) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    var thumb = document.createElement('div');
+                    thumb.className = 'preview-thumb';
+                    thumb.innerHTML = '<img src="' + e.target.result + '" alt="референс"><button class="remove-btn" onclick="removeRef(' + idx + ')">×</button>';
+                    preview.appendChild(thumb);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function submitOrderWithOptions() {
+            // Собираем выбранные опции
+            var selectedOptions = [];
+            currentOrderOptions.forEach(function(opt) {
+                var qty = currentOrderQuantities[opt.id] || 0;
+                if (qty > 0) {
+                    var price = opt.price;
+                    if (opt.name === 'Баннер') {
+                        if (qty >= 4) price = 300;
+                        else if (qty >= 2) price = 350;
+                    } else if (opt.name === 'Карточка товара') {
+                        if (qty >= 5) price = 600;
+                        else if (qty >= 3) price = 700;
+                    }
+                    selectedOptions.push({
+                        name: opt.name,
+                        price: price,
+                        quantity: qty,
+                        total: price * qty
+                    });
+                }
+            });
+
+            if (selectedOptions.length === 0) {
+                alert('Выберите хотя бы одну опцию');
+                return;
+            }
+
+            var description = document.getElementById('orderDescription').value.trim();
+
+            var total = selectedOptions.reduce(function(sum, opt) { return sum + opt.total; }, 0);
+
+            // Формируем текст заказа
+            var orderText = '📋 **Заказ на услугу:** ' + currentOrderService.emoji + ' ' + currentOrderService.name + '\n\n';
+            orderText += '**Выбранные опции:**\n';
+            selectedOptions.forEach(function(opt) {
+                orderText += '• ' + opt.name + ' — ' + opt.quantity + ' шт. × ' + opt.price + ' ₽ = ' + opt.total + ' ₽\n';
+            });
+            orderText += '\n**Итого:** ' + total + ' ₽\n\n';
+            if (description) {
+                orderText += '**ТЗ:**\n' + description + '\n\n';
+            }
+            orderText += 'Жду счёт для оплаты.';
+
+            // Сохраняем заказ в БД
+            var user = window.currentUser;
+            var userName = user?.first_name || user?.username || 'Пользователь';
+            var userUsername = user?.username || null;
+
+            var order = {
+                service: currentOrderService.name,
+                user_name: userName,
+                user_username: userUsername,
+                time: new Date().toLocaleString(),
+                timestamp: new Date().toISOString(),
+                options: JSON.stringify(selectedOptions),
+                total: total,
+                description: description,
+                status: 'pending'
+            };
+
+            supabase.from('orders').insert([order])
+                .then(function() {
+                    // Загружаем референсы, если есть
+                    var uploadPromises = currentOrderFiles.map(function(file) {
+                        return uploadFileToSupabase(file, 'references/' + user?.id || 'anonymous');
+                    });
+                    return Promise.all(uploadPromises);
+                })
+                .then(function(urls) {
+                    // Отправляем сообщение дизайнеру
+                    var chatText = encodeURIComponent(orderText + (urls.length > 0 ? '\n\n📎 Референсы загружены.' : ''));
+                    if (window.telegramAvailable && window.tg) {
+                        window.tg.openTelegramLink('https://t.me/Mark1zDesign_bot?text=' + chatText);
+                    } else {
+                        window.open('https://t.me/Mark1zDesign_bot?text=' + chatText, '_blank');
+                    }
+                    closeModal();
+                    alert('Заявка отправлена! Я свяжусь с вами для уточнения деталей.');
+                })
+                .catch(function(err) {
+                    alert('Ошибка: ' + err.message);
+                });
+        }
+
+        // ================================================================
         // РАЗДЕЛ ЗАКАЗЫ
         // ================================================================
         function renderOrdersSection() {
@@ -1474,7 +2025,7 @@
             if (!container) return;
             if (window.isAdmin) {
                 var html = `
-                    <div style="display:flex; gap:10px; margin-bottom:15px;">
+                    <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap;">
                         <button class="btn ${adminOrdersMode === 'services' ? 'active' : ''}" onclick="switchAdminMode('services')">Услуги</button>
                         <button class="btn ${adminOrdersMode === 'orders' ? 'active' : ''}" onclick="switchAdminMode('orders')">Заказы</button>
                         <button class="btn" onclick="openAdminPromoPanel()">👑 Админ</button>
@@ -1498,7 +2049,6 @@
             } else {
                 var html = '<h3 style="margin-bottom:15px;">Наши услуги</h3>';
                 html += renderServicesForUser();
-                html += '<div style="margin-top:20px;"><button class="btn" onclick="openContactModal()">📩 Написать дизайнеру</button></div>';
                 container.innerHTML = html;
             }
         }
@@ -1507,27 +2057,13 @@
             if (servicesData.length === 0) return '<p style="color:var(--text-muted)">Услуги пока не добавлены</p>';
             var html = '<div class="order-list" style="display:flex; flex-direction:column; gap:12px;">';
             servicesData.forEach(function(s) {
-                var basePrice = s.price || 0;
-                var basePriceTo = s.price_to || basePrice;
-                var priceText = '';
-                var discountApplied = false;
-                if (currentDiscount > 0 && !(s.name === 'Telegram Mini Apps' && (currentDiscount === 50 || currentDiscount === 100))) {
-                    discountApplied = true;
-                    var newFrom = Math.round(basePrice * (1 - currentDiscount / 100));
-                    var newTo = Math.round(basePriceTo * (1 - currentDiscount / 100));
-                    priceText = `
-                        <span class="price-old">${basePrice}${basePriceTo && basePriceTo !== basePrice ? ' - ' + basePriceTo : ''}</span>
-                        <span class="price-new">${newFrom}${newTo && newTo !== newFrom ? ' - ' + newTo : ''} ₽</span>
-                    `;
-                } else {
-                    priceText = basePriceTo ? 'от ' + basePrice + ' до ' + basePriceTo + ' ₽' : (basePrice ? basePrice + ' ₽' : 'Цена не указана');
-                }
+                var hasOptions = serviceOptionsData.some(function(o) { return o.service_id == s.id; });
                 html += `
-                    <div class="order-item" style="cursor:pointer;" onclick="placeOrder('${s.name}', ${discountApplied})">
+                    <div class="order-item" onclick="openOrderConstructor(${s.id})">
                         <div class="order-info">
                             <h4>${s.emoji} ${s.name}</h4>
-                            <p>${s.description}</p>
-                            <p>${priceText}</p>
+                            <p>${s.description || ''}</p>
+                            ${hasOptions ? '<p style="color:var(--accent); font-size:12px;">⚙️ Конструктор заказа</p>' : ''}
                         </div>
                         <span style="font-size:24px;">➔</span>
                     </div>
@@ -1540,17 +2076,17 @@
         function renderServicesForAdmin() {
             var html = '<div class="order-list" id="servicesList" style="display:flex; flex-direction:column; gap:12px;">';
             servicesData.forEach(function(s) {
-                var priceText = s.price_to ? 'от ' + s.price + ' до ' + s.price_to + ' ₽' : (s.price ? s.price + ' ₽' : 'Цена не указана');
+                var optionsCount = serviceOptionsData.filter(function(o) { return o.service_id == s.id; }).length;
                 html += `
-                    <div class="order-item" data-id="${s.id}" style="cursor: grab;">
+                    <div class="order-item admin-grab" data-id="${s.id}" style="cursor: grab;">
                         <div class="order-info">
                             <h4>${s.emoji} ${s.name}</h4>
-                            <p>${s.description}</p>
-                            <p style="color:var(--accent); font-weight:600;">${priceText}</p>
+                            <p>${s.description || ''}</p>
+                            <p style="color:var(--text-muted); font-size:12px;">${optionsCount} опций</p>
                         </div>
                         <div style="display:flex; gap:5px; align-items:center;">
-                            <button class="btn" onclick="editService(${s.id})">✏️</button>
-                            <button class="btn" onclick="deleteService(${s.id})">🗑️</button>
+                            <button class="btn btn-sm" onclick="event.stopPropagation(); editService(${s.id})">✏️</button>
+                            <button class="btn btn-sm" onclick="event.stopPropagation(); deleteService(${s.id})">🗑️</button>
                         </div>
                     </div>
                 `;
@@ -1558,6 +2094,21 @@
             html += '</div>';
             html += '<div style="margin-top:15px;"><button class="btn" onclick="addService()">➕ Добавить услугу</button></div>';
             return html;
+        }
+
+        function setupSortableForServices() {
+            var list = document.getElementById('servicesList');
+            if (!list || !window.isAdmin) return;
+            if (sortableInstances.services) sortableInstances.services.destroy();
+            sortableInstances.services = new Sortable(list, {
+                animation: 150,
+                delay: 200,
+                delayOnTouchOnly: true,
+                onEnd: function(evt) {
+                    var items = [].slice.call(list.children);
+                    updateOrder('services', items);
+                }
+            });
         }
 
         function switchAdminMode(mode) {
@@ -1575,14 +2126,18 @@
                 orders.forEach(function(order) {
                     var userName = order.user_name || 'Пользователь';
                     var userUsername = order.user_username || null;
+                    var options = order.options ? JSON.parse(order.options) : [];
+                    var optionsText = options.map(function(o) { return o.name + ' ×' + o.quantity; }).join(', ');
                     html += `
                         <div class="order-item">
                             <div class="order-info">
                                 <h4>${order.service}</h4>
                                 <p>От: ${userName} ${userUsername ? '(<a href="https://t.me/' + userUsername + '" target="_blank">@' + userUsername + '</a>)' : ''}</p>
-                                <p>${order.time}</p>
+                                <p style="font-size:12px;">${optionsText || 'Без опций'}</p>
+                                <p style="font-weight:600; color:var(--accent);">${order.total || 0} ₽</p>
+                                <p style="font-size:11px; color:var(--text-muted);">${order.time || ''}</p>
                             </div>
-                            <button class="btn" onclick="deleteOrder(${order.id})">🗑️</button>
+                            <button class="btn btn-sm" onclick="deleteOrder(${order.id})">🗑️</button>
                         </div>
                     `;
                 });
@@ -1601,8 +2156,6 @@
                 <input type="text" id="serviceEmoji" placeholder="Эмодзи (например, 🎨)">
                 <input type="text" id="serviceName" placeholder="Название услуги">
                 <input type="text" id="serviceDescription" placeholder="Описание">
-                <input type="number" id="servicePriceFrom" placeholder="Цена от (₽)">
-                <input type="number" id="servicePriceTo" placeholder="Цена до (₽) (необязательно)">
                 <button class="btn" onclick="saveNewService()">Сохранить</button>
                 <button class="btn" onclick="closeModal()">Отмена</button>
             `;
@@ -1613,20 +2166,15 @@
             var emoji = document.getElementById('serviceEmoji').value.trim() || '✨';
             var name = document.getElementById('serviceName').value.trim();
             var description = document.getElementById('serviceDescription').value.trim();
-            var priceFrom = document.getElementById('servicePriceFrom').value.trim();
-            var priceTo = document.getElementById('servicePriceTo').value.trim();
             if (!name) { alert('Введите название услуги'); return; }
             var existing = servicesData.find(function(s) { return s.name.toLowerCase() === name.toLowerCase(); });
             if (existing) {
                 alert('Услуга с таким названием уже существует');
                 return;
             }
-            var price = priceFrom ? parseFloat(priceFrom) : null;
-            var priceToVal = priceTo ? parseFloat(priceTo) : null;
             var nextOrder = servicesData.length > 0 ? Math.max.apply(null, servicesData.map(function(s) { return s.order || 0; })) + 1 : 0;
             supabase.from('services').insert([{
-                emoji: emoji, name: name, description: description,
-                price: price, price_to: priceToVal, order: nextOrder
+                emoji: emoji, name: name, description: description, price: 0, order: nextOrder
             }]).then(function() {
                 closeModal();
             });
@@ -1643,9 +2191,7 @@
                         <h3>Редактировать услугу</h3>
                         <input type="text" id="serviceEmoji" placeholder="Эмодзи" value="${s.emoji}">
                         <input type="text" id="serviceName" placeholder="Название услуги" value="${s.name}">
-                        <input type="text" id="serviceDescription" placeholder="Описание" value="${s.description}">
-                        <input type="number" id="servicePriceFrom" placeholder="Цена от" value="${s.price || ''}">
-                        <input type="number" id="servicePriceTo" placeholder="Цена до" value="${s.price_to || ''}">
+                        <input type="text" id="serviceDescription" placeholder="Описание" value="${s.description || ''}">
                         <button class="btn" onclick="saveServiceChanges(${id})">Сохранить</button>
                         <button class="btn" onclick="closeModal()">Отмена</button>
                     `;
@@ -1657,14 +2203,9 @@
             var emoji = document.getElementById('serviceEmoji').value.trim() || '✨';
             var name = document.getElementById('serviceName').value.trim();
             var description = document.getElementById('serviceDescription').value.trim();
-            var priceFrom = document.getElementById('servicePriceFrom').value.trim();
-            var priceTo = document.getElementById('servicePriceTo').value.trim();
             if (!name) { alert('Введите название услуги'); return; }
-            var price = priceFrom ? parseFloat(priceFrom) : null;
-            var priceToVal = priceTo ? parseFloat(priceTo) : null;
             supabase.from('services').update({
-                emoji: emoji, name: name, description: description,
-                price: price, price_to: priceToVal
+                emoji: emoji, name: name, description: description
             }).eq('id', id).then(function() {
                 closeModal();
             });
@@ -1677,54 +2218,14 @@
         }
 
         // ================================================================
-        // ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ
+        // ОСТАЛЬНЫЕ ФУНКЦИИ (ОТЗЫВЫ, АДМИНКА, ПОЛНОЭКРАННЫЙ ПРОСМОТР)
         // ================================================================
         function downloadWork(imageData, title) {
             downloadImage(imageData, title + '.jpg');
         }
 
-        function placeOrder(service, discountApplied) {
-            if (isOrderProcessing) return;
-            isOrderProcessing = true;
-            setTimeout(function() { isOrderProcessing = false; }, 2000);
-
-            var user = window.currentUser;
-            var userName = user?.first_name || user?.username || 'Пользователь';
-            var userUsername = user?.username || null;
-            var order = {
-                service: service,
-                user_name: userName,
-                user_username: userUsername,
-                time: new Date().toLocaleString(),
-                timestamp: new Date().toISOString(),
-                discount_applied: discountApplied || false,
-                discount_percent: discountApplied ? currentDiscount : 0
-            };
-            supabase.from('orders').insert([order])
-                .then(function() {
-                    console.log('Заказ добавлен:', service);
-                })
-                .catch(function(err) {
-                    console.error('Ошибка добавления заказа:', err);
-                });
-            if (discountApplied) {
-                currentDiscount = 0;
-                localStorage.removeItem('lastSpinDiscount');
-                lastSpinDiscount = 0;
-                renderOrdersSection();
-            }
-            var chatText = encodeURIComponent('Я оплатил услугу: ' + service + ', хочу обговорить детали работы.');
-            if (window.telegramAvailable && window.tg) {
-                window.tg.openTelegramLink('https://t.me/Mark1zDesign_bot?text=' + chatText);
-                window.tg.openLink('https://your-payment-link.com/pay?service=' + encodeURIComponent(service));
-            } else {
-                window.open('https://t.me/Mark1zDesign_bot?text=' + chatText, '_blank');
-                window.open('https://your-payment-link.com/pay?service=' + encodeURIComponent(service), '_blank');
-            }
-        }
-
         // ================================================================
-        // ОТЗЫВЫ (С РЕАКЦИЯМИ, ОТВЕТАМИ, РЕДАКТИРОВАНИЕМ)
+        // ОТЗЫВЫ (с реакциями)
         // ================================================================
         function openReviewModal() {
             var modal = document.getElementById('modalOverlay');
@@ -1740,7 +2241,7 @@
                 </div>
                 <textarea id="reviewText" placeholder="Напишите ваш отзыв..." style="height:100px;"></textarea>
                 <div style="margin-bottom:10px;">
-                    <button class="btn" onclick="document.getElementById('reviewImagesInput').click()">📎 Прикрепить изображения (до 3)</button>
+                    <button class="btn btn-sm" onclick="document.getElementById('reviewImagesInput').click()">📎 Прикрепить изображения (до 3)</button>
                     <input type="file" id="reviewImagesInput" accept="image/*" multiple hidden onchange="handleReviewImages(event)">
                     <div id="reviewImagesPreview" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;"></div>
                 </div>
@@ -1815,7 +2316,6 @@
                 return;
             }
 
-            // Проверка на 1 час
             supabase.from('user_last_review').select('timestamp').eq('user_id', user.id.toString()).single()
                 .then(function(res) {
                     if (!res.error && res.data) {
@@ -1826,7 +2326,6 @@
                             return Promise.reject('timeout');
                         }
                     }
-                    // Загрузка изображений
                     var imageUrls = [];
                     var uploadPromises = tempReviewFiles.map(function(file) {
                         return compressImage(file, 600, 0.6)
@@ -1880,71 +2379,16 @@
         }
 
         function reactReview(id, type) {
-            var fieldMap = {
-                'heart': 'likes_heart',
-                'fire': 'likes_fire',
-                'plus': 'likes_plus'
-            };
+            var fieldMap = { 'heart': 'likes_heart', 'fire': 'likes_fire', 'plus': 'likes_plus' };
             var field = fieldMap[type];
             if (!field) return;
 
-            // Получаем текущее значение, инкрементируем, обновляем
             supabase.from('reviews').select(field).eq('id', id).single()
                 .then(function(res) {
                     if (res.error) throw res.error;
                     var current = res.data[field] || 0;
                     return supabase.from('reviews').update({ [field]: current + 1 }).eq('id', id);
                 })
-                .then(function() {
-                    loadReviews(); // обновляем список
-                })
-                .catch(function(err) {
-                    alert('Ошибка: ' + err.message);
-                });
-        }
-
-        function editAdminReply(id) {
-            // Показываем форму редактирования ответа
-            var replyContainer = document.getElementById('replyContainer_' + id);
-            if (!replyContainer) return;
-            var currentText = replyContainer.querySelector('.reply-text')?.textContent || '';
-            replyContainer.innerHTML = `
-                <div class="admin-reply-edit">
-                    <textarea id="editReplyText_${id}">${currentText}</textarea>
-                    <button class="btn" onclick="saveAdminReplyEdit(${id})" style="padding:8px 12px; font-size:12px;">Сохранить</button>
-                    <button class="btn" onclick="cancelAdminReplyEdit(${id})" style="padding:8px 12px; font-size:12px; background:rgba(255,255,255,0.1);">Отмена</button>
-                </div>
-            `;
-        }
-
-        function saveAdminReplyEdit(id) {
-            var textarea = document.getElementById('editReplyText_' + id);
-            if (!textarea) return;
-            var newText = textarea.value.trim();
-            if (!newText) {
-                alert('Введите текст ответа');
-                return;
-            }
-            supabase.from('reviews').update({ admin_reply: newText }).eq('id', id)
-                .then(function() {
-                    loadReviews();
-                })
-                .catch(function(err) {
-                    alert('Ошибка: ' + err.message);
-                });
-        }
-
-        function cancelAdminReplyEdit(id) {
-            loadReviews(); // просто перезагружаем отзывы, чтобы скрыть форму
-        }
-
-        function saveAdminReply(id) {
-            var replyText = document.getElementById('adminReply_' + id)?.value?.trim();
-            if (!replyText) {
-                alert('Введите текст ответа');
-                return;
-            }
-            supabase.from('reviews').update({ admin_reply: replyText }).eq('id', id)
                 .then(function() {
                     loadReviews();
                 })
@@ -1964,7 +2408,6 @@
                     (String(window.currentUser.id) === String(review.author_id) || 
                      window.currentUser.username === review.author_username);
                 
-                // Аватарка с fallback
                 var avatarHtml = '';
                 if (review.photo_url) {
                     avatarHtml = '<div class="review-avatar"><img src="' + review.photo_url + '" alt="avatar" onerror="this.style.display=\'none\';this.parentElement.textContent=\'' + (authorName.charAt(0) || '👤') + '\'"></div>';
@@ -1981,33 +2424,30 @@
                     imagesHtml += '</div>';
                 }
 
-                // Кнопки действий
                 var actionsHtml = '';
                 if (window.isAdmin) {
-                    actionsHtml += '<button class="btn" onclick="editReview(' + review.id + ')">✏️</button>';
-                    actionsHtml += '<button class="btn" onclick="deleteReview(' + review.id + ')">🗑️</button>';
+                    actionsHtml += '<button class="btn btn-sm" onclick="editReview(' + review.id + ')">✏️</button>';
+                    actionsHtml += '<button class="btn btn-sm" onclick="deleteReview(' + review.id + ')">🗑️</button>';
                 } else if (isAuthor) {
-                    actionsHtml += '<button class="btn" onclick="deleteReview(' + review.id + ')">🗑️ Удалить</button>';
+                    actionsHtml += '<button class="btn btn-sm" onclick="deleteReview(' + review.id + ')">🗑️ Удалить</button>';
                 }
 
-                // Реакции
                 var heartCount = review.likes_heart || 0;
                 var fireCount = review.likes_fire || 0;
                 var plusCount = review.likes_plus || 0;
 
                 var reactionsHtml = `
-                    <button class="like-btn heart" onclick="reactReview(${review.id}, 'heart')">
+                    <button class="like-btn" onclick="reactReview(${review.id}, 'heart')">
                         <span class="emoji">❤️</span> <span class="count">${heartCount}</span>
                     </button>
-                    <button class="like-btn fire" onclick="reactReview(${review.id}, 'fire')">
+                    <button class="like-btn" onclick="reactReview(${review.id}, 'fire')">
                         <span class="emoji">🔥</span> <span class="count">${fireCount}</span>
                     </button>
-                    <button class="like-btn plus" onclick="reactReview(${review.id}, 'plus')">
+                    <button class="like-btn" onclick="reactReview(${review.id}, 'plus')">
                         <span class="emoji">👍</span> <span class="count">${plusCount}</span>
                     </button>
                 `;
 
-                // Ответ админа
                 var adminReplyHtml = '';
                 if (review.admin_reply) {
                     adminReplyHtml = `
@@ -2018,9 +2458,9 @@
                     `;
                 } else if (window.isAdmin) {
                     adminReplyHtml = `
-                        <div class="admin-reply-input">
-                            <textarea id="adminReply_${review.id}" placeholder="Ответить на отзыв..."></textarea>
-                            <button class="btn" onclick="saveAdminReply(${review.id})" style="padding:8px 12px; font-size:12px;">Отправить</button>
+                        <div class="admin-reply-input" style="margin-top:10px; display:flex; gap:8px;">
+                            <textarea id="adminReply_${review.id}" placeholder="Ответить на отзыв..." style="flex:1; padding:8px; border:1px solid var(--card-border); border-radius:8px; background:rgba(0,0,0,0.3); color:var(--text); font-size:13px; resize:vertical; min-height:40px;"></textarea>
+                            <button class="btn btn-sm" onclick="saveAdminReply(${review.id})" style="padding:8px 12px;">Отправить</button>
                         </div>
                     `;
                 }
@@ -2047,11 +2487,14 @@
             });
             container.innerHTML = html;
 
-            // Добавляем анимацию для реакций
             document.querySelectorAll('.like-btn').forEach(function(btn) {
                 btn.addEventListener('click', function(e) {
                     this.classList.add('animating');
-                    setTimeout(() => this.classList.remove('animating'), 300);
+                    this.classList.add('active');
+                    setTimeout(function() {
+                        btn.classList.remove('animating');
+                        btn.classList.remove('active');
+                    }, 400);
                 });
             });
         }
@@ -2083,6 +2526,62 @@
                 });
         }
 
+        function editAdminReply(id) {
+            var replyContainer = document.getElementById('replyContainer_' + id);
+            if (!replyContainer) return;
+            var currentText = replyContainer.querySelector('.reply-text')?.textContent || '';
+            replyContainer.innerHTML = `
+                <div class="admin-reply-edit">
+                    <textarea id="editReplyText_${id}">${currentText}</textarea>
+                    <button class="btn btn-sm" onclick="saveAdminReplyEdit(${id})">Сохранить</button>
+                    <button class="btn btn-sm" onclick="cancelAdminReplyEdit(${id})" style="background:rgba(255,255,255,0.1);">Отмена</button>
+                </div>
+            `;
+        }
+
+        function saveAdminReplyEdit(id) {
+            var textarea = document.getElementById('editReplyText_' + id);
+            if (!textarea) return;
+            var newText = textarea.value.trim();
+            if (!newText) {
+                alert('Введите текст ответа');
+                return;
+            }
+            supabase.from('reviews').update({ admin_reply: newText }).eq('id', id)
+                .then(function() {
+                    loadReviews();
+                })
+                .catch(function(err) {
+                    alert('Ошибка: ' + err.message);
+                });
+        }
+
+        function cancelAdminReplyEdit(id) {
+            loadReviews();
+        }
+
+        function saveAdminReply(id) {
+            var replyText = document.getElementById('adminReply_' + id)?.value?.trim();
+            if (!replyText) {
+                alert('Введите текст ответа');
+                return;
+            }
+            supabase.from('reviews').update({ admin_reply: replyText }).eq('id', id)
+                .then(function() {
+                    loadReviews();
+                })
+                .catch(function(err) {
+                    alert('Ошибка: ' + err.message);
+                });
+        }
+
+        function editReview(id) {
+            var newText = prompt('Новый текст отзыва:');
+            if (newText !== null) {
+                supabase.from('reviews').update({ text: newText }).eq('id', id);
+            }
+        }
+
         // ================================================================
         // АДМИН-ФУНКЦИИ
         // ================================================================
@@ -2107,13 +2606,6 @@
             if (!icon) return;
             var nextOrder = portfolioCategoriesData.length > 0 ? Math.max.apply(null, portfolioCategoriesData.map(function(c) { return c.order || 0; })) + 1 : 0;
             supabase.from('portfolio_categories').insert([{ name: name, icon: icon, items: [], order: nextOrder }]);
-        }
-
-        function editReview(id) {
-            var newText = prompt('Новый текст отзыва:');
-            if (newText !== null) {
-                supabase.from('reviews').update({ text: newText }).eq('id', id);
-            }
         }
 
         function deleteOrder(id) {
@@ -2383,6 +2875,7 @@
             createLoadingStars();
             setupTabs();
             initDefaultServices();
+            initDefaultServiceOptions();
             setupRealTimeListeners();
             initTelegram();
             renderOrdersSection();
