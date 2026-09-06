@@ -288,7 +288,7 @@
         <div class="footer">
             <div>© Mark1z Design · Дмитрий Маркизов</div>
             <a href="#" onclick="openPrivacyPolicy()">Политика конфиденциальности</a>
-            <span class="version">V.1.0.0</span>
+            <span class="version">V.1.0.1</span>
         </div>
     </div>
 
@@ -1510,7 +1510,7 @@
         }
 
         // ================================================================
-        // УПРАВЛЕНИЕ УСЛУГАМИ (ИСПРАВЛЕНО)
+        // УПРАВЛЕНИЕ УСЛУГАМИ
         // ================================================================
         function addService() {
             var modal = document.getElementById('modalOverlay');
@@ -1638,7 +1638,7 @@
         }
 
         // ================================================================
-        // ОТЗЫВЫ (ИСПРАВЛЕНО: после добавления вызываем loadReviews)
+        // ОТЗЫВЫ (ИСПРАВЛЕНО: сравнение через String, обновление после удаления)
         // ================================================================
         function openReviewModal() {
             var modal = document.getElementById('modalOverlay');
@@ -1776,8 +1776,7 @@
                 .then(function() {
                     closeModal();
                     tempReviewFiles = [];
-                    // === ИСПРАВЛЕНИЕ: сразу обновляем отзывы ===
-                    loadReviews();
+                    loadReviews(); // сразу обновляем список
                 })
                 .catch(function(err) {
                     alert('Ошибка: ' + err.message);
@@ -1791,7 +1790,10 @@
             reviews.forEach(function(review) {
                 var authorName = review.author_name || 'Пользователь';
                 var authorUsername = review.author_username || null;
-                var isAuthor = window.currentUser && (window.currentUser.id === review.author_id || window.currentUser.username === review.author_username);
+                // Приводим к строке для корректного сравнения
+                var isAuthor = window.currentUser && 
+                    (String(window.currentUser.id) === String(review.author_id) || 
+                     window.currentUser.username === review.author_username);
                 var avatarHtml = '<div class="review-avatar">' + ((authorName && authorName !== 'Пользователь') ? authorName.charAt(0) : '👤') + '</div>';
                 if (review.photo_url) avatarHtml = '<div class="review-avatar"><img src="' + review.photo_url + '" alt="avatar"></div>';
                 var imagesHtml = '';
@@ -1829,7 +1831,38 @@
         }
 
         // ================================================================
-        // АДМИН-ФУНКЦИИ
+        // УДАЛЕНИЕ ОТЗЫВА (ИСПРАВЛЕНО)
+        // ================================================================
+        function deleteReview(id) {
+            if (!confirm('Удалить отзыв?')) return;
+            var supabase = window._supabaseClient;
+            supabase.from('reviews').select('author_id').eq('id', id).single()
+                .then(function(res) {
+                    if (res.error) {
+                        alert('Ошибка: ' + res.error.message);
+                        return;
+                    }
+                    var reviewAuthorId = res.data ? String(res.data.author_id) : null;
+                    var currentUserId = window.currentUser ? String(window.currentUser.id) : null;
+                    if (!window.isAdmin && reviewAuthorId !== currentUserId) {
+                        alert('Вы не можете удалить этот отзыв');
+                        return;
+                    }
+                    if (reviewAuthorId === currentUserId) {
+                        supabase.from('user_last_review').delete().eq('user_id', reviewAuthorId);
+                    }
+                    supabase.from('reviews').delete().eq('id', id)
+                        .then(function() {
+                            loadReviews(); // обновляем список
+                        });
+                })
+                .catch(function(err) {
+                    alert('Ошибка: ' + err.message);
+                });
+        }
+
+        // ================================================================
+        // ОСТАЛЬНЫЕ АДМИН-ФУНКЦИИ
         // ================================================================
         function editAbout() {
             var supabase = window._supabaseClient;
@@ -1859,19 +1892,6 @@
             var newText = prompt('Новый текст отзыва:');
             if (newText !== null) {
                 window._supabaseClient.from('reviews').update({ text: newText }).eq('id', id);
-            }
-        }
-
-        function deleteReview(id) {
-            if (confirm('Удалить отзыв?')) {
-                var supabase = window._supabaseClient;
-                supabase.from('reviews').select('author_id').eq('id', id).single()
-                    .then(function(res) {
-                        if (res.data && window.currentUser && res.data.author_id === window.currentUser.id.toString()) {
-                            supabase.from('user_last_review').delete().eq('user_id', res.data.author_id);
-                        }
-                        supabase.from('reviews').delete().eq('id', id);
-                    });
             }
         }
 
