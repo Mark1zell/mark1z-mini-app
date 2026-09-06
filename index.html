@@ -777,45 +777,60 @@
             });
         }
 
-        function openServiceOptionsManager(serviceId) {
-            var service = servicesData.find(function(s) { return s.id == serviceId; });
-            if (!service) return;
-            
-            var modal = document.getElementById('modalOverlay');
-            var content = document.getElementById('modalContent');
-            
-            content.innerHTML = `
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
-                    <h3>${service.emoji} ${service.name} — Опции</h3>
-                    <button class="btn" onclick="closeModal()" style="margin:0;">×</button>
-                </div>
-                <div id="serviceOptionsContent"></div>
-            `;
-            modal.style.display = 'flex';
-            
-            loadServiceOptionsForManager(serviceId);
-        }
+function openServiceOptionsManager(serviceId) {
+    console.log('Открываем менеджер опций для услуги ID:', serviceId);
+    
+    var service = servicesData.find(function(s) { return s.id == serviceId; });
+    if (!service) {
+        console.error('Услуга не найдена с ID:', serviceId);
+        alert('Услуга не найдена');
+        return;
+    }
+    
+    console.log('Найдена услуга:', service.name, service.id);
+    
+    var modal = document.getElementById('modalOverlay');
+    var content = document.getElementById('modalContent');
+    
+    content.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+            <h3>${service.emoji} ${service.name} — Опции</h3>
+            <button class="btn" onclick="closeModal()" style="margin:0;">×</button>
+        </div>
+        <div id="serviceOptionsContent"></div>
+    `;
+    modal.style.display = 'flex';
+    
+    loadServiceOptionsForManager(serviceId);
+}
 
-        function loadServiceOptionsForManager(serviceId) {
-            var container = document.getElementById('serviceOptionsContent') || document.getElementById('optionManagerContent');
-            if (!container) return;
+function loadServiceOptionsForManager(serviceId) {
+    console.log('Загружаем опции для услуги ID:', serviceId);
+    
+    var container = document.getElementById('serviceOptionsContent') || document.getElementById('optionManagerContent');
+    if (!container) {
+        console.error('Контейнер для опций не найден');
+        return;
+    }
+    
+    container.innerHTML = '<p style="color:var(--text-muted);">Загрузка опций...</p>';
+    
+    supabase.from('service_options')
+        .select('*')
+        .eq('service_id', serviceId)
+        .order('order', { ascending: true })
+        .then(function(res) {
+            if (res.error) {
+                console.error('Ошибка загрузки опций:', res.error);
+                container.innerHTML = '<p style="color:var(--text-muted);">Ошибка загрузки: ' + res.error.message + '</p>';
+                return;
+            }
             
-            container.innerHTML = '<p style="color:var(--text-muted);">Загрузка опций...</p>';
-            
-            supabase.from('service_options')
-                .select('*')
-                .eq('service_id', serviceId)
-                .order('order', { ascending: true })
-                .then(function(res) {
-                    if (res.error) {
-                        container.innerHTML = '<p style="color:var(--text-muted);">Ошибка загрузки</p>';
-                        return;
-                    }
-                    
-                    var options = res.data || [];
-                    renderServiceOptionsManager(serviceId, options, container);
-                });
-        }
+            console.log('Загружено опций:', res.data.length);
+            var options = res.data || [];
+            renderServiceOptionsManager(serviceId, options, container);
+        });
+}
 
         function renderServiceOptionsManager(serviceId, options, container) {
             var html = `
@@ -970,43 +985,83 @@
             }
         }
 
-        function saveOptionImproved(serviceId) {
-            var name = document.getElementById('optName').value.trim();
-            var price = document.getElementById('optPrice').value.trim();
-            var description = document.getElementById('optDescription').value.trim();
-            var optionType = document.getElementById('optType').value;
-            var minQty = document.getElementById('optMinQty')?.value.trim() || '1';
-            var maxQty = document.getElementById('optMaxQty')?.value.trim() || '10';
-            var discountMin = document.getElementById('optDiscountMin')?.value.trim() || null;
-            var discountPrice = document.getElementById('optDiscountPrice')?.value.trim() || null;
+function saveOptionImproved(serviceId) {
+    var name = document.getElementById('optName').value.trim();
+    var price = document.getElementById('optPrice').value.trim();
+    var description = document.getElementById('optDescription').value.trim();
+    var optionType = document.getElementById('optType').value;
+    var minQty = document.getElementById('optMinQty')?.value.trim() || '1';
+    var maxQty = document.getElementById('optMaxQty')?.value.trim() || '10';
+    var discountMin = document.getElementById('optDiscountMin')?.value.trim() || null;
+    var discountPrice = document.getElementById('optDiscountPrice')?.value.trim() || null;
+    
+    if (!name) { alert('Введите название опции'); return; }
+    if (!price) { alert('Введите цену'); return; }
+    
+    console.log('Сохраняем опцию:', {
+        service_id: serviceId,
+        name: name,
+        price: parseInt(price),
+        description: description,
+        option_type: optionType,
+        min_quantity: parseInt(minQty),
+        max_quantity: parseInt(maxQty),
+        discount_min_quantity: discountMin ? parseInt(discountMin) : null,
+        discount_price: discountPrice ? parseInt(discountPrice) : null
+    });
+    
+    // Сначала получаем максимальный order
+    supabase.from('service_options')
+        .select('order')
+        .eq('service_id', serviceId)
+        .order('order', { ascending: false })
+        .limit(1)
+        .then(function(res) {
+            if (res.error) {
+                console.error('Ошибка при получении order:', res.error);
+                throw res.error;
+            }
             
-            if (!name) { alert('Введите название опции'); return; }
-            if (!price) { alert('Введите цену'); return; }
+            var nextOrder = 0;
+            if (res.data && res.data.length > 0 && res.data[0].order !== null && res.data[0].order !== undefined) {
+                nextOrder = res.data[0].order + 1;
+            }
             
-            supabase.from('service_options').select('order').eq('service_id', serviceId).order('order', { ascending: false }).limit(1)
-                .then(function(res) {
-                    var nextOrder = (res.data && res.data.length > 0) ? (res.data[0].order || 0) + 1 : 0;
-                    return supabase.from('service_options').insert([{
-                        service_id: serviceId,
-                        name: name,
-                        price: parseInt(price),
-                        description: description,
-                        option_type: optionType,
-                        min_quantity: parseInt(minQty),
-                        max_quantity: parseInt(maxQty),
-                        discount_min_quantity: discountMin ? parseInt(discountMin) : null,
-                        discount_price: discountPrice ? parseInt(discountPrice) : null,
-                        order: nextOrder
-                    }]);
-                })
-                .then(function() {
-                    loadServiceOptionsForManager(serviceId);
-                    loadServiceOptions();
-                })
-                .catch(function(err) {
-                    alert('Ошибка: ' + err.message);
-                });
-        }
+            console.log('Следующий order:', nextOrder);
+            
+            // Вставляем новую опцию
+            return supabase.from('service_options').insert([{
+                service_id: serviceId,
+                name: name,
+                price: parseInt(price),
+                description: description || '',
+                option_type: optionType,
+                min_quantity: parseInt(minQty) || 1,
+                max_quantity: parseInt(maxQty) || 10,
+                discount_min_quantity: discountMin ? parseInt(discountMin) : null,
+                discount_price: discountPrice ? parseInt(discountPrice) : null,
+                order: nextOrder
+            }]);
+        })
+        .then(function(res) {
+            if (res.error) {
+                console.error('Ошибка при вставке:', res.error);
+                alert('Ошибка при сохранении: ' + res.error.message);
+                return;
+            }
+            
+            console.log('Опция успешно сохранена');
+            alert('✅ Опция успешно добавлена!');
+            
+            // Перезагружаем список опций
+            loadServiceOptionsForManager(serviceId);
+            loadServiceOptions();
+        })
+        .catch(function(err) {
+            console.error('Ошибка:', err);
+            alert('Ошибка: ' + err.message);
+        });
+}
 
         function editOptionImproved(optionId, serviceId) {
             supabase.from('service_options').select('*').eq('id', optionId).single()
