@@ -8,7 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
-        /* ===== БАЗОВЫЕ СТИЛИ ===== */
+        /* ===== ПОЛНЫЙ CSS ===== */
         :root {
             --bg-start: #0a050d;
             --bg-mid: #100820;
@@ -17,9 +17,9 @@
             --secondary: #be185d;
             --accent: #9d174d;
             --text: #f5f3ff;
-            --text-muted: rgba(245, 243, 255, 0.5);
-            --card-bg: rgba(18, 8, 30, 0.8);
-            --card-border: rgba(124, 58, 237, 0.3);
+            --text-muted: rgba(245,243,255,0.5);
+            --card-bg: rgba(18,8,30,0.8);
+            --card-border: rgba(124,58,237,0.3);
             --shadow: 0 6px 20px rgba(0,0,0,0.5);
             --radius: 20px;
         }
@@ -41,7 +41,6 @@
             user-drag: none !important;
             pointer-events: auto;
         }
-        /* ===== ЗВЁЗДЫ ===== */
         .stars-container { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0; }
         .star { position:absolute; background:rgba(255,255,255,0.7); border-radius:50%; opacity:0; animation: twinkle var(--duration) ease-in-out infinite; animation-delay: var(--delay); }
         @keyframes twinkle { 0%,100%{opacity:0; transform:scale(0.3)} 50%{opacity:0.3; transform:scale(1)} }
@@ -49,7 +48,6 @@
         .asteroid { position:absolute; background: radial-gradient(circle, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 70%); border-radius:50%; width:4px; height:4px; opacity:0; animation: flyAsteroid linear infinite; }
         @keyframes flyAsteroid { 0% { transform: translate(0,0) scale(0.5); opacity:0; } 10% { opacity:0.6; } 90% { opacity:0.6; } 100% { transform: translate(var(--tx), var(--ty)) scale(1.5); opacity:0; } }
         .app-container { position:relative; z-index:1; max-width:600px; margin:0 auto; }
-        /* ===== HEADER ===== */
         .header { text-align:center; padding:30px 0 20px; position: relative; }
         .header .faq-button { position:absolute; top:20px; right:20px; background: rgba(124,58,237,0.3); border:1px solid var(--card-border); color:#fff; width:40px; height:40px; border-radius:50%; font-size:20px; cursor:pointer; transition:all 0.3s; }
         .header .faq-button:hover { background: rgba(124,58,237,0.6); }
@@ -62,14 +60,12 @@
         .brand-name { font-size:30px; font-weight:800; background:linear-gradient(to right, #a78bfa, #c084fc, #a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; animation: brandGlow 6s ease-in-out infinite; }
         @keyframes brandGlow { 0%,100%{filter:drop-shadow(0 0 4px rgba(124,58,237,0.3))} 50%{filter:drop-shadow(0 0 8px rgba(124,58,237,0.5))} }
         .tagline { color:var(--text-muted); font-size:13px; letter-spacing:2px; text-transform:uppercase; }
-        /* ===== ВКЛАДКИ ===== */
         .tabs { display:flex; background:rgba(10,5,18,0.8); backdrop-filter:blur(20px); border:1px solid var(--card-border); border-radius:40px; padding:6px; margin:25px 0; }
         .tab-btn { flex:1; padding:12px 6px; background:transparent; border:none; color:var(--text-muted); font-weight:600; border-radius:32px; cursor:pointer; transition:all 0.3s; }
         .tab-btn.active { background:linear-gradient(135deg, rgba(124,58,237,0.7), rgba(190,24,93,0.7)); color:#fff; }
         .section { display:none; animation: fadeIn 0.4s; }
         .section.active { display:block; }
         @keyframes fadeIn { from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none} }
-        /* ===== КАРТОЧКИ ===== */
         .card { background:var(--card-bg); backdrop-filter:blur(10px); border:1px solid var(--card-border); border-radius:var(--radius); padding:24px; margin-bottom:16px; box-shadow:var(--shadow); }
         .card h3 { font-size:21px; font-weight:700; margin-bottom:12px; color:#e9d5ff; }
         .btn { background: linear-gradient(135deg, var(--primary), var(--secondary)); color:#fff; border:none; padding:10px 20px; border-radius:20px; font-weight:600; cursor:pointer; transition: transform 0.2s, box-shadow 0.2s; display:inline-block; margin:5px; text-decoration:none; font-size:14px; }
@@ -77,7 +73,6 @@
         .btn:active { transform: scale(0.96); }
         .btn:disabled { opacity:0.5; pointer-events:none; }
         .btn-sm { padding:6px 12px; font-size:12px; }
-        /* ===== ПОРТФОЛИО ===== */
         .categories-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
         .category-card { background: rgba(15,7,25,0.8); border:1px solid var(--card-border); border-radius:var(--radius); padding:20px; text-align:center; cursor:pointer; transition: transform 0.3s, border-color 0.3s; position:relative; overflow:hidden; }
         .category-card:hover { transform: scale(1.02); border-color: var(--primary); }
@@ -89,31 +84,14 @@
         .admin-mode .category-card .admin-actions { display:flex; }
         .works-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-top:15px; }
         .work-item { background: rgba(15,7,25,0.9); border:1px solid var(--card-border); border-radius:var(--radius); overflow:hidden; position:relative; display:flex; flex-direction:column; }
-        .work-image-wrapper {
-            position: relative;
-            width: 100%;
-            padding-bottom: 100%;
-            height: 0;
-            overflow: hidden;
-            background: #0a050d;
-        }
-        .work-image-wrapper img {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: block;
-            cursor: pointer;
-        }
-        .work-item .work-info { padding: 8px; font-size:12px; color:var(--text-muted); text-align:center; flex-shrink:0; }
+        .work-image-wrapper { position:relative; width:100%; padding-bottom:100%; height:0; overflow:hidden; background:#0a050d; }
+        .work-image-wrapper img { position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; display:block; cursor:pointer; }
+        .work-item .work-info { padding:8px; font-size:12px; color:var(--text-muted); text-align:center; flex-shrink:0; }
         .work-item .work-actions { position:absolute; top:8px; right:8px; display:flex; gap:5px; z-index:2; }
-        .work-actions button { background:rgba(0,0,0,0.6); border:none; color:white; border-radius:50%; width:30px; height:30px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:14px; }
-        .add-work-btn { display:flex; align-items:center; justify-content:center; aspect-ratio:1/1; background: rgba(124,58,237,0.2); border:2px dashed var(--primary); border-radius:var(--radius); cursor:pointer; font-size:32px; color:var(--primary); transition: background 0.3s; }
-        .add-work-btn:hover { background: rgba(124,58,237,0.3); }
-        /* ===== МОДАЛЬНОЕ ОКНО ===== */
-        .modal-overlay { position:fixed; inset:0; background: rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; z-index:1000; padding:16px; }
+        .work-actions button { background:rgba(0,0,0,0.6); border:none; color:#fff; border-radius:50%; width:30px; height:30px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:14px; }
+        .add-work-btn { display:flex; align-items:center; justify-content:center; aspect-ratio:1/1; background:rgba(124,58,237,0.2); border:2px dashed var(--primary); border-radius:var(--radius); cursor:pointer; font-size:32px; color:var(--primary); transition:background 0.3s; }
+        .add-work-btn:hover { background:rgba(124,58,237,0.3); }
+        .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; z-index:1000; padding:16px; }
         .modal { background:#1a0b2e; border:1px solid var(--card-border); border-radius:var(--radius); padding:24px; width:100%; max-width:500px; max-height:90vh; overflow-y:auto; position:relative; }
         .modal input, .modal textarea, .modal select { width:100%; padding:10px; margin-bottom:10px; background:rgba(255,255,255,0.05); border:1px solid var(--card-border); border-radius:10px; color:#fff; font-size:14px; }
         .modal textarea { min-height:80px; resize:vertical; }
@@ -121,10 +99,13 @@
         .modal img.preview { max-width:100%; max-height:200px; object-fit:contain; margin-bottom:10px; border-radius:10px; display:none; }
         .admin-only { display:none; }
         .admin-mode .admin-only { display:inline-block; }
-        /* ===== ОТЗЫВЫ ===== */
+        .resume-highlight { font-size:16px; font-weight:600; font-style:italic; color:#e9d5ff; margin:12px 0; padding:14px 16px; background:rgba(124,58,237,0.15); border-left:3px solid var(--primary); border-radius:12px; }
+        .skills-list { display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
+        .skill-badge { background:rgba(124,58,237,0.2); border:1px solid rgba(124,58,237,0.3); padding:8px 14px; border-radius:20px; font-size:13px; font-weight:500; color:#ddd6fe; }
+        .experience-badge { display:inline-block; background:linear-gradient(135deg, var(--primary), var(--secondary)); padding:6px 14px; border-radius:20px; font-weight:700; color:#fff; font-size:14px; margin-left:8px; }
         .review-card { padding:20px; position:relative; }
         .review-author { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
-        .review-avatar { width:40px; height:40px; border-radius:50%; background: linear-gradient(135deg, #7c3aed, #be185d); display:flex; align-items:center; justify-content:center; font-weight:700; color:white; overflow:hidden; flex-shrink:0; }
+        .review-avatar { width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg, #7c3aed, #be185d); display:flex; align-items:center; justify-content:center; font-weight:700; color:#fff; overflow:hidden; flex-shrink:0; }
         .review-avatar img { width:100%; height:100%; object-fit:cover; }
         .review-text { color:var(--text-muted); font-size:14px; line-height:1.6; }
         .review-images { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
@@ -132,25 +113,13 @@
         .review-images img.single { width:100%; height:auto; max-height:300px; object-fit:contain; }
         .stars { color:#fbbf24; letter-spacing:2px; }
         .review-footer { display:flex; align-items:center; gap:12px; margin-top:12px; flex-wrap:wrap; }
-        .like-btn {
-            background: rgba(255,255,255,0.06);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 30px;
-            padding: 6px 14px;
-            font-size: 15px;
-            color: var(--text-muted);
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            transition: all 0.2s ease;
-        }
-        .like-btn:active { transform: scale(0.9); }
+        .like-btn { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.08); border-radius:30px; padding:6px 14px; font-size:15px; color:var(--text-muted); cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:all 0.2s ease; }
+        .like-btn:active { transform:scale(0.9); }
         .like-btn .emoji { font-size:16px; display:inline-block; transition:transform 0.15s ease; }
         .like-btn .count { font-size:13px; font-weight:500; min-width:12px; }
-        .like-btn.active { background: linear-gradient(135deg, rgba(124,58,237,0.5), rgba(190,24,93,0.5)); border-color: rgba(124,58,237,0.4); color:#fff; }
-        .like-btn.animating .emoji { animation: pop 0.35s ease; }
-        @keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.5); } 100% { transform: scale(1); } }
+        .like-btn.active { background:linear-gradient(135deg, rgba(124,58,237,0.5), rgba(190,24,93,0.5)); border-color:rgba(124,58,237,0.4); color:#fff; }
+        .like-btn.animating .emoji { animation:pop 0.35s ease; }
+        @keyframes pop { 0%{transform:scale(1)} 40%{transform:scale(1.5)} 100%{transform:scale(1)} }
         .review-actions { display:flex; gap:5px; }
         .review-actions button { background:rgba(255,255,255,0.05); border:none; color:var(--text-muted); padding:4px 10px; border-radius:12px; font-size:12px; cursor:pointer; transition:background 0.2s; }
         .review-actions button:hover { background:rgba(255,255,255,0.1); }
@@ -162,93 +131,89 @@
         .admin-reply-edit { display:flex; gap:8px; width:100%; margin-top:8px; }
         .admin-reply-edit textarea { flex:1; padding:8px; border:1px solid var(--card-border); border-radius:8px; background:rgba(0,0,0,0.3); color:var(--text); font-size:13px; resize:vertical; min-height:50px; }
         .admin-reply-edit button { padding:8px 16px; font-size:12px; }
-        /* ===== ЗАКАЗЫ ===== */
         .order-list { display:flex; flex-direction:column; gap:12px; }
-        .order-item { display:flex; align-items:center; justify-content:space-between; padding:16px 18px; background: rgba(15,7,25,0.8); border:1px solid var(--card-border); border-radius:16px; cursor: pointer; transition: border-color 0.2s; }
-        .order-item:hover { border-color: var(--primary); }
+        .order-item { display:flex; align-items:center; justify-content:space-between; padding:16px 18px; background:rgba(15,7,25,0.8); border:1px solid var(--card-border); border-radius:16px; cursor:pointer; transition:border-color 0.2s; }
+        .order-item:hover { border-color:var(--primary); }
         .order-info h4 { font-size:16px; font-weight:600; }
         .order-info p { font-size:12px; color:var(--text-muted); margin-top:4px; }
         .order-info a { color:var(--accent); text-decoration:none; }
-        .price-old { text-decoration: line-through; color: var(--text-muted); margin-right: 5px; }
-        .price-new { color: var(--accent); font-weight: 700; }
+        .price-old { text-decoration:line-through; color:var(--text-muted); margin-right:5px; }
+        .price-new { color:var(--accent); font-weight:700; }
+        .order-item.admin-grab { cursor:grab; }
+        .order-item.admin-grab:active { cursor:grabbing; }
         /* ===== КОНСТРУКТОР ЗАКАЗА ===== */
-        .option-group { margin-bottom:16px; }
-        .option-group label { display:flex; align-items:center; gap:10px; padding:10px 14px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:12px; cursor:pointer; transition:all 0.2s; }
-        .option-group label:hover { background:rgba(255,255,255,0.06); }
-        .option-group label input[type="checkbox"] { width:18px; height:18px; accent-color:var(--primary); cursor:pointer; flex-shrink:0; }
-        .option-group .option-info { flex:1; }
-        .option-group .option-name { font-size:14px; font-weight:500; }
-        .option-group .option-price { font-size:13px; color:var(--text-muted); }
-        .option-group .quantity-control { display:flex; align-items:center; gap:8px; margin-top:6px; margin-left:28px; }
-        .option-group .quantity-control button { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.08); border-radius:8px; color:#fff; width:28px; height:28px; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center; transition:background 0.2s; }
-        .option-group .quantity-control button:hover { background:rgba(255,255,255,0.12); }
-        .option-group .quantity-control span { min-width:24px; text-align:center; font-weight:500; }
-        .order-total { margin-top:20px; padding-top:16px; border-top:1px solid var(--card-border); text-align:right; font-size:18px; font-weight:700; color:#e9d5ff; }
-        .order-total span { color:var(--accent); }
+        .option-group { margin-bottom:12px; padding:14px; background:rgba(255,255,255,0.03); border-radius:12px; border:1px solid rgba(255,255,255,0.06); transition:border-color 0.2s; }
+        .option-group:hover { border-color:rgba(124,58,237,0.3); }
+        .option-group .option-header { display:flex; align-items:center; gap:12px; cursor:pointer; }
+        .option-checkbox { width:26px; height:26px; border-radius:8px; border:2px solid rgba(255,255,255,0.2); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.25s ease; flex-shrink:0; }
+        .option-checkbox.active { background:linear-gradient(135deg, #7c3aed, #be185d); border-color:#7c3aed; box-shadow:0 0 20px rgba(124,58,237,0.3); }
+        .option-checkbox .checkmark { font-size:16px; color:#fff; opacity:0; transition:opacity 0.2s ease; font-weight:700; }
+        .option-checkbox.active .checkmark { opacity:1; }
+        .option-info { flex:1; }
+        .option-name { font-size:15px; font-weight:500; }
+        .option-price { font-size:13px; color:var(--text-muted); }
+        .option-quantity { display:flex; align-items:center; gap:12px; margin-top:10px; margin-left:38px; flex-wrap:wrap; }
+        .option-quantity .qty-btn { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.08); border-radius:8px; color:#fff; width:32px; height:32px; cursor:pointer; font-size:18px; transition:background 0.2s; display:flex; align-items:center; justify-content:center; }
+        .option-quantity .qty-btn:hover { background:rgba(255,255,255,0.12); }
+        .option-quantity .qty-display { min-width:30px; text-align:center; font-weight:500; font-size:16px; }
+        .option-quantity .price-detail { font-size:14px; color:var(--text-muted); }
+        .option-quantity .discount-badge { font-size:12px; color:#fbbf24; background:rgba(251,191,36,0.1); padding:2px 10px; border-radius:12px; }
+        .order-total { margin-top:20px; padding-top:16px; border-top:1px solid var(--card-border); text-align:right; font-size:20px; font-weight:700; color:#e9d5ff; }
+        .order-total span { color:#c084fc; }
         .reference-upload { margin-top:12px; }
         .reference-upload .preview-thumb { position:relative; display:inline-block; margin:4px; }
         .reference-upload .preview-thumb img { width:60px; height:60px; object-fit:cover; border-radius:8px; border:1px solid var(--card-border); }
         .reference-upload .preview-thumb .remove-btn { position:absolute; top:-6px; right:-6px; background:rgba(255,0,0,0.8); color:#fff; border:none; border-radius:50%; width:18px; height:18px; cursor:pointer; font-size:10px; display:flex; align-items:center; justify-content:center; }
-        /* ===== ОСТАЛЬНЫЕ СТИЛИ ===== */
-        .resume-highlight { font-size:16px; font-weight:600; font-style:italic; color:#e9d5ff; margin:12px 0; padding:14px 16px; background: rgba(124,58,237,0.15); border-left:3px solid var(--primary); border-radius:12px; }
-        .skills-list { display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
-        .skill-badge { background: rgba(124,58,237,0.2); border:1px solid rgba(124,58,237,0.3); padding:8px 14px; border-radius:20px; font-size:13px; font-weight:500; color:#ddd6fe; }
-        .experience-badge { display:inline-block; background:linear-gradient(135deg, var(--primary), var(--secondary)); padding:6px 14px; border-radius:20px; font-weight:700; color:#fff; font-size:14px; margin-left:8px; }
         .footer { text-align:center; margin-top:30px; padding:10px; color:var(--text-muted); font-size:12px; opacity:0.7; position:relative; }
-        .footer a { color: var(--accent); text-decoration: none; }
+        .footer a { color:var(--accent); text-decoration:none; }
         .footer .version { position:absolute; bottom:5px; right:10px; font-size:10px; opacity:0.5; color:var(--text-muted); pointer-events:none; }
         #imageViewer { position:fixed; inset:0; background:rgba(0,0,0,0.9); display:none; align-items:center; justify-content:center; z-index:2000; flex-direction:column; overflow:hidden; touch-action:none; }
-        #imageViewer img { max-width:95%; max-height:85%; object-fit:contain; transition: transform 0.2s; transform-origin:center; position:relative; }
+        #imageViewer img { max-width:95%; max-height:85%; object-fit:contain; transition:transform 0.2s; transform-origin:center; position:relative; }
         #imageViewer .save-btn { margin-top:15px; }
-        #imageViewerClose { position:absolute; top:20px; right:20px; background:rgba(0,0,0,0.6); border:none; color:white; font-size:28px; width:40px; height:40px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:2001; }
-        #loadingScreen { position:fixed; top:0; left:0; width:100%; height:100%; background: radial-gradient(ellipse at center, #1a0b2e 0%, #0a0012 100%); display:flex; align-items:center; justify-content:center; z-index:9999; transition: opacity 0.5s ease, visibility 0.5s ease; overflow:hidden; }
+        #imageViewerClose { position:absolute; top:20px; right:20px; background:rgba(0,0,0,0.6); border:none; color:#fff; font-size:28px; width:40px; height:40px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:2001; }
+        #loadingScreen { position:fixed; top:0; left:0; width:100%; height:100%; background:radial-gradient(ellipse at center, #1a0b2e 0%, #0a0012 100%); display:flex; align-items:center; justify-content:center; z-index:9999; transition:opacity 0.5s ease, visibility 0.5s ease; overflow:hidden; }
         #loadingScreen.hidden { opacity:0; visibility:hidden; pointer-events:none; }
-        .loader { width:80px; height:80px; border-radius:50%; border:4px solid rgba(124,58,237,0.2); border-top-color: var(--primary); animation: spin 1s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .loading-logo { font-size:48px; margin-bottom:20px; animation: pulse 1.5s ease-in-out infinite; }
-        @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.2); } }
+        .loader { width:80px; height:80px; border-radius:50%; border:4px solid rgba(124,58,237,0.2); border-top-color:var(--primary); animation:spin 1s linear infinite; }
+        @keyframes spin { to{transform:rotate(360deg)} }
+        .loading-logo { font-size:48px; margin-bottom:20px; animation:pulse 1.5s ease-in-out infinite; }
+        @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.2)} }
         .loading-stars { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; }
-        .loading-star { position:absolute; background:white; border-radius:50%; opacity:0; animation: loadingTwinkle 2s ease-in-out infinite; }
-        @keyframes loadingTwinkle { 0%,100% { opacity:0; transform:scale(0.3); } 50% { opacity:0.8; transform:scale(1); } }
-        @media (max-width: 400px) { .categories-grid { grid-template-columns:repeat(2,1fr); } .brand-name { font-size:24px; } .tab-btn { font-size:11px; padding:10px 4px; } .card { padding:18px; } }
-        .preview-thumb { position: relative; display: inline-block; margin: 5px; }
-        .preview-thumb img { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid var(--card-border); }
-        .preview-thumb .remove-btn { position: absolute; top: -8px; left: -8px; background: rgba(255, 0, 0, 0.8); color: white; border: none; width: 20px; height: 20px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; padding: 0; }
-        .case-container { position: relative; width: 100%; max-width: 400px; margin: 20px auto; overflow: hidden; }
-        .case-strip { display: flex; transition: transform 0.1s linear; }
-        .case-item { min-width: 120px; height: 100px; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; color: #fff; background: linear-gradient(145deg, #2a1a3e, #1a0b2e); border: 2px solid var(--card-border); border-radius: 16px; margin: 0 5px; }
-        .case-arrow { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 40px; color: #fff; pointer-events: none; z-index: 2; filter: drop-shadow(0 0 10px rgba(255,255,255,0.8)); }
-        .case-modal { text-align: center; }
-        .case-modal .close-btn { position: absolute; top: 10px; right: 10px; background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; }
-        .case-timer { margin: 10px 0; font-size: 14px; color: #fbbf24; }
-        .post-modal { text-align: center; }
-        .post-modal .close-btn { position: absolute; top: 10px; right: 10px; background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; }
-        .post-content { margin: 15px 0; line-height: 1.5; }
-        .post-link { color: #a855f7; text-decoration: underline; }
-        .post-image { max-width: 100%; border-radius: 10px; margin: 10px 0; }
-        .post-checkbox { display: flex; align-items: center; gap: 5px; margin: 10px 0; }
-        .post-checkbox input { width: auto; }
-        .admin-post-item { display: flex; align-items: center; justify-content: space-between; padding: 10px; border: 1px solid var(--card-border); border-radius: 10px; margin-bottom: 10px; }
-        .admin-post-item button { background: none; border: none; color: #f87171; cursor: pointer; font-size: 18px; }
-        .order-item.admin-grab { cursor: grab; }
-        .order-item.admin-grab:active { cursor: grabbing; }
+        .loading-star { position:absolute; background:#fff; border-radius:50%; opacity:0; animation:loadingTwinkle 2s ease-in-out infinite; }
+        @keyframes loadingTwinkle { 0%,100%{opacity:0; transform:scale(0.3)} 50%{opacity:0.8; transform:scale(1)} }
+        @media (max-width:400px){ .categories-grid{grid-template-columns:repeat(2,1fr)} .brand-name{font-size:24px} .tab-btn{font-size:11px; padding:10px 4px} .card{padding:18px} }
+        .preview-thumb { position:relative; display:inline-block; margin:5px; }
+        .preview-thumb img { width:60px; height:60px; object-fit:cover; border-radius:8px; border:1px solid var(--card-border); }
+        .preview-thumb .remove-btn { position:absolute; top:-8px; left:-8px; background:rgba(255,0,0,0.8); color:#fff; border:none; width:20px; height:20px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:12px; padding:0; }
+        .case-container { position:relative; width:100%; max-width:400px; margin:20px auto; overflow:hidden; }
+        .case-strip { display:flex; transition:transform 0.1s linear; }
+        .case-item { min-width:120px; height:100px; display:flex; align-items:center; justify-content:center; font-size:28px; font-weight:800; color:#fff; background:linear-gradient(145deg, #2a1a3e, #1a0b2e); border:2px solid var(--card-border); border-radius:16px; margin:0 5px; }
+        .case-arrow { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:40px; color:#fff; pointer-events:none; z-index:2; filter:drop-shadow(0 0 10px rgba(255,255,255,0.8)); }
+        .case-modal { text-align:center; }
+        .case-modal .close-btn { position:absolute; top:10px; right:10px; background:none; border:none; color:#fff; font-size:24px; cursor:pointer; }
+        .case-timer { margin:10px 0; font-size:14px; color:#fbbf24; }
+        .post-modal { text-align:center; }
+        .post-modal .close-btn { position:absolute; top:10px; right:10px; background:none; border:none; color:#fff; font-size:24px; cursor:pointer; }
+        .post-content { margin:15px 0; line-height:1.5; }
+        .post-link { color:#a855f7; text-decoration:underline; }
+        .post-image { max-width:100%; border-radius:10px; margin:10px 0; }
+        .post-checkbox { display:flex; align-items:center; gap:5px; margin:10px 0; }
+        .post-checkbox input { width:auto; }
+        .admin-post-item { display:flex; align-items:center; justify-content:space-between; padding:10px; border:1px solid var(--card-border); border-radius:10px; margin-bottom:10px; }
+        .admin-post-item button { background:none; border:none; color:#f87171; cursor:pointer; font-size:18px; }
+        .admin-reply-input { margin-top:10px; display:flex; gap:8px; }
+        .admin-reply-input textarea { flex:1; padding:8px; border:1px solid var(--card-border); border-radius:8px; background:rgba(0,0,0,0.3); color:var(--text); font-size:13px; resize:vertical; min-height:40px; }
     </style>
 </head>
 <body oncontextmenu="return false;">
-    <!-- ===== ЗАГРУЗОЧНЫЙ ЭКРАН ===== -->
     <div id="loadingScreen">
         <div class="loading-stars" id="loadingStars"></div>
-        <div style="text-align: center; position: relative; z-index: 1;">
+        <div style="text-align:center;position:relative;z-index:1;">
             <div class="loading-logo">🎨</div>
             <div class="loader"></div>
         </div>
     </div>
-
-    <!-- ===== ЗВЁЗДЫ И АСТЕРОИДЫ ===== -->
     <div class="stars-container" id="starsContainer"></div>
     <div class="asteroid-container" id="asteroidContainer"></div>
-
-    <!-- ===== ОСНОВНОЙ КОНТЕЙНЕР ===== -->
     <div class="app-container">
         <div class="header">
             <button class="faq-button" onclick="openFaqModal()">?</button>
@@ -256,70 +221,59 @@
             <button class="promo-button" onclick="openPromoModal()">🏷️</button>
             <div class="logo" id="logoContainer">
                 <img id="logoImage" src="https://i.ibb.co/3y8vZHQz/2026-09-02-025009694.png" alt="Avatar">
-                <div class="admin-only" style="position:absolute; top:5px; right:5px;">
-                    <button class="btn btn-sm" style="padding:5px 8px; font-size:12px;" onclick="changeLogo()">🖼️</button>
+                <div class="admin-only" style="position:absolute;top:5px;right:5px;">
+                    <button class="btn btn-sm" style="padding:5px 8px;font-size:12px;" onclick="changeLogo()">🖼️</button>
                 </div>
             </div>
             <h1 class="brand-name">Mark1z Design</h1>
             <p class="tagline">ДИЗАЙН, КОТОРЫЙ РАБОТАЕТ НА ВАС</p>
         </div>
-
         <nav class="tabs" id="tabs">
             <button class="tab-btn active" data-tab="resume">Обо мне</button>
             <button class="tab-btn" data-tab="portfolio">Портфолио</button>
             <button class="tab-btn" data-tab="reviews">Отзывы</button>
             <button class="tab-btn" data-tab="orders">Заказы</button>
         </nav>
-
         <section id="resume" class="section active">
             <div class="card">
-                <h3><a href="https://t.me/mark1zell" target="_blank" style="color: inherit; text-decoration: none;">👋 Дмитрий Маркизов</a></h3>
+                <h3><a href="https://t.me/mark1zell" target="_blank" style="color:inherit;text-decoration:none;">👋 Дмитрий Маркизов</a></h3>
                 <p>19 лет · <span class="experience-badge">Опыт 6 лет</span></p>
                 <div id="aboutHighlight" class="resume-highlight"></div>
                 <p id="aboutText1"></p>
                 <p id="aboutText2"></p>
                 <div class="skills-list" id="skillsList"></div>
-                <div class="admin-only" style="margin-top:10px">
+                <div class="admin-only" style="margin-top:10px;">
                     <button class="btn btn-sm" onclick="editAbout()">Редактировать</button>
                 </div>
             </div>
         </section>
-
         <section id="portfolio" class="section">
             <div id="portfolioCategories"></div>
             <div id="portfolioWorks" style="display:none;"></div>
         </section>
-
         <section id="reviews" class="section">
             <div id="reviewsContainer"></div>
-            <div style="margin-top:10px">
+            <div style="margin-top:10px;">
                 <button class="btn" onclick="openReviewModal()">Добавить отзыв</button>
             </div>
         </section>
-
         <section id="orders" class="section">
             <div id="ordersContent"></div>
         </section>
-
         <div class="footer">
             <div>© Mark1z Design · Дмитрий Маркизов</div>
             <a href="#" onclick="openPrivacyPolicy()">Политика конфиденциальности</a>
-            <span class="version">V.2.0.0</span>
+            <span class="version">V.2.1.0</span>
         </div>
     </div>
-
-    <!-- ===== МОДАЛЬНОЕ ОКНО ===== -->
     <div class="modal-overlay" id="modalOverlay">
         <div class="modal" id="modalContent"></div>
     </div>
-
-    <!-- ===== ПРОСМОТР ИЗОБРАЖЕНИЙ ===== -->
     <div id="imageViewer">
         <button id="imageViewerClose" onclick="closeImageViewer()">×</button>
         <img id="imageViewerImg" src="" alt="Просмотр">
         <button class="btn save-btn" id="imageViewerSaveBtn">Сохранить</button>
     </div>
-
     <script>
         // ================================================================
         // SUPABASE INIT
@@ -362,7 +316,6 @@
         var currentPostId = null;
         var tempPostFile = null;
         var categorySubscription = null;
-        // Данные конструктора заказа
         var currentOrderService = null;
         var currentOrderOptions = [];
         var currentOrderQuantities = {};
@@ -371,7 +324,7 @@
 
         currentDiscount = lastSpinDiscount;
 
-        // ================================================================
+                // ================================================================
         // TELEGRAM INIT
         // ================================================================
         function initTelegram() {
@@ -490,17 +443,17 @@
         }
 
         // ================================================================
-        // FAQ, LEGAL, PRIVACY
+        // FAQ, LEGAL, PRIVACY, КЕЙС, ПРОМОКОДЫ, ПОСТЫ
         // ================================================================
         function openFaqModal() {
             var modal = document.getElementById('modalOverlay');
             var content = document.getElementById('modalContent');
             content.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
                     <h3>FAQ</h3>
                     <button class="btn" onclick="closeModal()" style="margin:0;">×</button>
                 </div>
-                <div style="line-height: 1.6;">
+                <div style="line-height:1.6;">
                     <p><strong>1.</strong> Работаю по 100% предоплате.</p>
                     <p><strong>2.</strong> Деньги возврату не подлежат.</p>
                     <p><strong>3.</strong> Поправки в работе: 2 поправки бесплатно, последующие — 50 рублей за 2 поправки.</p>
@@ -509,8 +462,8 @@
                     <p><strong>6.</strong> При заказе нескольких услуг предоставляется скидка.</p>
                     <p><strong>7.</strong> Для срочных заказов возможна доплата за приоритет.</p>
                 </div>
-                <button class="btn" style="width:100%; margin-top:20px;" onclick="openLegalModal()">Условия и реквизиты</button>
-                <button class="btn" style="width:100%; margin-top:5px;" onclick="window.open('https://t.me/mark1zell', '_blank')">Связаться с Дизайнером лично</button>
+                <button class="btn" style="width:100%;margin-top:20px;" onclick="openLegalModal()">Условия и реквизиты</button>
+                <button class="btn" style="width:100%;margin-top:5px;" onclick="window.open('https://t.me/mark1zell','_blank')">Связаться с Дизайнером лично</button>
             `;
             modal.style.display = 'flex';
         }
@@ -519,32 +472,26 @@
             var modal = document.getElementById('modalOverlay');
             var content = document.getElementById('modalContent');
             content.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
                     <h3>Условия и реквизиты</h3>
                     <button class="btn" onclick="closeModal()" style="margin:0;">×</button>
                 </div>
-                <div style="line-height: 1.6; max-height: 60vh; overflow-y: auto;">
+                <div style="line-height:1.6;max-height:60vh;overflow-y:auto;">
                     <p><strong>Описание товаров и услуг</strong><br>
-                    Графический дизайн: оформление соцсетей, логотипы, баннеры, карточки маркетплейсов, веб-дизайн, дизайн приложений, презентации и др. Все услуги выполняются индивидуально, с учётом требований заказчика. Характеристики: высокое качество, соответствие брендбуку, передача исходников.</p>
+                    Графический дизайн: оформление соцсетей, логотипы, баннеры, карточки маркетплейсов, веб-дизайн, дизайн приложений, презентации и др. Все услуги выполняются индивидуально, с учётом требований заказчика.</p>
                     <p><strong>Цены</strong><br>
                     Стоимость зависит от выбранных опций и рассчитывается автоматически в конструкторе заказа.</p>
                     <p><strong>Контакты</strong><br>
-                    Telegram: @Mark1zell (личные сообщения)<br>
+                    Telegram: @Mark1zell<br>
                     Email: keklolorbidollol321@gmail.com<br>
                     Телефон: +7 902 (900) 87-41</p>
                     <p><strong>Заказ</strong><br>
                     Заказ оформляется через конструктор, где пользователь выбирает опции, указывает количество и оставляет ТЗ.</p>
                     <p><strong>Оплата</strong><br>
                     Работаю по 100% предоплате. После оформления заказа я выставляю счёт на согласованную сумму.</p>
-                    <p><strong>Доставка / Оказание услуг</strong><br>
-                    Услуги оказываются удалённо. Готовые материалы передаются в электронном виде (файлы, ссылки).</p>
-                    <p><strong>Возврат и отказ от покупки</strong><br>
-                    Заказчик вправе отказаться от услуги до момента начала её выполнения (до отправки первого промежуточного результата). Для этого необходимо написать в Telegram @Mark1zell или на email keklolorbidollol321@gmail.com с указанием причины отказа.</p>
                     <p><strong>Реквизиты самозанятого</strong><br>
                     ФИО: Кузнецов Дмитрий Александрович<br>
                     ИНН: 710609555942</p>
-                    <p><strong>Политика обработки персональных данных</strong><br>
-                    Персональные данные (имя, Telegram ID, контактная информация) обрабатываются исключительно для исполнения заказа и связи с клиентом. Данные не передаются третьим лицам.</p>
                 </div>
             `;
             modal.style.display = 'flex';
@@ -554,18 +501,17 @@
             var modal = document.getElementById('modalOverlay');
             var content = document.getElementById('modalContent');
             content.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
                     <h3>Политика конфиденциальности</h3>
                     <button class="btn" onclick="closeModal()" style="margin:0;">×</button>
                 </div>
-                <div style="line-height: 1.6; max-height: 60vh; overflow-y: auto;">
+                <div style="line-height:1.6;max-height:60vh;overflow-y:auto;">
                     <p>Настоящая Политика конфиденциальности определяет порядок обработки и защиты персональных данных пользователей при использовании сервиса Mark1z Design.</p>
-                    <p><strong>1. Какие данные собираются:</strong> имя пользователя Telegram, username, идентификатор Telegram, а также изображения и тексты, которые пользователь добровольно загружает (отзывы, портфолио).</p>
-                    <p><strong>2. Цели обработки:</strong> предоставление услуг, связь с клиентом, оформление заказов, отображение отзывов и портфолио в рамках сервиса.</p>
-                    <p><strong>3. Хранение данных:</strong> данные хранятся в облачной базе данных Firebase. Срок хранения – до момента удаления пользователем или по запросу.</p>
+                    <p><strong>1. Какие данные собираются:</strong> имя пользователя Telegram, username, идентификатор Telegram, а также изображения и тексты, которые пользователь добровольно загружает.</p>
+                    <p><strong>2. Цели обработки:</strong> предоставление услуг, связь с клиентом, оформление заказов, отображение отзывов и портфолио.</p>
+                    <p><strong>3. Хранение данных:</strong> данные хранятся в облачной базе данных Supabase.</p>
                     <p><strong>4. Передача третьим лицам:</strong> данные не передаются третьим лицам, за исключением случаев, предусмотренных законодательством РФ.</p>
-                    <p><strong>5. Права пользователя:</strong> пользователь вправе запросить удаление своих персональных данных, обратившись к @Mark1zell. Обращение рассматривается в течение 7 рабочих дней.</p>
-                    <p><strong>6. Согласие:</strong> используя сервис, пользователь соглашается с настоящей Политикой.</p>
+                    <p><strong>5. Права пользователя:</strong> пользователь вправе запросить удаление своих персональных данных, обратившись к @Mark1zell.</p>
                 </div>
             `;
             modal.style.display = 'flex';
@@ -805,7 +751,7 @@
             var content = document.getElementById('modalContent');
             var html = `
                 <h3>Управление опциями услуг</h3>
-                <p style="color:var(--text-muted); font-size:13px; margin-bottom:15px;">
+                <p style="color:var(--text-muted);font-size:13px;margin-bottom:15px;">
                     Выберите услугу, чтобы добавить/редактировать её опции.
                 </p>
                 <select id="optionServiceSelect" style="margin-bottom:15px;">
@@ -849,11 +795,13 @@
                         html += '<p style="color:var(--text-muted)">Нет опций для этой услуги</p>';
                     } else {
                         options.forEach(function(opt, idx) {
+                            var typeLabel = { checkbox: '✅', quantity: '🔢', pages: '📄' }[opt.option_type] || '✅';
                             html += `
-                                <div class="order-item" data-id="${opt.id}" style="cursor:grab; margin-bottom:8px;">
+                                <div class="order-item admin-grab" data-id="${opt.id}" style="margin-bottom:8px;cursor:grab;">
                                     <div class="order-info">
                                         <h4>${opt.name}</h4>
                                         <p>${opt.price} ₽ ${opt.description ? '· ' + opt.description : ''}</p>
+                                        <p style="font-size:11px;color:var(--text-muted);">${typeLabel} ${opt.option_type || 'checkbox'} ${opt.discount_min_quantity ? '| скидка от ' + opt.discount_min_quantity + ' шт.' : ''}</p>
                                     </div>
                                     <div>
                                         <button class="btn btn-sm" onclick="editOption(${opt.id})">✏️</button>
@@ -866,7 +814,6 @@
                     html += '</div>';
                     container.innerHTML = html;
 
-                    // Сортировка опций
                     var list = document.getElementById('optionsList');
                     if (list && window.isAdmin) {
                         if (sortableInstances.options) sortableInstances.options.destroy();
@@ -897,24 +844,40 @@
         function showAddOptionForm(serviceId) {
             var container = document.getElementById('optionManagerContent');
             var formHtml = `
-                <div style="background:rgba(255,255,255,0.03); border-radius:12px; padding:16px; margin-top:10px;">
+                <div style="background:rgba(255,255,255,0.03);border-radius:12px;padding:16px;margin-top:10px;">
                     <h4>Добавить опцию</h4>
-                    <input type="text" id="optName" placeholder="Название опции (например, Аватарка)">
+                    <input type="text" id="optName" placeholder="Название опции">
                     <input type="number" id="optPrice" placeholder="Цена (₽)">
                     <input type="text" id="optDescription" placeholder="Описание (необязательно)">
+                    <select id="optType">
+                        <option value="checkbox">✅ Чекбокс (да/нет)</option>
+                        <option value="quantity">🔢 Количество</option>
+                        <option value="pages">📄 Страницы</option>
+                    </select>
+                    <div style="display:flex;gap:8px;margin-top:8px;">
+                        <input type="number" id="optMinQty" placeholder="Мин. количество" style="width:50%;">
+                        <input type="number" id="optMaxQty" placeholder="Макс. количество" style="width:50%;">
+                    </div>
+                    <div style="display:flex;gap:8px;margin-top:8px;">
+                        <input type="number" id="optDiscountMin" placeholder="Количество для скидки" style="width:50%;">
+                        <input type="number" id="optDiscountPrice" placeholder="Цена со скидкой" style="width:50%;">
+                    </div>
                     <button class="btn btn-sm" onclick="saveOption(${serviceId})">Сохранить</button>
                     <button class="btn btn-sm" onclick="loadOptionsForService(${serviceId})" style="background:rgba(255,255,255,0.1);">Отмена</button>
                 </div>
             `;
-            // Вставляем форму в начало контейнера
-            var containerHtml = container.innerHTML;
-            container.innerHTML = formHtml + containerHtml;
+            container.innerHTML = formHtml + container.innerHTML;
         }
 
         function saveOption(serviceId) {
             var name = document.getElementById('optName').value.trim();
             var price = document.getElementById('optPrice').value.trim();
             var description = document.getElementById('optDescription').value.trim();
+            var optionType = document.getElementById('optType').value;
+            var minQty = document.getElementById('optMinQty').value.trim();
+            var maxQty = document.getElementById('optMaxQty').value.trim();
+            var discountMin = document.getElementById('optDiscountMin').value.trim();
+            var discountPrice = document.getElementById('optDiscountPrice').value.trim();
             if (!name) { alert('Введите название'); return; }
             if (!price) { alert('Введите цену'); return; }
 
@@ -926,6 +889,11 @@
                         name: name,
                         price: parseInt(price),
                         description: description,
+                        option_type: optionType,
+                        min_quantity: minQty ? parseInt(minQty) : 1,
+                        max_quantity: maxQty ? parseInt(maxQty) : 10,
+                        discount_min_quantity: discountMin ? parseInt(discountMin) : null,
+                        discount_price: discountPrice ? parseInt(discountPrice) : null,
                         order: nextOrder
                     }]);
                 })
@@ -945,16 +913,28 @@
                     var serviceId = opt.service_id;
                     var container = document.getElementById('optionManagerContent');
                     var formHtml = `
-                        <div style="background:rgba(255,255,255,0.03); border-radius:12px; padding:16px; margin-top:10px;">
+                        <div style="background:rgba(255,255,255,0.03);border-radius:12px;padding:16px;margin-top:10px;">
                             <h4>Редактировать опцию</h4>
                             <input type="text" id="editOptName" placeholder="Название" value="${opt.name}">
                             <input type="number" id="editOptPrice" placeholder="Цена (₽)" value="${opt.price}">
                             <input type="text" id="editOptDescription" placeholder="Описание" value="${opt.description || ''}">
+                            <select id="editOptType">
+                                <option value="checkbox" ${opt.option_type === 'checkbox' ? 'selected' : ''}>✅ Чекбокс</option>
+                                <option value="quantity" ${opt.option_type === 'quantity' ? 'selected' : ''}>🔢 Количество</option>
+                                <option value="pages" ${opt.option_type === 'pages' ? 'selected' : ''}>📄 Страницы</option>
+                            </select>
+                            <div style="display:flex;gap:8px;margin-top:8px;">
+                                <input type="number" id="editOptMinQty" placeholder="Мин." value="${opt.min_quantity || ''}" style="width:50%;">
+                                <input type="number" id="editOptMaxQty" placeholder="Макс." value="${opt.max_quantity || ''}" style="width:50%;">
+                            </div>
+                            <div style="display:flex;gap:8px;margin-top:8px;">
+                                <input type="number" id="editOptDiscountMin" placeholder="Кол-во для скидки" value="${opt.discount_min_quantity || ''}" style="width:50%;">
+                                <input type="number" id="editOptDiscountPrice" placeholder="Цена со скидкой" value="${opt.discount_price || ''}" style="width:50%;">
+                            </div>
                             <button class="btn btn-sm" onclick="updateOption(${optionId}, ${serviceId})">Сохранить</button>
                             <button class="btn btn-sm" onclick="loadOptionsForService(${serviceId})" style="background:rgba(255,255,255,0.1);">Отмена</button>
                         </div>
                     `;
-                    // Заменяем первый элемент списка на форму
                     var list = document.getElementById('optionsList');
                     if (list) {
                         list.innerHTML = formHtml + list.innerHTML;
@@ -968,13 +948,23 @@
             var name = document.getElementById('editOptName').value.trim();
             var price = document.getElementById('editOptPrice').value.trim();
             var description = document.getElementById('editOptDescription').value.trim();
+            var optionType = document.getElementById('editOptType').value;
+            var minQty = document.getElementById('editOptMinQty').value.trim();
+            var maxQty = document.getElementById('editOptMaxQty').value.trim();
+            var discountMin = document.getElementById('editOptDiscountMin').value.trim();
+            var discountPrice = document.getElementById('editOptDiscountPrice').value.trim();
             if (!name) { alert('Введите название'); return; }
             if (!price) { alert('Введите цену'); return; }
 
             supabase.from('service_options').update({
                 name: name,
                 price: parseInt(price),
-                description: description
+                description: description,
+                option_type: optionType,
+                min_quantity: minQty ? parseInt(minQty) : 1,
+                max_quantity: maxQty ? parseInt(maxQty) : 10,
+                discount_min_quantity: discountMin ? parseInt(discountMin) : null,
+                discount_price: discountPrice ? parseInt(discountPrice) : null
             }).eq('id', optionId)
                 .then(function() {
                     loadOptionsForService(serviceId);
@@ -1249,7 +1239,6 @@
                 .then(function(res) {
                     if (res.error) return;
                     if (!res.data || res.data.length === 0) {
-                        // Получаем услуги, чтобы привязать опции
                         supabase.from('services').select('id, name')
                             .then(function(servicesRes) {
                                 if (servicesRes.error) return;
@@ -1259,43 +1248,12 @@
                                 });
 
                                 var defaultOptions = [
-                                    // Оформление соцсетей
-                                    { name: 'Аватарка', price: 400, service_name: 'Оформление соцсетей' },
-                                    { name: 'Шапка', price: 450, service_name: 'Оформление соцсетей' },
-                                    { name: 'Логотип', price: 700, service_name: 'Оформление соцсетей' },
-                                    { name: 'Баннер', price: 400, service_name: 'Оформление соцсетей' },
-                                    // Дизайн кланов
-                                    { name: 'Логотип клана', price: 700, service_name: 'Дизайн игровых кланов' },
-                                    { name: 'Аватарка клана', price: 400, service_name: 'Дизайн игровых кланов' },
-                                    { name: 'Шапка клана', price: 450, service_name: 'Дизайн игровых кланов' },
-                                    { name: 'Баннер клана', price: 400, service_name: 'Дизайн игровых кланов' },
-                                    // Турниры
-                                    { name: 'Сетка турнира', price: 800, service_name: 'Дизайн турниров' },
-                                    { name: 'Баннер призовых мест', price: 600, service_name: 'Дизайн турниров' },
-                                    { name: 'Аватарка турнира', price: 400, service_name: 'Дизайн турниров' },
-                                    // Карточки
-                                    { name: 'Карточка товара', price: 800, service_name: 'Карточки товаров' },
-                                    // Типографика
-                                    { name: 'Шрифтовая композиция', price: 1000, service_name: 'Типографика' },
-                                    // Мобильные приложения
-                                    { name: 'Один экран (UI)', price: 5000, service_name: 'Дизайн мобильных приложений' },
-                                    // Сайты
-                                    { name: 'Лендинг (до 3 блоков)', price: 8000, service_name: 'Дизайн сайтов' },
-                                    { name: 'Многостраничный сайт (за страницу)', price: 4000, service_name: 'Дизайн сайтов' },
-                                    // Mini Apps
-                                    { name: 'Дизайн интерфейса', price: 5000, service_name: 'Telegram Mini Apps' },
-                                    { name: 'Адаптивная верстка', price: 5000, service_name: 'Telegram Mini Apps' },
-                                    // Постеры
-                                    { name: 'Постер А3', price: 1500, service_name: 'Постеры и баннеры' },
-                                    { name: 'Постер А4', price: 1000, service_name: 'Постеры и баннеры' },
-                                    // Обложки треков
-                                    { name: 'Обложка трека', price: 1000, service_name: 'Обложки треков' },
-                                    // Превью
-                                    { name: 'Превью для YouTube', price: 800, service_name: 'Превью для YouTube' },
-                                    // Презентации
-                                    { name: 'Презентация (до 10 слайдов)', price: 2500, service_name: 'Презентации' },
-                                    // Документы
-                                    { name: 'Оформление документа', price: 1000, service_name: 'Документы Word' }
+                                    { name: 'Аватарка', price: 400, service_name: 'Оформление соцсетей', option_type: 'checkbox' },
+                                    { name: 'Шапка', price: 450, service_name: 'Оформление соцсетей', option_type: 'checkbox' },
+                                    { name: 'Логотип', price: 700, service_name: 'Оформление соцсетей', option_type: 'checkbox' },
+                                    { name: 'Баннер', price: 400, service_name: 'Оформление соцсетей', option_type: 'quantity', min_quantity: 1, max_quantity: 10, discount_min_quantity: 2, discount_price: 350 },
+                                    { name: 'Страница сайта', price: 3000, service_name: 'Дизайн сайтов', option_type: 'pages', min_quantity: 1, max_quantity: 20, discount_min_quantity: 4, discount_price: 2500 },
+                                    { name: 'Карточка товара', price: 800, service_name: 'Карточки товаров', option_type: 'quantity', min_quantity: 1, max_quantity: 20, discount_min_quantity: 3, discount_price: 700 }
                                 ];
 
                                 var order = 0;
@@ -1306,6 +1264,11 @@
                                             service_id: serviceId,
                                             name: opt.name,
                                             price: opt.price,
+                                            option_type: opt.option_type || 'checkbox',
+                                            min_quantity: opt.min_quantity || 1,
+                                            max_quantity: opt.max_quantity || 10,
+                                            discount_min_quantity: opt.discount_min_quantity || null,
+                                            discount_price: opt.discount_price || null,
                                             order: order++
                                         }]);
                                     }
@@ -1316,18 +1279,14 @@
         }
 
         function setupRealTimeListeners() {
-            // Категории
             supabase.channel('portfolio_categories_changes')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'portfolio_categories' }, function(payload) {
                     console.log('Изменение в категориях:', payload);
                     loadPortfolioCategories();
                     if (currentCategoryId) openCategory(currentCategoryId);
                 })
-                .subscribe(function(status, err) {
-                    if (err) console.error('Ошибка подписки на категории:', err);
-                });
+                .subscribe();
 
-            // Услуги
             supabase.channel('services_changes')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'services' }, function(payload) {
                     console.log('Изменение в услугах:', payload);
@@ -1335,7 +1294,6 @@
                 })
                 .subscribe();
 
-            // Опции услуг
             supabase.channel('service_options_changes')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'service_options' }, function(payload) {
                     console.log('Изменение в опциях:', payload);
@@ -1343,7 +1301,6 @@
                 })
                 .subscribe();
 
-            // Отзывы
             supabase.channel('reviews_changes')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews' }, function(payload) {
                     console.log('Изменение в отзывах:', payload);
@@ -1351,7 +1308,6 @@
                 })
                 .subscribe();
 
-            // Посты
             supabase.channel('posts_changes')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, function(payload) {
                     var postsList = document.getElementById('postsList');
@@ -1359,7 +1315,6 @@
                 })
                 .subscribe();
 
-            // Заказы
             supabase.channel('orders_changes')
                 .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, function(payload) {
                     if (adminOrdersMode === 'orders') {
@@ -1449,7 +1404,7 @@
         }
 
         // ================================================================
-        // ПОРТФОЛИО (все функции без изменений)
+        // ПОРТФОЛИО
         // ================================================================
         function renderPortfolioCategories(cats) {
             var container = document.getElementById('portfolioCategories');
@@ -1474,7 +1429,7 @@
             });
             html += '</div>';
             if (window.isAdmin) {
-                html += '<div style="margin-top:15px"><button class="btn" onclick="addCategory()">➕ Добавить категорию</button></div>';
+                html += '<div style="margin-top:15px;"><button class="btn" onclick="addCategory()">➕ Добавить категорию</button></div>';
             }
             html += '</div>';
             container.innerHTML = html;
@@ -1724,7 +1679,7 @@
         }
 
         // ================================================================
-        // КОНСТРУКТОР ЗАКАЗА (ОВЕРЛЕЙ)
+        // КОНСТРУКТОР ЗАКАЗА
         // ================================================================
         function openOrderConstructor(serviceId) {
             var service = servicesData.find(function(s) { return s.id == serviceId; });
@@ -1755,21 +1710,26 @@
                 html += '<p style="color:var(--text-muted)">Для этой услуги пока нет опций. Свяжитесь с дизайнером для уточнения.</p>';
             } else {
                 options.forEach(function(opt, idx) {
-                    var qty = currentOrderQuantities[opt.id] || 1;
+                    var qty = currentOrderQuantities[opt.id] || (opt.min_quantity || 1);
+                    var typeLabel = { checkbox: '✅', quantity: '🔢', pages: '📄' }[opt.option_type] || '✅';
+                    
                     html += `
                         <div class="option-group" data-opt-id="${opt.id}">
-                            <label>
-                                <input type="checkbox" onchange="toggleOption(${opt.id}, this.checked)">
+                            <div class="option-header" onclick="toggleOptionUI(${opt.id})">
+                                <div class="option-checkbox" id="checkbox_${opt.id}">
+                                    <span class="checkmark" id="checkmark_${opt.id}">✓</span>
+                                </div>
                                 <div class="option-info">
-                                    <div class="option-name">${opt.name}</div>
+                                    <div class="option-name">${opt.name} ${typeLabel}</div>
                                     <div class="option-price">${opt.price} ₽ ${opt.description ? '· ' + opt.description : ''}</div>
                                 </div>
-                            </label>
-                            <div class="quantity-control" id="qtyControl_${opt.id}" style="display:none;">
-                                <button onclick="changeQuantity(${opt.id}, -1)">−</button>
-                                <span id="qtyDisplay_${opt.id}">${qty}</span>
-                                <button onclick="changeQuantity(${opt.id}, 1)">+</button>
-                                <span style="font-size:12px; color:var(--text-muted); margin-left:8px;" id="priceDisplay_${opt.id}">${opt.price} ₽</span>
+                            </div>
+                            <div class="option-quantity" id="qtyControl_${opt.id}" style="display:none;">
+                                <button class="qty-btn" onclick="event.stopPropagation(); changeQuantity(${opt.id}, -1)">−</button>
+                                <span class="qty-display" id="qtyDisplay_${opt.id}">${qty}</span>
+                                <button class="qty-btn" onclick="event.stopPropagation(); changeQuantity(${opt.id}, 1)">+</button>
+                                <span class="price-detail" id="priceDisplay_${opt.id}">${opt.price} ₽ × ${qty} = ${opt.price * qty} ₽</span>
+                                ${opt.discount_min_quantity ? `<span class="discount-badge">скидка от ${opt.discount_min_quantity} шт.</span>` : ''}
                             </div>
                         </div>
                     `;
@@ -1795,31 +1755,33 @@
 
             content.innerHTML = html;
             modal.style.display = 'flex';
-
-            // Если есть опции, выбираем первую по умолчанию
-            if (options.length > 0) {
-                var firstCheckbox = content.querySelector('.option-group input[type="checkbox"]');
-                if (firstCheckbox) {
-                    firstCheckbox.checked = true;
-                    toggleOption(options[0].id, true);
-                }
-            }
-
-            // Обновляем цену
             updateOrderTotal();
         }
 
-        function toggleOption(optId, checked) {
+        function toggleOptionUI(optId) {
+            var checkbox = document.getElementById('checkbox_' + optId);
+            var checkmark = document.getElementById('checkmark_' + optId);
             var qtyControl = document.getElementById('qtyControl_' + optId);
-            if (qtyControl) {
-                qtyControl.style.display = checked ? 'flex' : 'none';
-            }
-            if (!checked) {
+            
+            if (!checkbox) return;
+            
+            var isActive = checkbox.classList.contains('active');
+            
+            if (isActive) {
+                checkbox.classList.remove('active');
+                checkbox.style.background = 'transparent';
+                checkbox.style.borderColor = 'rgba(255,255,255,0.2)';
+                checkmark.style.opacity = '0';
+                if (qtyControl) qtyControl.style.display = 'none';
                 currentOrderQuantities[optId] = 0;
             } else {
-                if (!currentOrderQuantities[optId] || currentOrderQuantities[optId] === 0) {
-                    currentOrderQuantities[optId] = 1;
-                }
+                checkbox.classList.add('active');
+                checkbox.style.background = 'linear-gradient(135deg, #7c3aed, #be185d)';
+                checkbox.style.borderColor = '#7c3aed';
+                checkmark.style.opacity = '1';
+                if (qtyControl) qtyControl.style.display = 'flex';
+                var opt = currentOrderOptions.find(function(o) { return o.id == optId; });
+                currentOrderQuantities[optId] = opt ? (opt.min_quantity || 1) : 1;
             }
             updateOrderTotal();
             updateQuantityDisplay(optId);
@@ -1827,19 +1789,23 @@
 
         function changeQuantity(optId, delta) {
             var current = currentOrderQuantities[optId] || 0;
+            var opt = currentOrderOptions.find(function(o) { return o.id == optId; });
+            if (!opt) return;
+            
             var newQty = Math.max(0, current + delta);
             if (newQty === 0) {
-                // Снимаем галочку
-                var container = document.querySelector('.option-group[data-opt-id="' + optId + '"]');
-                if (container) {
-                    var checkbox = container.querySelector('input[type="checkbox"]');
-                    if (checkbox) {
-                        checkbox.checked = false;
-                        toggleOption(optId, false);
-                        return;
-                    }
+                var checkbox = document.getElementById('checkbox_' + optId);
+                if (checkbox && checkbox.classList.contains('active')) {
+                    toggleOptionUI(optId);
+                    return;
                 }
             }
+            
+            if (opt.max_quantity && newQty > opt.max_quantity) {
+                alert('Максимум ' + opt.max_quantity + ' шт.');
+                return;
+            }
+            
             currentOrderQuantities[optId] = newQty;
             updateQuantityDisplay(optId);
             updateOrderTotal();
@@ -1854,19 +1820,17 @@
             var opt = currentOrderOptions.find(function(o) { return o.id == optId; });
             if (opt && priceDisplay) {
                 var qty = currentOrderQuantities[optId] || 0;
-                var total = opt.price * qty;
-                // Применяем скидки при количестве
-                if (opt.name === 'Баннер' && qty >= 2) {
-                    var discountPrice = qty >= 4 ? 300 : 350;
-                    total = discountPrice * qty;
-                    priceDisplay.textContent = discountPrice + ' ₽ × ' + qty + ' = ' + total + ' ₽ (скидка)';
-                } else if (opt.name === 'Карточка товара' && qty >= 3) {
-                    var discountPrice = qty >= 5 ? 600 : 700;
-                    total = discountPrice * qty;
-                    priceDisplay.textContent = discountPrice + ' ₽ × ' + qty + ' = ' + total + ' ₽ (скидка)';
-                } else {
-                    priceDisplay.textContent = opt.price + ' ₽ × ' + qty + ' = ' + total + ' ₽';
+                var price = opt.price;
+                var total = price * qty;
+                var discountText = '';
+                
+                if (opt.discount_min_quantity && qty >= opt.discount_min_quantity && opt.discount_price) {
+                    price = opt.discount_price;
+                    total = price * qty;
+                    discountText = ' <span style="color:#fbbf24;font-size:12px;">(скидка ' + opt.discount_price + ' ₽/шт.)</span>';
                 }
+                
+                priceDisplay.innerHTML = price + ' ₽ × ' + qty + ' = ' + total + ' ₽' + discountText;
             }
         }
 
@@ -1876,13 +1840,8 @@
                 var qty = currentOrderQuantities[opt.id] || 0;
                 if (qty > 0) {
                     var price = opt.price;
-                    // Скидки
-                    if (opt.name === 'Баннер') {
-                        if (qty >= 4) price = 300;
-                        else if (qty >= 2) price = 350;
-                    } else if (opt.name === 'Карточка товара') {
-                        if (qty >= 5) price = 600;
-                        else if (qty >= 3) price = 700;
+                    if (opt.discount_min_quantity && qty >= opt.discount_min_quantity && opt.discount_price) {
+                        price = opt.discount_price;
                     }
                     total += price * qty;
                 }
@@ -1933,24 +1892,20 @@
         }
 
         function submitOrderWithOptions() {
-            // Собираем выбранные опции
             var selectedOptions = [];
             currentOrderOptions.forEach(function(opt) {
                 var qty = currentOrderQuantities[opt.id] || 0;
                 if (qty > 0) {
                     var price = opt.price;
-                    if (opt.name === 'Баннер') {
-                        if (qty >= 4) price = 300;
-                        else if (qty >= 2) price = 350;
-                    } else if (opt.name === 'Карточка товара') {
-                        if (qty >= 5) price = 600;
-                        else if (qty >= 3) price = 700;
+                    if (opt.discount_min_quantity && qty >= opt.discount_min_quantity && opt.discount_price) {
+                        price = opt.discount_price;
                     }
                     selectedOptions.push({
                         name: opt.name,
                         price: price,
                         quantity: qty,
-                        total: price * qty
+                        total: price * qty,
+                        option_type: opt.option_type || 'checkbox'
                     });
                 }
             });
@@ -1961,10 +1916,8 @@
             }
 
             var description = document.getElementById('orderDescription').value.trim();
-
             var total = selectedOptions.reduce(function(sum, opt) { return sum + opt.total; }, 0);
 
-            // Формируем текст заказа
             var orderText = '📋 **Заказ на услугу:** ' + currentOrderService.emoji + ' ' + currentOrderService.name + '\n\n';
             orderText += '**Выбранные опции:**\n';
             selectedOptions.forEach(function(opt) {
@@ -1976,7 +1929,6 @@
             }
             orderText += 'Жду счёт для оплаты.';
 
-            // Сохраняем заказ в БД
             var user = window.currentUser;
             var userName = user?.first_name || user?.username || 'Пользователь';
             var userUsername = user?.username || null;
@@ -1995,14 +1947,12 @@
 
             supabase.from('orders').insert([order])
                 .then(function() {
-                    // Загружаем референсы, если есть
                     var uploadPromises = currentOrderFiles.map(function(file) {
-                        return uploadFileToSupabase(file, 'references/' + user?.id || 'anonymous');
+                        return uploadFileToSupabase(file, 'references/' + (user?.id || 'anonymous'));
                     });
                     return Promise.all(uploadPromises);
                 })
                 .then(function(urls) {
-                    // Отправляем сообщение дизайнеру
                     var chatText = encodeURIComponent(orderText + (urls.length > 0 ? '\n\n📎 Референсы загружены.' : ''));
                     if (window.telegramAvailable && window.tg) {
                         window.tg.openTelegramLink('https://t.me/Mark1zDesign_bot?text=' + chatText);
@@ -2010,10 +1960,10 @@
                         window.open('https://t.me/Mark1zDesign_bot?text=' + chatText, '_blank');
                     }
                     closeModal();
-                    alert('Заявка отправлена! Я свяжусь с вами для уточнения деталей.');
+                    alert('✅ Заявка отправлена! Я свяжусь с вами для уточнения деталей.');
                 })
                 .catch(function(err) {
-                    alert('Ошибка: ' + err.message);
+                    alert('❌ Ошибка: ' + err.message);
                 });
         }
 
@@ -2078,7 +2028,7 @@
             servicesData.forEach(function(s) {
                 var optionsCount = serviceOptionsData.filter(function(o) { return o.service_id == s.id; }).length;
                 html += `
-                    <div class="order-item admin-grab" data-id="${s.id}" style="cursor: grab;">
+                    <div class="order-item admin-grab" data-id="${s.id}" style="cursor:grab;">
                         <div class="order-info">
                             <h4>${s.emoji} ${s.name}</h4>
                             <p>${s.description || ''}</p>
@@ -2218,21 +2168,21 @@
         }
 
         // ================================================================
-        // ОСТАЛЬНЫЕ ФУНКЦИИ (ОТЗЫВЫ, АДМИНКА, ПОЛНОЭКРАННЫЙ ПРОСМОТР)
+        // ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ
         // ================================================================
         function downloadWork(imageData, title) {
             downloadImage(imageData, title + '.jpg');
         }
 
         // ================================================================
-        // ОТЗЫВЫ (с реакциями)
+        // ОТЗЫВЫ
         // ================================================================
         function openReviewModal() {
             var modal = document.getElementById('modalOverlay');
             var content = document.getElementById('modalContent');
             content.innerHTML = `
                 <h3>Оставьте отзыв</h3>
-                <div id="starRating" style="font-size: 30px; cursor: pointer;">
+                <div id="starRating" style="font-size:30px;cursor:pointer;">
                     <span data-value="1">☆</span>
                     <span data-value="2">☆</span>
                     <span data-value="3">☆</span>
@@ -2243,7 +2193,7 @@
                 <div style="margin-bottom:10px;">
                     <button class="btn btn-sm" onclick="document.getElementById('reviewImagesInput').click()">📎 Прикрепить изображения (до 3)</button>
                     <input type="file" id="reviewImagesInput" accept="image/*" multiple hidden onchange="handleReviewImages(event)">
-                    <div id="reviewImagesPreview" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;"></div>
+                    <div id="reviewImagesPreview" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;"></div>
                 </div>
                 <button class="btn" onclick="submitReview()">Опубликовать</button>
                 <button class="btn" onclick="closeModal()">Отмена</button>
@@ -2458,9 +2408,9 @@
                     `;
                 } else if (window.isAdmin) {
                     adminReplyHtml = `
-                        <div class="admin-reply-input" style="margin-top:10px; display:flex; gap:8px;">
-                            <textarea id="adminReply_${review.id}" placeholder="Ответить на отзыв..." style="flex:1; padding:8px; border:1px solid var(--card-border); border-radius:8px; background:rgba(0,0,0,0.3); color:var(--text); font-size:13px; resize:vertical; min-height:40px;"></textarea>
-                            <button class="btn btn-sm" onclick="saveAdminReply(${review.id})" style="padding:8px 12px;">Отправить</button>
+                        <div class="admin-reply-input">
+                            <textarea id="adminReply_${review.id}" placeholder="Ответить на отзыв..."></textarea>
+                            <button class="btn btn-sm" onclick="saveAdminReply(${review.id})">Отправить</button>
                         </div>
                     `;
                 }
@@ -2471,7 +2421,7 @@
                             ${avatarHtml}
                             <div>
                                 <strong>${authorName}</strong>
-                                ${authorUsername ? '<div style="font-size:12px; color:var(--text-muted);">@' + authorUsername + '</div>' : ''}
+                                ${authorUsername ? '<div style="font-size:12px;color:var(--text-muted);">@' + authorUsername + '</div>' : ''}
                                 <div class="stars">${'★'.repeat(review.stars)}${'☆'.repeat(5 - review.stars)}</div>
                             </div>
                         </div>
