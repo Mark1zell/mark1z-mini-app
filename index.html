@@ -263,7 +263,7 @@
         <div class="footer">
             <div>© Mark1z Design · Дмитрий Маркизов</div>
             <a href="#" onclick="openPrivacyPolicy()">Политика конфиденциальности</a>
-            <span class="version">V.2.1.0</span>
+            <span class="version">V.2.1.1</span>
         </div>
     </div>
     <div class="modal-overlay" id="modalOverlay">
@@ -321,10 +321,12 @@
         var currentOrderQuantities = {};
         var currentOrderFiles = [];
         var currentOrderDescription = '';
+        var tempEditWorkFile = null;
+        var currentEditWorkIndex = null;
 
         currentDiscount = lastSpinDiscount;
 
-                // ================================================================
+        // ================================================================
         // TELEGRAM INIT
         // ================================================================
         function initTelegram() {
@@ -711,6 +713,7 @@
                 <button class="btn" onclick="createPromo('discount')">🏷️ Промокод скидки</button>
                 <button class="btn" onclick="openPostManager()">📢 Управление постами</button>
                 <button class="btn" onclick="openOptionManager()">⚙️ Управление опциями услуг</button>
+                <button class="btn" onclick="clearOrders()" style="background:rgba(255,0,0,0.3);">🗑️ Очистить все заказы</button>
                 <button class="btn" onclick="closeModal()">Закрыть</button>
             `;
             modal.style.display = 'flex';
@@ -744,7 +747,7 @@
         }
 
         // ================================================================
-        // УПРАВЛЕНИЕ ОПЦИЯМИ УСЛУГ
+        // УПРАВЛЕНИЕ ОПЦИЯМИ УСЛУГ (УЛУЧШЕННЫЙ ИНТЕРФЕЙС)
         // ================================================================
         function openOptionManager() {
             var modal = document.getElementById('modalOverlay');
@@ -770,66 +773,116 @@
 
             document.getElementById('optionServiceSelect').addEventListener('change', function() {
                 var serviceId = this.value;
-                if (serviceId) loadOptionsForService(serviceId);
+                if (serviceId) loadServiceOptionsForManager(serviceId);
             });
         }
 
-        function loadOptionsForService(serviceId) {
-            var container = document.getElementById('optionManagerContent');
-            container.innerHTML = '<p style="color:var(--text-muted)">Загрузка...</p>';
+        function openServiceOptionsManager(serviceId) {
+            var service = servicesData.find(function(s) { return s.id == serviceId; });
+            if (!service) return;
+            
+            var modal = document.getElementById('modalOverlay');
+            var content = document.getElementById('modalContent');
+            
+            content.innerHTML = `
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+                    <h3>${service.emoji} ${service.name} — Опции</h3>
+                    <button class="btn" onclick="closeModal()" style="margin:0;">×</button>
+                </div>
+                <div id="serviceOptionsContent"></div>
+            `;
+            modal.style.display = 'flex';
+            
+            loadServiceOptionsForManager(serviceId);
+        }
 
-            supabase.from('service_options').select('*').eq('service_id', serviceId).order('order', { ascending: true })
+        function loadServiceOptionsForManager(serviceId) {
+            var container = document.getElementById('serviceOptionsContent') || document.getElementById('optionManagerContent');
+            if (!container) return;
+            
+            container.innerHTML = '<p style="color:var(--text-muted);">Загрузка опций...</p>';
+            
+            supabase.from('service_options')
+                .select('*')
+                .eq('service_id', serviceId)
+                .order('order', { ascending: true })
                 .then(function(res) {
                     if (res.error) {
-                        container.innerHTML = '<p style="color:var(--text-muted)">Ошибка загрузки</p>';
+                        container.innerHTML = '<p style="color:var(--text-muted);">Ошибка загрузки</p>';
                         return;
                     }
+                    
                     var options = res.data || [];
-                    var html = `
-                        <div style="margin-bottom:15px;">
-                            <button class="btn btn-sm" onclick="showAddOptionForm(${serviceId})">➕ Добавить опцию</button>
-                        </div>
-                        <div id="optionsList">
-                    `;
-                    if (options.length === 0) {
-                        html += '<p style="color:var(--text-muted)">Нет опций для этой услуги</p>';
-                    } else {
-                        options.forEach(function(opt, idx) {
-                            var typeLabel = { checkbox: '✅', quantity: '🔢', pages: '📄' }[opt.option_type] || '✅';
-                            html += `
-                                <div class="order-item admin-grab" data-id="${opt.id}" style="margin-bottom:8px;cursor:grab;">
-                                    <div class="order-info">
-                                        <h4>${opt.name}</h4>
-                                        <p>${opt.price} ₽ ${opt.description ? '· ' + opt.description : ''}</p>
-                                        <p style="font-size:11px;color:var(--text-muted);">${typeLabel} ${opt.option_type || 'checkbox'} ${opt.discount_min_quantity ? '| скидка от ' + opt.discount_min_quantity + ' шт.' : ''}</p>
-                                    </div>
-                                    <div>
-                                        <button class="btn btn-sm" onclick="editOption(${opt.id})">✏️</button>
-                                        <button class="btn btn-sm" onclick="deleteOption(${opt.id})">🗑️</button>
-                                    </div>
-                                </div>
-                            `;
-                        });
-                    }
-                    html += '</div>';
-                    container.innerHTML = html;
+                    renderServiceOptionsManager(serviceId, options, container);
+                });
+        }
 
-                    var list = document.getElementById('optionsList');
-                    if (list && window.isAdmin) {
-                        if (sortableInstances.options) sortableInstances.options.destroy();
-                        sortableInstances.options = new Sortable(list, {
-                            animation: 150,
-                            delay: 200,
-                            delayOnTouchOnly: true,
-                            onEnd: function(evt) {
-                                var items = [].slice.call(list.children).filter(function(el) {
-                                    return el.dataset && el.dataset.id;
-                                });
-                                updateOptionsOrder(items);
-                            }
+        function renderServiceOptionsManager(serviceId, options, container) {
+            var html = `
+                <div style="margin-bottom:15px;">
+                    <button class="btn btn-sm" onclick="showAddOptionFormImproved(${serviceId})" style="background:linear-gradient(135deg, #10b981, #059669);">
+                        ➕ Добавить опцию
+                    </button>
+                </div>
+                <div id="optionsList" style="display:flex;flex-direction:column;gap:10px;">
+            `;
+            
+            if (options.length === 0) {
+                html += `
+                    <div style="text-align:center;padding:30px;background:rgba(255,255,255,0.03);border-radius:12px;">
+                        <p style="font-size:48px;margin-bottom:10px;">📋</p>
+                        <p style="color:var(--text-muted);">Нет опций для этой услуги</p>
+                        <p style="color:var(--text-muted);font-size:12px;">Добавьте первую опцию, чтобы клиенты могли заказывать</p>
+                    </div>
+                `;
+            } else {
+                options.forEach(function(opt, idx) {
+                    var typeIcon = { checkbox: '✅', quantity: '🔢', pages: '📄' }[opt.option_type] || '✅';
+                    var typeLabel = { checkbox: 'Да/Нет', quantity: 'Количество', pages: 'Страницы' }[opt.option_type] || 'Да/Нет';
+                    
+                    html += `
+                        <div class="order-item admin-grab" data-id="${opt.id}" style="margin-bottom:0;cursor:grab;">
+                            <div class="order-info">
+                                <h4>${typeIcon} ${opt.name}</h4>
+                                <p>
+                                    <strong>${opt.price} ₽</strong>
+                                    ${opt.description ? ' · ' + opt.description : ''}
+                                </p>
+                                <p style="font-size:11px;color:var(--text-muted);">
+                                    Тип: ${typeLabel}
+                                    ${opt.min_quantity ? ' · Мин: ' + opt.min_quantity : ''}
+                                    ${opt.max_quantity ? ' · Макс: ' + opt.max_quantity : ''}
+                                    ${opt.discount_min_quantity ? ' · Скидка от ' + opt.discount_min_quantity + ' шт: ' + opt.discount_price + ' ₽' : ''}
+                                </p>
+                            </div>
+                            <div style="display:flex;gap:5px;">
+                                <button class="btn btn-sm" onclick="editOptionImproved(${opt.id}, ${serviceId})" title="Редактировать">✏️</button>
+                                <button class="btn btn-sm" onclick="deleteOptionFromManager(${opt.id}, ${serviceId})" title="Удалить" style="background:rgba(255,0,0,0.5);">🗑️</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            html += '</div>';
+            container.innerHTML = html;
+            
+            var list = document.getElementById('optionsList');
+            if (list && window.isAdmin) {
+                if (sortableInstances.options) sortableInstances.options.destroy();
+                sortableInstances.options = new Sortable(list, {
+                    animation: 150,
+                    delay: 200,
+                    delayOnTouchOnly: true,
+                    handle: '.order-info',
+                    onEnd: function(evt) {
+                        var items = [].slice.call(list.children).filter(function(el) {
+                            return el.dataset && el.dataset.id;
                         });
+                        updateOptionsOrder(items);
                     }
                 });
+            }
         }
 
         function updateOptionsOrder(items) {
@@ -841,46 +894,95 @@
             Promise.all(promises);
         }
 
-        function showAddOptionForm(serviceId) {
-            var container = document.getElementById('optionManagerContent');
+        function showAddOptionFormImproved(serviceId) {
+            var container = document.getElementById('serviceOptionsContent') || document.getElementById('optionManagerContent');
             var formHtml = `
-                <div style="background:rgba(255,255,255,0.03);border-radius:12px;padding:16px;margin-top:10px;">
-                    <h4>Добавить опцию</h4>
-                    <input type="text" id="optName" placeholder="Название опции">
-                    <input type="number" id="optPrice" placeholder="Цена (₽)">
-                    <input type="text" id="optDescription" placeholder="Описание (необязательно)">
-                    <select id="optType">
-                        <option value="checkbox">✅ Чекбокс (да/нет)</option>
-                        <option value="quantity">🔢 Количество</option>
-                        <option value="pages">📄 Страницы</option>
-                    </select>
-                    <div style="display:flex;gap:8px;margin-top:8px;">
-                        <input type="number" id="optMinQty" placeholder="Мин. количество" style="width:50%;">
-                        <input type="number" id="optMaxQty" placeholder="Макс. количество" style="width:50%;">
+                <div style="background:rgba(255,255,255,0.05);border-radius:16px;padding:20px;margin-bottom:20px;border:1px solid var(--card-border);">
+                    <h4 style="margin-bottom:15px;">➕ Новая опция</h4>
+                    
+                    <div style="margin-bottom:12px;">
+                        <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Название опции *</label>
+                        <input type="text" id="optName" placeholder="Например: Логотип" style="width:100%;">
                     </div>
-                    <div style="display:flex;gap:8px;margin-top:8px;">
-                        <input type="number" id="optDiscountMin" placeholder="Количество для скидки" style="width:50%;">
-                        <input type="number" id="optDiscountPrice" placeholder="Цена со скидкой" style="width:50%;">
+                    
+                    <div style="margin-bottom:12px;">
+                        <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Цена (₽) *</label>
+                        <input type="number" id="optPrice" placeholder="Например: 500" style="width:100%;">
                     </div>
-                    <button class="btn btn-sm" onclick="saveOption(${serviceId})">Сохранить</button>
-                    <button class="btn btn-sm" onclick="loadOptionsForService(${serviceId})" style="background:rgba(255,255,255,0.1);">Отмена</button>
+                    
+                    <div style="margin-bottom:12px;">
+                        <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Описание (необязательно)</label>
+                        <input type="text" id="optDescription" placeholder="Краткое описание опции" style="width:100%;">
+                    </div>
+                    
+                    <div style="margin-bottom:12px;">
+                        <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Тип опции</label>
+                        <select id="optType" style="width:100%;" onchange="toggleQuantityFields()">
+                            <option value="checkbox">✅ Да/Нет (чекбокс)</option>
+                            <option value="quantity">🔢 Количество</option>
+                            <option value="pages">📄 Страницы</option>
+                        </select>
+                    </div>
+                    
+                    <div id="quantityFields" style="display:none;">
+                        <div style="display:flex;gap:8px;margin-bottom:12px;">
+                            <div style="flex:1;">
+                                <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Мин. количество</label>
+                                <input type="number" id="optMinQty" placeholder="1" value="1" style="width:100%;">
+                            </div>
+                            <div style="flex:1;">
+                                <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Макс. количество</label>
+                                <input type="number" id="optMaxQty" placeholder="10" value="10" style="width:100%;">
+                            </div>
+                        </div>
+                        
+                        <div style="display:flex;gap:8px;margin-bottom:12px;">
+                            <div style="flex:1;">
+                                <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Кол-во для скидки</label>
+                                <input type="number" id="optDiscountMin" placeholder="Например: 3" style="width:100%;">
+                            </div>
+                            <div style="flex:1;">
+                                <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Цена со скидкой (₽)</label>
+                                <input type="number" id="optDiscountPrice" placeholder="Например: 400" style="width:100%;">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="display:flex;gap:10px;margin-top:15px;">
+                        <button class="btn" onclick="saveOptionImproved(${serviceId})" style="flex:1;background:linear-gradient(135deg, #10b981, #059669);">
+                            💾 Сохранить
+                        </button>
+                        <button class="btn" onclick="loadServiceOptionsForManager(${serviceId})" style="background:rgba(255,255,255,0.1);">
+                            Отмена
+                        </button>
+                    </div>
                 </div>
             `;
+            
             container.innerHTML = formHtml + container.innerHTML;
         }
 
-        function saveOption(serviceId) {
+        function toggleQuantityFields() {
+            var typeSelect = document.getElementById('optType');
+            var quantityFields = document.getElementById('quantityFields');
+            if (typeSelect && quantityFields) {
+                quantityFields.style.display = typeSelect.value === 'checkbox' ? 'none' : 'block';
+            }
+        }
+
+        function saveOptionImproved(serviceId) {
             var name = document.getElementById('optName').value.trim();
             var price = document.getElementById('optPrice').value.trim();
             var description = document.getElementById('optDescription').value.trim();
             var optionType = document.getElementById('optType').value;
-            var minQty = document.getElementById('optMinQty').value.trim();
-            var maxQty = document.getElementById('optMaxQty').value.trim();
-            var discountMin = document.getElementById('optDiscountMin').value.trim();
-            var discountPrice = document.getElementById('optDiscountPrice').value.trim();
-            if (!name) { alert('Введите название'); return; }
+            var minQty = document.getElementById('optMinQty')?.value.trim() || '1';
+            var maxQty = document.getElementById('optMaxQty')?.value.trim() || '10';
+            var discountMin = document.getElementById('optDiscountMin')?.value.trim() || null;
+            var discountPrice = document.getElementById('optDiscountPrice')?.value.trim() || null;
+            
+            if (!name) { alert('Введите название опции'); return; }
             if (!price) { alert('Введите цену'); return; }
-
+            
             supabase.from('service_options').select('order').eq('service_id', serviceId).order('order', { ascending: false }).limit(1)
                 .then(function(res) {
                     var nextOrder = (res.data && res.data.length > 0) ? (res.data[0].order || 0) + 1 : 0;
@@ -890,100 +992,143 @@
                         price: parseInt(price),
                         description: description,
                         option_type: optionType,
-                        min_quantity: minQty ? parseInt(minQty) : 1,
-                        max_quantity: maxQty ? parseInt(maxQty) : 10,
+                        min_quantity: parseInt(minQty),
+                        max_quantity: parseInt(maxQty),
                         discount_min_quantity: discountMin ? parseInt(discountMin) : null,
                         discount_price: discountPrice ? parseInt(discountPrice) : null,
                         order: nextOrder
                     }]);
                 })
                 .then(function() {
-                    loadOptionsForService(serviceId);
+                    loadServiceOptionsForManager(serviceId);
+                    loadServiceOptions();
                 })
                 .catch(function(err) {
                     alert('Ошибка: ' + err.message);
                 });
         }
 
-        function editOption(optionId) {
+        function editOptionImproved(optionId, serviceId) {
             supabase.from('service_options').select('*').eq('id', optionId).single()
                 .then(function(res) {
                     if (res.error || !res.data) return;
                     var opt = res.data;
-                    var serviceId = opt.service_id;
-                    var container = document.getElementById('optionManagerContent');
+                    var container = document.getElementById('serviceOptionsContent') || document.getElementById('optionManagerContent');
+                    
                     var formHtml = `
-                        <div style="background:rgba(255,255,255,0.03);border-radius:12px;padding:16px;margin-top:10px;">
-                            <h4>Редактировать опцию</h4>
-                            <input type="text" id="editOptName" placeholder="Название" value="${opt.name}">
-                            <input type="number" id="editOptPrice" placeholder="Цена (₽)" value="${opt.price}">
-                            <input type="text" id="editOptDescription" placeholder="Описание" value="${opt.description || ''}">
-                            <select id="editOptType">
-                                <option value="checkbox" ${opt.option_type === 'checkbox' ? 'selected' : ''}>✅ Чекбокс</option>
-                                <option value="quantity" ${opt.option_type === 'quantity' ? 'selected' : ''}>🔢 Количество</option>
-                                <option value="pages" ${opt.option_type === 'pages' ? 'selected' : ''}>📄 Страницы</option>
-                            </select>
-                            <div style="display:flex;gap:8px;margin-top:8px;">
-                                <input type="number" id="editOptMinQty" placeholder="Мин." value="${opt.min_quantity || ''}" style="width:50%;">
-                                <input type="number" id="editOptMaxQty" placeholder="Макс." value="${opt.max_quantity || ''}" style="width:50%;">
+                        <div style="background:rgba(255,255,255,0.05);border-radius:16px;padding:20px;margin-bottom:20px;border:1px solid var(--card-border);">
+                            <h4 style="margin-bottom:15px;">✏️ Редактировать опцию</h4>
+                            
+                            <div style="margin-bottom:12px;">
+                                <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Название опции *</label>
+                                <input type="text" id="editOptName" value="${opt.name}" style="width:100%;">
                             </div>
-                            <div style="display:flex;gap:8px;margin-top:8px;">
-                                <input type="number" id="editOptDiscountMin" placeholder="Кол-во для скидки" value="${opt.discount_min_quantity || ''}" style="width:50%;">
-                                <input type="number" id="editOptDiscountPrice" placeholder="Цена со скидкой" value="${opt.discount_price || ''}" style="width:50%;">
+                            
+                            <div style="margin-bottom:12px;">
+                                <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Цена (₽) *</label>
+                                <input type="number" id="editOptPrice" value="${opt.price}" style="width:100%;">
                             </div>
-                            <button class="btn btn-sm" onclick="updateOption(${optionId}, ${serviceId})">Сохранить</button>
-                            <button class="btn btn-sm" onclick="loadOptionsForService(${serviceId})" style="background:rgba(255,255,255,0.1);">Отмена</button>
+                            
+                            <div style="margin-bottom:12px;">
+                                <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Описание</label>
+                                <input type="text" id="editOptDescription" value="${opt.description || ''}" style="width:100%;">
+                            </div>
+                            
+                            <div style="margin-bottom:12px;">
+                                <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Тип опции</label>
+                                <select id="editOptType" style="width:100%;" onchange="toggleEditQuantityFields()">
+                                    <option value="checkbox" ${opt.option_type === 'checkbox' ? 'selected' : ''}>✅ Да/Нет (чекбокс)</option>
+                                    <option value="quantity" ${opt.option_type === 'quantity' ? 'selected' : ''}>🔢 Количество</option>
+                                    <option value="pages" ${opt.option_type === 'pages' ? 'selected' : ''}>📄 Страницы</option>
+                                </select>
+                            </div>
+                            
+                            <div id="editQuantityFields" style="${opt.option_type === 'checkbox' ? 'display:none;' : ''}">
+                                <div style="display:flex;gap:8px;margin-bottom:12px;">
+                                    <div style="flex:1;">
+                                        <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Мин. количество</label>
+                                        <input type="number" id="editOptMinQty" value="${opt.min_quantity || 1}" style="width:100%;">
+                                    </div>
+                                    <div style="flex:1;">
+                                        <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Макс. количество</label>
+                                        <input type="number" id="editOptMaxQty" value="${opt.max_quantity || 10}" style="width:100%;">
+                                    </div>
+                                </div>
+                                
+                                <div style="display:flex;gap:8px;margin-bottom:12px;">
+                                    <div style="flex:1;">
+                                        <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Кол-во для скидки</label>
+                                        <input type="number" id="editOptDiscountMin" value="${opt.discount_min_quantity || ''}" style="width:100%;">
+                                    </div>
+                                    <div style="flex:1;">
+                                        <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Цена со скидкой (₽)</label>
+                                        <input type="number" id="editOptDiscountPrice" value="${opt.discount_price || ''}" style="width:100%;">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div style="display:flex;gap:10px;margin-top:15px;">
+                                <button class="btn" onclick="updateOptionImproved(${optionId}, ${serviceId})" style="flex:1;">
+                                    💾 Сохранить изменения
+                                </button>
+                                <button class="btn" onclick="loadServiceOptionsForManager(${serviceId})" style="background:rgba(255,255,255,0.1);">
+                                    Отмена
+                                </button>
+                            </div>
                         </div>
                     `;
-                    var list = document.getElementById('optionsList');
-                    if (list) {
-                        list.innerHTML = formHtml + list.innerHTML;
-                    } else {
-                        container.innerHTML = formHtml + container.innerHTML;
-                    }
+                    
+                    container.innerHTML = formHtml + container.innerHTML;
                 });
         }
 
-        function updateOption(optionId, serviceId) {
+        function toggleEditQuantityFields() {
+            var typeSelect = document.getElementById('editOptType');
+            var quantityFields = document.getElementById('editQuantityFields');
+            if (typeSelect && quantityFields) {
+                quantityFields.style.display = typeSelect.value === 'checkbox' ? 'none' : 'block';
+            }
+        }
+
+        function updateOptionImproved(optionId, serviceId) {
             var name = document.getElementById('editOptName').value.trim();
             var price = document.getElementById('editOptPrice').value.trim();
             var description = document.getElementById('editOptDescription').value.trim();
             var optionType = document.getElementById('editOptType').value;
-            var minQty = document.getElementById('editOptMinQty').value.trim();
-            var maxQty = document.getElementById('editOptMaxQty').value.trim();
-            var discountMin = document.getElementById('editOptDiscountMin').value.trim();
-            var discountPrice = document.getElementById('editOptDiscountPrice').value.trim();
-            if (!name) { alert('Введите название'); return; }
+            var minQty = document.getElementById('editOptMinQty')?.value.trim() || '1';
+            var maxQty = document.getElementById('editOptMaxQty')?.value.trim() || '10';
+            var discountMin = document.getElementById('editOptDiscountMin')?.value.trim() || null;
+            var discountPrice = document.getElementById('editOptDiscountPrice')?.value.trim() || null;
+            
+            if (!name) { alert('Введите название опции'); return; }
             if (!price) { alert('Введите цену'); return; }
-
+            
             supabase.from('service_options').update({
                 name: name,
                 price: parseInt(price),
                 description: description,
                 option_type: optionType,
-                min_quantity: minQty ? parseInt(minQty) : 1,
-                max_quantity: maxQty ? parseInt(maxQty) : 10,
+                min_quantity: parseInt(minQty),
+                max_quantity: parseInt(maxQty),
                 discount_min_quantity: discountMin ? parseInt(discountMin) : null,
                 discount_price: discountPrice ? parseInt(discountPrice) : null
             }).eq('id', optionId)
                 .then(function() {
-                    loadOptionsForService(serviceId);
+                    loadServiceOptionsForManager(serviceId);
+                    loadServiceOptions();
                 })
                 .catch(function(err) {
                     alert('Ошибка: ' + err.message);
                 });
         }
 
-        function deleteOption(optionId) {
-            if (!confirm('Удалить опцию?')) return;
-            supabase.from('service_options').select('service_id').eq('id', optionId).single()
-                .then(function(res) {
-                    if (res.error) return;
-                    var serviceId = res.data.service_id;
-                    return supabase.from('service_options').delete().eq('id', optionId)
-                        .then(function() {
-                            loadOptionsForService(serviceId);
-                        });
+        function deleteOptionFromManager(optionId, serviceId) {
+            if (!confirm('Удалить эту опцию?')) return;
+            
+            supabase.from('service_options').delete().eq('id', optionId)
+                .then(function() {
+                    loadServiceOptionsForManager(serviceId);
+                    loadServiceOptions();
                 })
                 .catch(function(err) {
                     alert('Ошибка: ' + err.message);
@@ -1604,7 +1749,77 @@
         }
 
         function editWork(index) {
-            alert('Редактирование работы пока не реализовано. Удалите и добавьте заново.');
+            if (!currentCategoryId) return;
+            
+            supabase.from('portfolio_categories').select('items').eq('id', currentCategoryId).single()
+                .then(function(res) {
+                    if (res.error || !res.data) return;
+                    var items = res.data.items || [];
+                    var work = items[index];
+                    if (!work) return;
+                    
+                    var modal = document.getElementById('modalOverlay');
+                    var content = document.getElementById('modalContent');
+                    content.innerHTML = `
+                        <h3>Редактировать работу</h3>
+                        <img src="${work.image}" style="max-width:100%;max-height:200px;object-fit:contain;margin-bottom:10px;border-radius:10px;">
+                        <input type="text" id="editWorkTitle" placeholder="Название работы" value="${work.title}">
+                        <input type="file" id="editWorkImageInput" accept="image/*" onchange="previewEditWorkImage(event)">
+                        <img id="editWorkImagePreview" class="preview" src="" alt="Новое изображение" style="display:none;">
+                        <button class="btn" onclick="saveEditedWork(${index})">Сохранить</button>
+                        <button class="btn" onclick="closeModal()">Отмена</button>
+                    `;
+                    modal.style.display = 'flex';
+                    window.tempEditWorkFile = null;
+                    window.currentEditWorkIndex = index;
+                });
+        }
+
+        function previewEditWorkImage(event) {
+            var file = event.target.files[0];
+            if (!file) return;
+            window.tempEditWorkFile = file;
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('editWorkImagePreview').src = e.target.result;
+                document.getElementById('editWorkImagePreview').style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function saveEditedWork(index) {
+            var newTitle = document.getElementById('editWorkTitle').value.trim();
+            if (!newTitle) { alert('Введите название'); return; }
+            
+            supabase.from('portfolio_categories').select('items').eq('id', currentCategoryId).single()
+                .then(function(res) {
+                    if (res.error || !res.data) return;
+                    var items = res.data.items || [];
+                    
+                    if (window.tempEditWorkFile) {
+                        return compressImage(window.tempEditWorkFile, 800, 0.7)
+                            .then(function(compressedDataUrl) {
+                                var blob = dataURLToBlob(compressedDataUrl);
+                                var file = new File([blob], window.tempEditWorkFile.name, { type: 'image/jpeg' });
+                                return uploadFileToSupabase(file, 'portfolio/' + currentCategoryId);
+                            })
+                            .then(function(url) {
+                                items[index] = { title: newTitle, image: url };
+                                return supabase.from('portfolio_categories').update({ items: items }).eq('id', currentCategoryId);
+                            });
+                    } else {
+                        items[index].title = newTitle;
+                        return supabase.from('portfolio_categories').update({ items: items }).eq('id', currentCategoryId);
+                    }
+                })
+                .then(function() {
+                    window.tempEditWorkFile = null;
+                    closeModal();
+                    openCategory(currentCategoryId);
+                })
+                .catch(function(err) {
+                    alert('Ошибка: ' + err.message);
+                });
         }
 
         function addWork() {
@@ -1855,36 +2070,58 @@
         function handleRefFiles(event) {
             var files = event.target.files;
             if (!files || files.length === 0) return;
+            
             if (files.length + currentOrderFiles.length > 3) {
                 alert('Можно прикрепить не более 3 референсов');
                 return;
             }
+            
             for (var i = 0; i < files.length; i++) {
                 if (currentOrderFiles.length >= 3) break;
-                currentOrderFiles.push(files[i]);
-                var reader = new FileReader();
-                reader.onload = function(e) {
-                    var preview = document.getElementById('refPreview');
-                    var thumb = document.createElement('div');
-                    thumb.className = 'preview-thumb';
-                    thumb.innerHTML = '<img src="' + e.target.result + '" alt="референс"><button class="remove-btn" onclick="removeRef(' + (currentOrderFiles.indexOf(files[i])) + ')">×</button>';
-                    preview.appendChild(thumb);
-                };
-                reader.readAsDataURL(files[i]);
+                
+                var file = files[i];
+                currentOrderFiles.push(file);
+                
+                (function(fileObj, index) {
+                    var reader = new FileReader();
+                    reader.onload = function(e) {
+                        var preview = document.getElementById('refPreview');
+                        if (!preview) return;
+                        
+                        var thumb = document.createElement('div');
+                        thumb.className = 'preview-thumb';
+                        thumb.innerHTML = `
+                            <img src="${e.target.result}" alt="референс">
+                            <button class="remove-btn" onclick="removeRef(${index})">×</button>
+                        `;
+                        preview.appendChild(thumb);
+                    };
+                    reader.readAsDataURL(fileObj);
+                })(file, currentOrderFiles.length - 1);
             }
+            
             event.target.value = '';
         }
 
         function removeRef(index) {
+            if (index < 0 || index >= currentOrderFiles.length) return;
+            
             currentOrderFiles.splice(index, 1);
+            
             var preview = document.getElementById('refPreview');
+            if (!preview) return;
+            
             preview.innerHTML = '';
+            
             currentOrderFiles.forEach(function(file, idx) {
                 var reader = new FileReader();
                 reader.onload = function(e) {
                     var thumb = document.createElement('div');
                     thumb.className = 'preview-thumb';
-                    thumb.innerHTML = '<img src="' + e.target.result + '" alt="референс"><button class="remove-btn" onclick="removeRef(' + idx + ')">×</button>';
+                    thumb.innerHTML = `
+                        <img src="${e.target.result}" alt="референс">
+                        <button class="remove-btn" onclick="removeRef(${idx})">×</button>
+                    `;
                     preview.appendChild(thumb);
                 };
                 reader.readAsDataURL(file);
@@ -2028,21 +2265,25 @@
             servicesData.forEach(function(s) {
                 var optionsCount = serviceOptionsData.filter(function(o) { return o.service_id == s.id; }).length;
                 html += `
-                    <div class="order-item admin-grab" data-id="${s.id}" style="cursor:grab;">
+                    <div class="order-item admin-grab" data-id="${s.id}" style="cursor:grab;" onclick="openServiceOptionsManager(${s.id})">
                         <div class="order-info">
                             <h4>${s.emoji} ${s.name}</h4>
                             <p>${s.description || ''}</p>
-                            <p style="color:var(--text-muted); font-size:12px;">${optionsCount} опций</p>
+                            <p style="color:var(--text-muted); font-size:12px;">
+                                ${optionsCount} опций
+                                <span style="color:var(--accent); margin-left:10px;">⚙️ Управлять опциями</span>
+                            </p>
                         </div>
-                        <div style="display:flex; gap:5px; align-items:center;">
-                            <button class="btn btn-sm" onclick="event.stopPropagation(); editService(${s.id})">✏️</button>
-                            <button class="btn btn-sm" onclick="event.stopPropagation(); deleteService(${s.id})">🗑️</button>
+                        <div style="display:flex; gap:5px; align-items:center;" onclick="event.stopPropagation();">
+                            <button class="btn btn-sm" onclick="editService(${s.id})">✏️</button>
+                            <button class="btn btn-sm" onclick="deleteService(${s.id})">🗑️</button>
                         </div>
                     </div>
                 `;
             });
             html += '</div>';
             html += '<div style="margin-top:15px;"><button class="btn" onclick="addService()">➕ Добавить услугу</button></div>';
+            html += '<div style="margin-top:10px;"><button class="btn" onclick="clearOrders()" style="background:rgba(255,0,0,0.3);">🗑️ Очистить все заказы</button></div>';
             return html;
         }
 
@@ -2451,28 +2692,39 @@
 
         function deleteReview(id) {
             if (!confirm('Удалить отзыв?')) return;
+            
             supabase.from('reviews').select('author_id').eq('id', id).single()
                 .then(function(res) {
                     if (res.error) {
                         alert('Ошибка: ' + res.error.message);
                         return;
                     }
+                    
                     var reviewAuthorId = res.data ? String(res.data.author_id) : null;
                     var currentUserId = window.currentUser ? String(window.currentUser.id) : null;
+                    
                     if (!window.isAdmin && reviewAuthorId !== currentUserId) {
                         alert('Вы не можете удалить этот отзыв');
                         return;
                     }
-                    if (reviewAuthorId) {
-                        supabase.from('user_last_review').delete().eq('user_id', reviewAuthorId);
-                    }
-                    supabase.from('reviews').delete().eq('id', id)
+                    
+                    return supabase.from('reviews').delete().eq('id', id)
                         .then(function() {
-                            loadReviews();
+                            if (reviewAuthorId) {
+                                return supabase.from('user_last_review')
+                                    .delete()
+                                    .eq('user_id', reviewAuthorId)
+                                    .then(function() {
+                                        console.log('Счетчик сброшен для пользователя:', reviewAuthorId);
+                                        loadReviews();
+                                    });
+                            }
+                            return Promise.resolve();
                         });
                 })
                 .catch(function(err) {
                     alert('Ошибка: ' + err.message);
+                    console.error('Ошибка при удалении отзыва:', err);
                 });
         }
 
@@ -2605,6 +2857,7 @@
 
         function saveLogo() {
             if (!window.tempLogoFile) { alert('Загрузите изображение'); return; }
+            let uploadedUrl = null;
             compressImage(window.tempLogoFile, 400, 0.6)
                 .then(function(compressedDataUrl) {
                     var blob = dataURLToBlob(compressedDataUrl);
@@ -2612,12 +2865,13 @@
                     return uploadFileToSupabase(file, 'logo');
                 })
                 .then(function(url) {
+                    uploadedUrl = url;
                     return supabase.from('settings').upsert({ key: 'logo', value: url });
                 })
                 .then(function() {
                     window.tempLogoFile = null;
                     closeModal();
-                    document.getElementById('logoImage').src = url;
+                    document.getElementById('logoImage').src = uploadedUrl;
                 })
                 .catch(function(err) {
                     alert('Ошибка загрузки: ' + err.message);
