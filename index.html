@@ -15,7 +15,6 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
     <style>
-        /* ===== ПОЛНЫЙ CSS (сокращён для экономии места, но функционал полный) ===== */
         :root {
             --bg-start: #0a050d;
             --bg-mid: #100820;
@@ -39,6 +38,14 @@
             padding: 16px 16px 80px;
             overflow-x: hidden;
             letter-spacing: 0.02em;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        img {
+            -webkit-touch-callout: none !important;
+            -webkit-user-drag: none !important;
+            user-drag: none !important;
+            pointer-events: auto;
         }
         .stars-container { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0; }
         .star { position:absolute; background:rgba(255,255,255,0.7); border-radius:50%; opacity:0; animation: twinkle var(--duration) ease-in-out infinite; animation-delay: var(--delay); }
@@ -203,9 +210,15 @@
         .post-checkbox input { width: auto; }
         .admin-post-item { display: flex; align-items: center; justify-content: space-between; padding: 10px; border: 1px solid var(--card-border); border-radius: 10px; margin-bottom: 10px; }
         .admin-post-item button { background: none; border: none; color: #f87171; cursor: pointer; font-size: 18px; }
+        /* Отключение контекстного меню на всех изображениях */
+        img {
+            -webkit-touch-callout: none !important;
+            -webkit-user-drag: none !important;
+            user-drag: none !important;
+        }
     </style>
 </head>
-<body>
+<body oncontextmenu="return false;">
     <!-- ===== ЗАГРУЗОЧНЫЙ ЭКРАН ===== -->
     <div id="loadingScreen">
         <div class="loading-stars" id="loadingStars"></div>
@@ -275,7 +288,7 @@
         <div class="footer">
             <div>© Mark1z Design · Дмитрий Маркизов</div>
             <a href="#" onclick="openPrivacyPolicy()">Политика конфиденциальности</a>
-            <span class="version">V.0.0.0</span>
+            <span class="version">V.1.0.0</span>
         </div>
     </div>
 
@@ -297,8 +310,8 @@
         // ================================================================
         (function initSupabase() {
             if (!window._supabaseClient) {
-                const url = 'https://lcgbpwowppwwpjjlphod.supabase.co';
-                const key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZ2Jwd293cHB3d3BqamxwaG9kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NDAwNTMsImV4cCI6MjEwNDIxNjA1M30.95VPot7saWmlgv1IzBop3E4x-ZxSc8HepqKdDLJa7JI';
+                var url = 'https://lcgbpwowppwwpjjlphod.supabase.co';
+                var key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZ2Jwd293cHB3d3BqamxwaG9kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NDAwNTMsImV4cCI6MjEwNDIxNjA1M30.95VPot7saWmlgv1IzBop3E4x-ZxSc8HepqKdDLJa7JI';
                 window._supabaseClient = window.supabase.createClient(url, key);
             }
         })();
@@ -365,7 +378,7 @@
         }
 
         // ================================================================
-        // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (сжатие, загрузка)
+        // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
         // ================================================================
         function dataURLToBlob(dataUrl) {
             var parts = dataUrl.split(',');
@@ -418,6 +431,23 @@
                     if (res.error) throw res.error;
                     var publicUrl = window._supabaseClient.storage.from('public').getPublicUrl(path);
                     return publicUrl.data.publicUrl;
+                });
+        }
+
+        function downloadImage(url, filename) {
+            fetch(url)
+                .then(function(response) { return response.blob(); })
+                .then(function(blob) {
+                    var link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = filename || 'image.jpg';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    setTimeout(function() { URL.revokeObjectURL(link.href); }, 1000);
+                })
+                .catch(function(err) {
+                    alert('Не удалось скачать изображение: ' + err.message);
                 });
         }
 
@@ -1351,317 +1381,12 @@
         }
 
         // ================================================================
-        // РАЗДЕЛ ЗАКАЗЫ
+        // ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ (заказ, скачивание)
         // ================================================================
-        function renderOrdersSection() {
-            var container = document.getElementById('ordersContent');
-            if (!container) return;
-            if (window.isAdmin) {
-                var html = `
-                    <div style="display:flex; gap:10px; margin-bottom:15px;">
-                        <button class="btn ${adminOrdersMode === 'services' ? 'active' : ''}" onclick="switchAdminMode('services')">Услуги</button>
-                        <button class="btn ${adminOrdersMode === 'orders' ? 'active' : ''}" onclick="switchAdminMode('orders')">Заказы</button>
-                        <button class="btn" onclick="openAdminPromoPanel()">👑 Админ</button>
-                    </div>
-                `;
-                if (adminOrdersMode === 'services') {
-                    html += renderServicesForAdmin();
-                } else {
-                    html += '<div id="adminOrdersList"></div>';
-                }
-                container.innerHTML = html;
-                if (adminOrdersMode === 'orders') {
-                    window._supabaseClient.from('orders').select('*').order('timestamp', { ascending: false })
-                        .then(function(res) {
-                            if (!res.error && res.data) renderOrdersList(res.data);
-                        });
-                }
-                if (adminOrdersMode === 'services') {
-                    setupSortableForServices();
-                }
-            } else {
-                var html = '<h3 style="margin-bottom:15px;">Наши услуги</h3>';
-                html += renderServicesForUser();
-                html += '<div style="margin-top:20px;"><button class="btn" onclick="openContactModal()">📩 Написать дизайнеру</button></div>';
-                container.innerHTML = html;
-            }
+        function downloadWork(imageData, title) {
+            downloadImage(imageData, title + '.jpg');
         }
 
-        function renderServicesForUser() {
-            if (servicesData.length === 0) return '<p style="color:var(--text-muted)">Услуги пока не добавлены</p>';
-            var html = '<div class="order-list" style="display:flex; flex-direction:column; gap:12px;">';
-            servicesData.forEach(function(s) {
-                var basePrice = s.price || 0;
-                var basePriceTo = s.price_to || basePrice;
-                var priceText = '';
-                var discountApplied = false;
-                if (currentDiscount > 0 && !(s.name === 'Telegram Mini Apps' && (currentDiscount === 50 || currentDiscount === 100))) {
-                    discountApplied = true;
-                    var newFrom = Math.round(basePrice * (1 - currentDiscount / 100));
-                    var newTo = Math.round(basePriceTo * (1 - currentDiscount / 100));
-                    priceText = `
-                        <span class="price-old">${basePrice}${basePriceTo && basePriceTo !== basePrice ? ' - ' + basePriceTo : ''}</span>
-                        <span class="price-new">${newFrom}${newTo && newTo !== newFrom ? ' - ' + newTo : ''} ₽</span>
-                    `;
-                } else {
-                    priceText = basePriceTo ? 'от ' + basePrice + ' до ' + basePriceTo + ' ₽' : (basePrice ? basePrice + ' ₽' : 'Цена не указана');
-                }
-                html += `
-                    <div class="order-item" style="cursor:pointer;" onclick="placeOrder('${s.name}', ${discountApplied})">
-                        <div class="order-info">
-                            <h4>${s.emoji} ${s.name}</h4>
-                            <p>${s.description}</p>
-                            <p>${priceText}</p>
-                        </div>
-                        <span style="font-size:24px;">➔</span>
-                    </div>
-                `;
-            });
-            html += '</div>';
-            return html;
-        }
-
-        function renderServicesForAdmin() {
-            var html = '<div class="order-list" id="servicesList" style="display:flex; flex-direction:column; gap:12px;">';
-            servicesData.forEach(function(s) {
-                var priceText = s.price_to ? 'от ' + s.price + ' до ' + s.price_to + ' ₽' : (s.price ? s.price + ' ₽' : 'Цена не указана');
-                html += `
-                    <div class="order-item" data-id="${s.id}" style="cursor: grab;">
-                        <div class="order-info">
-                            <h4>${s.emoji} ${s.name}</h4>
-                            <p>${s.description}</p>
-                            <p style="color:var(--accent); font-weight:600;">${priceText}</p>
-                        </div>
-                        <div style="display:flex; gap:5px; align-items:center;">
-                            <button class="btn" onclick="editService(${s.id})">✏️</button>
-                            <button class="btn" onclick="deleteService(${s.id})">🗑️</button>
-                        </div>
-                    </div>
-                `;
-            });
-            html += '</div>';
-            html += '<div style="margin-top:15px;"><button class="btn" onclick="addService()">➕ Добавить услугу</button></div>';
-            return html;
-        }
-
-        function switchAdminMode(mode) {
-            adminOrdersMode = mode;
-            renderOrdersSection();
-        }
-
-        function renderOrdersList(orders) {
-            var container = document.getElementById('adminOrdersList');
-            if (!container) return;
-            var html = '';
-            if (!orders || orders.length === 0) {
-                html = '<p style="color:var(--text-muted)">Нет заказов</p>';
-            } else {
-                orders.forEach(function(order) {
-                    var userName = order.user_name || 'Пользователь';
-                    var userUsername = order.user_username || null;
-                    html += `
-                        <div class="order-item">
-                            <div class="order-info">
-                                <h4>${order.service}</h4>
-                                <p>От: ${userName} ${userUsername ? '(<a href="https://t.me/' + userUsername + '" target="_blank">@' + userUsername + '</a>)' : ''}</p>
-                                <p>${order.time}</p>
-                            </div>
-                            <button class="btn" onclick="deleteOrder(${order.id})">🗑️</button>
-                        </div>
-                    `;
-                });
-            }
-            container.innerHTML = html;
-        }
-
-        // ================================================================
-        // УПРАВЛЕНИЕ УСЛУГАМИ
-        // ================================================================
-        function addService() {
-            var modal = document.getElementById('modalOverlay');
-            var content = document.getElementById('modalContent');
-            content.innerHTML = `
-                <h3>Добавить услугу</h3>
-                <input type="text" id="serviceEmoji" placeholder="Эмодзи (например, 🎨)">
-                <input type="text" id="serviceName" placeholder="Название услуги">
-                <input type="text" id="serviceDescription" placeholder="Описание">
-                <input type="number" id="servicePriceFrom" placeholder="Цена от (₽)">
-                <input type="number" id="servicePriceTo" placeholder="Цена до (₽) (необязательно)">
-                <button class="btn" onclick="saveNewService()">Сохранить</button>
-                <button class="btn" onclick="closeModal()">Отмена</button>
-            `;
-            modal.style.display = 'flex';
-        }
-
-        function saveNewService() {
-            var emoji = document.getElementById('serviceEmoji').value.trim() || '✨';
-            var name = document.getElementById('serviceName').value.trim();
-            var description = document.getElementById('serviceDescription').value.trim();
-            var priceFrom = document.getElementById('servicePriceFrom').value.trim();
-            var priceTo = document.getElementById('servicePriceTo').value.trim();
-            if (!name) { alert('Введите название услуги'); return; }
-            var existing = servicesData.find(function(s) { return s.name.toLowerCase() === name.toLowerCase(); });
-            if (existing) {
-                alert('Услуга с таким названием уже существует');
-                return;
-            }
-            var price = priceFrom ? parseFloat(priceFrom) : null;
-            var priceToVal = priceTo ? parseFloat(priceTo) : null;
-            var nextOrder = servicesData.length > 0 ? Math.max.apply(null, servicesData.map(function(s) { return s.order || 0; })) + 1 : 0;
-            window._supabaseClient.from('services').insert([{
-                emoji: emoji, name: name, description: description,
-                price: price, price_to: priceToVal, order: nextOrder
-            }]).then(function() {
-                closeModal();
-            });
-        }
-
-        function editService(id) {
-            var supabase = window._supabaseClient;
-            supabase.from('services').select('*').eq('id', id).single()
-                .then(function(res) {
-                    if (res.error || !res.data) return;
-                    var s = res.data;
-                    var modal = document.getElementById('modalOverlay');
-                    var content = document.getElementById('modalContent');
-                    content.innerHTML = `
-                        <h3>Редактировать услугу</h3>
-                        <input type="text" id="serviceEmoji" placeholder="Эмодзи" value="${s.emoji}">
-                        <input type="text" id="serviceName" placeholder="Название услуги" value="${s.name}">
-                        <input type="text" id="serviceDescription" placeholder="Описание" value="${s.description}">
-                        <input type="number" id="servicePriceFrom" placeholder="Цена от" value="${s.price || ''}">
-                        <input type="number" id="servicePriceTo" placeholder="Цена до" value="${s.price_to || ''}">
-                        <button class="btn" onclick="saveServiceChanges(${id})">Сохранить</button>
-                        <button class="btn" onclick="closeModal()">Отмена</button>
-                    `;
-                    modal.style.display = 'flex';
-                });
-        }
-
-        function saveServiceChanges(id) {
-            var emoji = document.getElementById('serviceEmoji').value.trim() || '✨';
-            var name = document.getElementById('serviceName').value.trim();
-            var description = document.getElementById('serviceDescription').value.trim();
-            var priceFrom = document.getElementById('servicePriceFrom').value.trim();
-            var priceTo = document.getElementById('servicePriceTo').value.trim();
-            if (!name) { alert('Введите название услуги'); return; }
-            var price = priceFrom ? parseFloat(priceFrom) : null;
-            var priceToVal = priceTo ? parseFloat(priceTo) : null;
-            window._supabaseClient.from('services').update({
-                emoji: emoji, name: name, description: description,
-                price: price, price_to: priceToVal
-            }).eq('id', id).then(function() {
-                closeModal();
-            });
-        }
-
-        function deleteService(id) {
-            if (confirm('Удалить услугу?')) {
-                window._supabaseClient.from('services').delete().eq('id', id);
-            }
-        }
-
-        // ================================================================
-        // ПОЛНОЭКРАННЫЙ ПРОСМОТР
-        // ================================================================
-        function viewImage(src, title, allowSave) {
-            currentViewImageSrc = src;
-            var viewer = document.getElementById('imageViewer');
-            var img = document.getElementById('imageViewerImg');
-            var saveBtn = document.getElementById('imageViewerSaveBtn');
-            img.onload = function() { viewer.style.display = 'flex'; };
-            img.onerror = function() { viewer.style.display = 'none'; };
-            img.src = src;
-            if (img.complete) img.onload();
-            saveBtn.style.display = 'inline-block';
-            scale = 1;
-            img.style.transform = 'scale(1)';
-            img.style.left = '0px';
-            img.style.top = '0px';
-        }
-
-        function closeImageViewer() {
-            document.getElementById('imageViewer').style.display = 'none';
-            currentViewImageSrc = null;
-            scale = 1;
-        }
-
-        function saveCurrentImage() {
-            if (!currentViewImageSrc) return;
-            var a = document.createElement('a');
-            a.href = currentViewImageSrc;
-            a.download = 'image.jpg';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-        }
-
-        // Обработчики зума
-        document.addEventListener('DOMContentLoaded', function() {
-            var imageViewer = document.getElementById('imageViewer');
-            var img = document.getElementById('imageViewerImg');
-            var panX = 0, panY = 0;
-            var startPanX = 0, startPanY = 0;
-            var isPanning = false;
-
-            imageViewer.addEventListener('touchstart', function(e) {
-                if (e.touches.length === 2) {
-                    startDistance = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-                    startScale = scale;
-                } else if (e.touches.length === 1 && scale > 1) {
-                    isPanning = true;
-                    startPanX = e.touches[0].clientX - panX;
-                    startPanY = e.touches[0].clientY - panY;
-                }
-            });
-            imageViewer.addEventListener('touchmove', function(e) {
-                if (e.touches.length === 2) {
-                    e.preventDefault();
-                    var currentDistance = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-                    scale = Math.min(Math.max(startScale * currentDistance / startDistance, 1), 3);
-                    img.style.transform = 'scale(' + scale + ')';
-                    if (scale === 1) {
-                        panX = 0; panY = 0;
-                        img.style.left = '0px';
-                        img.style.top = '0px';
-                    } else {
-                        var maxX = (img.offsetWidth * scale - img.offsetWidth) / 2;
-                        var maxY = (img.offsetHeight * scale - img.offsetHeight) / 2;
-                        panX = Math.max(-maxX, Math.min(maxX, panX));
-                        panY = Math.max(-maxY, Math.min(maxY, panY));
-                        img.style.left = panX + 'px';
-                        img.style.top = panY + 'px';
-                    }
-                } else if (e.touches.length === 1 && isPanning) {
-                    e.preventDefault();
-                    panX = e.touches[0].clientX - startPanX;
-                    panY = e.touches[0].clientY - startPanY;
-                    var maxX = (img.offsetWidth * scale - img.offsetWidth) / 2;
-                    var maxY = (img.offsetHeight * scale - img.offsetHeight) / 2;
-                    panX = Math.max(-maxX, Math.min(maxX, panX));
-                    panY = Math.max(-maxY, Math.min(maxY, panY));
-                    img.style.left = panX + 'px';
-                    img.style.top = panY + 'px';
-                }
-            });
-            imageViewer.addEventListener('touchend', function() { isPanning = false; });
-            imageViewer.addEventListener('dblclick', function() {
-                scale = scale === 1 ? 2 : 1;
-                img.style.transform = 'scale(' + scale + ')';
-                if (scale === 1) {
-                    panX = 0; panY = 0;
-                    img.style.left = '0px';
-                    img.style.top = '0px';
-                }
-            });
-        });
-
-        document.getElementById('imageViewerSaveBtn').addEventListener('click', saveCurrentImage);
-        document.getElementById('imageViewerClose').addEventListener('click', closeImageViewer);
-
-        // ================================================================
-        // ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ
-        // ================================================================
         function placeOrder(service, discountApplied) {
             if (isOrderProcessing) return;
             isOrderProcessing = true;
@@ -1694,15 +1419,6 @@
                 window.open('https://t.me/Mark1zDesign_bot?text=' + chatText, '_blank');
                 window.open('https://your-payment-link.com/pay?service=' + encodeURIComponent(service), '_blank');
             }
-        }
-
-        function downloadWork(imageData, title) {
-            var a = document.createElement('a');
-            a.href = imageData;
-            a.download = title + '.jpg';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
         }
 
         // ================================================================
@@ -1895,7 +1611,216 @@
         }
 
         // ================================================================
-        // АДМИН-ФУНКЦИИ
+        // УПРАВЛЕНИЕ УСЛУГАМИ (исправлено: правильные ID полей)
+        // ================================================================
+        function renderOrdersSection() {
+            var container = document.getElementById('ordersContent');
+            if (!container) return;
+            if (window.isAdmin) {
+                var html = `
+                    <div style="display:flex; gap:10px; margin-bottom:15px;">
+                        <button class="btn ${adminOrdersMode === 'services' ? 'active' : ''}" onclick="switchAdminMode('services')">Услуги</button>
+                        <button class="btn ${adminOrdersMode === 'orders' ? 'active' : ''}" onclick="switchAdminMode('orders')">Заказы</button>
+                        <button class="btn" onclick="openAdminPromoPanel()">👑 Админ</button>
+                    </div>
+                `;
+                if (adminOrdersMode === 'services') {
+                    html += renderServicesForAdmin();
+                } else {
+                    html += '<div id="adminOrdersList"></div>';
+                }
+                container.innerHTML = html;
+                if (adminOrdersMode === 'orders') {
+                    window._supabaseClient.from('orders').select('*').order('timestamp', { ascending: false })
+                        .then(function(res) {
+                            if (!res.error && res.data) renderOrdersList(res.data);
+                        });
+                }
+                if (adminOrdersMode === 'services') {
+                    setupSortableForServices();
+                }
+            } else {
+                var html = '<h3 style="margin-bottom:15px;">Наши услуги</h3>';
+                html += renderServicesForUser();
+                html += '<div style="margin-top:20px;"><button class="btn" onclick="openContactModal()">📩 Написать дизайнеру</button></div>';
+                container.innerHTML = html;
+            }
+        }
+
+        function renderServicesForUser() {
+            if (servicesData.length === 0) return '<p style="color:var(--text-muted)">Услуги пока не добавлены</p>';
+            var html = '<div class="order-list" style="display:flex; flex-direction:column; gap:12px;">';
+            servicesData.forEach(function(s) {
+                var basePrice = s.price || 0;
+                var basePriceTo = s.price_to || basePrice;
+                var priceText = '';
+                var discountApplied = false;
+                if (currentDiscount > 0 && !(s.name === 'Telegram Mini Apps' && (currentDiscount === 50 || currentDiscount === 100))) {
+                    discountApplied = true;
+                    var newFrom = Math.round(basePrice * (1 - currentDiscount / 100));
+                    var newTo = Math.round(basePriceTo * (1 - currentDiscount / 100));
+                    priceText = `
+                        <span class="price-old">${basePrice}${basePriceTo && basePriceTo !== basePrice ? ' - ' + basePriceTo : ''}</span>
+                        <span class="price-new">${newFrom}${newTo && newTo !== newFrom ? ' - ' + newTo : ''} ₽</span>
+                    `;
+                } else {
+                    priceText = basePriceTo ? 'от ' + basePrice + ' до ' + basePriceTo + ' ₽' : (basePrice ? basePrice + ' ₽' : 'Цена не указана');
+                }
+                html += `
+                    <div class="order-item" style="cursor:pointer;" onclick="placeOrder('${s.name}', ${discountApplied})">
+                        <div class="order-info">
+                            <h4>${s.emoji} ${s.name}</h4>
+                            <p>${s.description}</p>
+                            <p>${priceText}</p>
+                        </div>
+                        <span style="font-size:24px;">➔</span>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            return html;
+        }
+
+        function renderServicesForAdmin() {
+            var html = '<div class="order-list" id="servicesList" style="display:flex; flex-direction:column; gap:12px;">';
+            servicesData.forEach(function(s) {
+                var priceText = s.price_to ? 'от ' + s.price + ' до ' + s.price_to + ' ₽' : (s.price ? s.price + ' ₽' : 'Цена не указана');
+                html += `
+                    <div class="order-item" data-id="${s.id}" style="cursor: grab;">
+                        <div class="order-info">
+                            <h4>${s.emoji} ${s.name}</h4>
+                            <p>${s.description}</p>
+                            <p style="color:var(--accent); font-weight:600;">${priceText}</p>
+                        </div>
+                        <div style="display:flex; gap:5px; align-items:center;">
+                            <button class="btn" onclick="editService(${s.id})">✏️</button>
+                            <button class="btn" onclick="deleteService(${s.id})">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            html += '<div style="margin-top:15px;"><button class="btn" onclick="addService()">➕ Добавить услугу</button></div>';
+            return html;
+        }
+
+        function switchAdminMode(mode) {
+            adminOrdersMode = mode;
+            renderOrdersSection();
+        }
+
+        function renderOrdersList(orders) {
+            var container = document.getElementById('adminOrdersList');
+            if (!container) return;
+            var html = '';
+            if (!orders || orders.length === 0) {
+                html = '<p style="color:var(--text-muted)">Нет заказов</p>';
+            } else {
+                orders.forEach(function(order) {
+                    var userName = order.user_name || 'Пользователь';
+                    var userUsername = order.user_username || null;
+                    html += `
+                        <div class="order-item">
+                            <div class="order-info">
+                                <h4>${order.service}</h4>
+                                <p>От: ${userName} ${userUsername ? '(<a href="https://t.me/' + userUsername + '" target="_blank">@' + userUsername + '</a>)' : ''}</p>
+                                <p>${order.time}</p>
+                            </div>
+                            <button class="btn" onclick="deleteOrder(${order.id})">🗑️</button>
+                        </div>
+                    `;
+                });
+            }
+            container.innerHTML = html;
+        }
+
+        // ================== ДОБАВЛЕНИЕ УСЛУГИ (исправлено) ==================
+        function addService() {
+            var modal = document.getElementById('modalOverlay');
+            var content = document.getElementById('modalContent');
+            content.innerHTML = `
+                <h3>Добавить услугу</h3>
+                <input type="text" id="serviceEmoji" placeholder="Эмодзи (например, 🎨)">
+                <input type="text" id="serviceName" placeholder="Название услуги">
+                <input type="text" id="serviceDescription" placeholder="Описание">
+                <input type="number" id="servicePriceFrom" placeholder="Цена от (₽)">
+                <input type="number" id="servicePriceTo" placeholder="Цена до (₽) (необязательно)">
+                <button class="btn" onclick="saveNewService()">Сохранить</button>
+                <button class="btn" onclick="closeModal()">Отмена</button>
+            `;
+            modal.style.display = 'flex';
+        }
+
+        function saveNewService() {
+            var emoji = document.getElementById('serviceEmoji').value.trim() || '✨';
+            var name = document.getElementById('serviceName').value.trim();
+            var description = document.getElementById('serviceDescription').value.trim();
+            var priceFrom = document.getElementById('servicePriceFrom').value.trim();
+            var priceTo = document.getElementById('servicePriceTo').value.trim();
+            if (!name) { alert('Введите название услуги'); return; }
+            var existing = servicesData.find(function(s) { return s.name.toLowerCase() === name.toLowerCase(); });
+            if (existing) {
+                alert('Услуга с таким названием уже существует');
+                return;
+            }
+            var price = priceFrom ? parseFloat(priceFrom) : null;
+            var priceToVal = priceTo ? parseFloat(priceTo) : null;
+            var nextOrder = servicesData.length > 0 ? Math.max.apply(null, servicesData.map(function(s) { return s.order || 0; })) + 1 : 0;
+            window._supabaseClient.from('services').insert([{
+                emoji: emoji, name: name, description: description,
+                price: price, price_to: priceToVal, order: nextOrder
+            }]).then(function() {
+                closeModal();
+            });
+        }
+
+        function editService(id) {
+            var supabase = window._supabaseClient;
+            supabase.from('services').select('*').eq('id', id).single()
+                .then(function(res) {
+                    if (res.error || !res.data) return;
+                    var s = res.data;
+                    var modal = document.getElementById('modalOverlay');
+                    var content = document.getElementById('modalContent');
+                    content.innerHTML = `
+                        <h3>Редактировать услугу</h3>
+                        <input type="text" id="serviceEmoji" placeholder="Эмодзи" value="${s.emoji}">
+                        <input type="text" id="serviceName" placeholder="Название услуги" value="${s.name}">
+                        <input type="text" id="serviceDescription" placeholder="Описание" value="${s.description}">
+                        <input type="number" id="servicePriceFrom" placeholder="Цена от" value="${s.price || ''}">
+                        <input type="number" id="servicePriceTo" placeholder="Цена до" value="${s.price_to || ''}">
+                        <button class="btn" onclick="saveServiceChanges(${id})">Сохранить</button>
+                        <button class="btn" onclick="closeModal()">Отмена</button>
+                    `;
+                    modal.style.display = 'flex';
+                });
+        }
+
+        function saveServiceChanges(id) {
+            var emoji = document.getElementById('serviceEmoji').value.trim() || '✨';
+            var name = document.getElementById('serviceName').value.trim();
+            var description = document.getElementById('serviceDescription').value.trim();
+            var priceFrom = document.getElementById('servicePriceFrom').value.trim();
+            var priceTo = document.getElementById('servicePriceTo').value.trim();
+            if (!name) { alert('Введите название услуги'); return; }
+            var price = priceFrom ? parseFloat(priceFrom) : null;
+            var priceToVal = priceTo ? parseFloat(priceTo) : null;
+            window._supabaseClient.from('services').update({
+                emoji: emoji, name: name, description: description,
+                price: price, price_to: priceToVal
+            }).eq('id', id).then(function() {
+                closeModal();
+            });
+        }
+
+        function deleteService(id) {
+            if (confirm('Удалить услугу?')) {
+                window._supabaseClient.from('services').delete().eq('id', id);
+            }
+        }
+
+        // ================================================================
+        // АДМИН-ФУНКЦИИ (остальные)
         // ================================================================
         function editAbout() {
             var supabase = window._supabaseClient;
@@ -2022,6 +1947,99 @@
             `;
             modal.style.display = 'flex';
         }
+
+        // ================================================================
+        // ПОЛНОЭКРАННЫЙ ПРОСМОТР
+        // ================================================================
+        function viewImage(src, title, allowSave) {
+            currentViewImageSrc = src;
+            var viewer = document.getElementById('imageViewer');
+            var img = document.getElementById('imageViewerImg');
+            var saveBtn = document.getElementById('imageViewerSaveBtn');
+            img.onload = function() { viewer.style.display = 'flex'; };
+            img.onerror = function() { viewer.style.display = 'none'; };
+            img.src = src;
+            if (img.complete) img.onload();
+            saveBtn.style.display = 'inline-block';
+            scale = 1;
+            img.style.transform = 'scale(1)';
+            img.style.left = '0px';
+            img.style.top = '0px';
+        }
+
+        function closeImageViewer() {
+            document.getElementById('imageViewer').style.display = 'none';
+            currentViewImageSrc = null;
+            scale = 1;
+        }
+
+        function saveCurrentImage() {
+            if (!currentViewImageSrc) return;
+            downloadImage(currentViewImageSrc, 'изображение.jpg');
+        }
+
+        // Обработчики зума
+        document.addEventListener('DOMContentLoaded', function() {
+            var imageViewer = document.getElementById('imageViewer');
+            var img = document.getElementById('imageViewerImg');
+            var panX = 0, panY = 0;
+            var startPanX = 0, startPanY = 0;
+            var isPanning = false;
+
+            imageViewer.addEventListener('touchstart', function(e) {
+                if (e.touches.length === 2) {
+                    startDistance = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                    startScale = scale;
+                } else if (e.touches.length === 1 && scale > 1) {
+                    isPanning = true;
+                    startPanX = e.touches[0].clientX - panX;
+                    startPanY = e.touches[0].clientY - panY;
+                }
+            });
+            imageViewer.addEventListener('touchmove', function(e) {
+                if (e.touches.length === 2) {
+                    e.preventDefault();
+                    var currentDistance = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                    scale = Math.min(Math.max(startScale * currentDistance / startDistance, 1), 3);
+                    img.style.transform = 'scale(' + scale + ')';
+                    if (scale === 1) {
+                        panX = 0; panY = 0;
+                        img.style.left = '0px';
+                        img.style.top = '0px';
+                    } else {
+                        var maxX = (img.offsetWidth * scale - img.offsetWidth) / 2;
+                        var maxY = (img.offsetHeight * scale - img.offsetHeight) / 2;
+                        panX = Math.max(-maxX, Math.min(maxX, panX));
+                        panY = Math.max(-maxY, Math.min(maxY, panY));
+                        img.style.left = panX + 'px';
+                        img.style.top = panY + 'px';
+                    }
+                } else if (e.touches.length === 1 && isPanning) {
+                    e.preventDefault();
+                    panX = e.touches[0].clientX - startPanX;
+                    panY = e.touches[0].clientY - startPanY;
+                    var maxX = (img.offsetWidth * scale - img.offsetWidth) / 2;
+                    var maxY = (img.offsetHeight * scale - img.offsetHeight) / 2;
+                    panX = Math.max(-maxX, Math.min(maxX, panX));
+                    panY = Math.max(-maxY, Math.min(maxY, panY));
+                    img.style.left = panX + 'px';
+                    img.style.top = panY + 'px';
+                }
+            });
+            imageViewer.addEventListener('touchend', function() { isPanning = false; });
+            imageViewer.addEventListener('dblclick', function() {
+                scale = scale === 1 ? 2 : 1;
+                img.style.transform = 'scale(' + scale + ')';
+                if (scale === 1) {
+                    panX = 0; panY = 0;
+                    img.style.left = '0px';
+                    img.style.top = '0px';
+                }
+            });
+        });
+
+        document.getElementById('imageViewerSaveBtn').addEventListener('click', saveCurrentImage);
+        document.getElementById('imageViewerClose').addEventListener('click', closeImageViewer);
 
         // ================================================================
         // ВКЛАДКИ
