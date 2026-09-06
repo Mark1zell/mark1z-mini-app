@@ -325,7 +325,7 @@ input, textarea, select {
         <div class="footer">
             <div>© Mark1z Design · Дмитрий Маркизов</div>
             <a href="#" onclick="openPrivacyPolicy()">Политика конфиденциальности</a>
-            <span class="version">V.2.1.6</span>
+            <span class="version">V.2.0.1</span>
         </div>
     </div>
     <div class="modal-overlay" id="modalOverlay">
@@ -2301,6 +2301,16 @@ function submitOrderWithOptions() {
     var userName = user?.first_name || user?.username || 'Пользователь';
     var userUsername = user?.username || null;
 
+    console.log('Отправка заказа:', {
+        service: currentOrderService.name,
+        user_name: userName,
+        user_username: userUsername,
+        options: selectedOptions,
+        total: total,
+        description: description,
+        reference_urls: []
+    });
+
     // Сначала загружаем референсы
     var uploadPromises = currentOrderFiles.map(function(file) {
         return uploadFileToSupabase(file, 'references/' + (user?.id || 'anonymous'));
@@ -2308,12 +2318,14 @@ function submitOrderWithOptions() {
     
     Promise.all(uploadPromises)
         .then(function(referenceUrls) {
+            console.log('Референсы загружены:', referenceUrls);
+            
             // Создаем заказ с URL референсов
             var order = {
                 service: currentOrderService.name,
                 user_name: userName,
                 user_username: userUsername,
-                time: new Date().toLocaleString(),
+                time: new Date().toLocaleString('ru-RU'),
                 timestamp: new Date().toISOString(),
                 options: JSON.stringify(selectedOptions),
                 total: total,
@@ -2322,13 +2334,18 @@ function submitOrderWithOptions() {
                 status: 'pending'
             };
             
+            console.log('Сохраняем заказ:', order);
+            
             return supabase.from('orders').insert([order]);
         })
         .then(function(res) {
             if (res.error) {
+                console.error('Ошибка при сохранении заказа:', res.error);
                 alert('❌ Ошибка при сохранении заказа: ' + res.error.message);
                 return;
             }
+            
+            console.log('Заказ успешно сохранен');
             
             // Формируем текст для Telegram
             var orderText = '📋 **Заказ на услугу:** ' + currentOrderService.emoji + ' ' + currentOrderService.name + '\n\n';
@@ -2353,6 +2370,7 @@ function submitOrderWithOptions() {
             alert('✅ Заявка отправлена! Я свяжусь с вами для уточнения деталей.');
         })
         .catch(function(err) {
+            console.error('Ошибка:', err);
             alert('❌ Ошибка: ' + err.message);
         });
 }
