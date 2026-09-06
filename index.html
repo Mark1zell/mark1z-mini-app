@@ -325,7 +325,7 @@ input, textarea, select {
         <div class="footer">
             <div>© Mark1z Design · Дмитрий Маркизов</div>
             <a href="#" onclick="openPrivacyPolicy()">Политика конфиденциальности</a>
-            <span class="version">V.2.1.5</span>
+            <span class="version">V.2.1.6</span>
         </div>
     </div>
     <div class="modal-overlay" id="modalOverlay">
@@ -2270,33 +2270,67 @@ function updateQuantityDisplay(optId) {
             });
         }
 
-        function submitOrderWithOptions() {
-            var selectedOptions = [];
-            currentOrderOptions.forEach(function(opt) {
-                var qty = currentOrderQuantities[opt.id] || 0;
-                if (qty > 0) {
-                    var price = opt.price;
-                    if (opt.discount_min_quantity && qty >= opt.discount_min_quantity && opt.discount_price) {
-                        price = opt.discount_price;
-                    }
-                    selectedOptions.push({
-                        name: opt.name,
-                        price: price,
-                        quantity: qty,
-                        total: price * qty,
-                        option_type: opt.option_type || 'checkbox'
-                    });
-                }
+function submitOrderWithOptions() {
+    var selectedOptions = [];
+    currentOrderOptions.forEach(function(opt) {
+        var qty = currentOrderQuantities[opt.id] || 0;
+        if (qty > 0) {
+            var price = opt.price;
+            if (opt.discount_min_quantity && qty >= opt.discount_min_quantity && opt.discount_price) {
+                price = opt.discount_price;
+            }
+            selectedOptions.push({
+                name: opt.name,
+                price: price,
+                quantity: qty,
+                total: price * qty,
+                option_type: opt.option_type || 'checkbox'
             });
+        }
+    });
 
-            if (selectedOptions.length === 0) {
-                alert('Выберите хотя бы одну опцию');
+    if (selectedOptions.length === 0) {
+        alert('Выберите хотя бы одну опцию');
+        return;
+    }
+
+    var description = document.getElementById('orderDescription').value.trim();
+    var total = selectedOptions.reduce(function(sum, opt) { return sum + opt.total; }, 0);
+
+    var user = window.currentUser;
+    var userName = user?.first_name || user?.username || 'Пользователь';
+    var userUsername = user?.username || null;
+
+    // Сначала загружаем референсы
+    var uploadPromises = currentOrderFiles.map(function(file) {
+        return uploadFileToSupabase(file, 'references/' + (user?.id || 'anonymous'));
+    });
+    
+    Promise.all(uploadPromises)
+        .then(function(referenceUrls) {
+            // Создаем заказ с URL референсов
+            var order = {
+                service: currentOrderService.name,
+                user_name: userName,
+                user_username: userUsername,
+                time: new Date().toLocaleString(),
+                timestamp: new Date().toISOString(),
+                options: JSON.stringify(selectedOptions),
+                total: total,
+                description: description,
+                reference_urls: referenceUrls,
+                status: 'pending'
+            };
+            
+            return supabase.from('orders').insert([order]);
+        })
+        .then(function(res) {
+            if (res.error) {
+                alert('❌ Ошибка при сохранении заказа: ' + res.error.message);
                 return;
             }
-
-            var description = document.getElementById('orderDescription').value.trim();
-            var total = selectedOptions.reduce(function(sum, opt) { return sum + opt.total; }, 0);
-
+            
+            // Формируем текст для Telegram
             var orderText = '📋 **Заказ на услугу:** ' + currentOrderService.emoji + ' ' + currentOrderService.name + '\n\n';
             orderText += '**Выбранные опции:**\n';
             selectedOptions.forEach(function(opt) {
@@ -2307,44 +2341,21 @@ function updateQuantityDisplay(optId) {
                 orderText += '**ТЗ:**\n' + description + '\n\n';
             }
             orderText += 'Жду счёт для оплаты.';
-
-            var user = window.currentUser;
-            var userName = user?.first_name || user?.username || 'Пользователь';
-            var userUsername = user?.username || null;
-
-            var order = {
-                service: currentOrderService.name,
-                user_name: userName,
-                user_username: userUsername,
-                time: new Date().toLocaleString(),
-                timestamp: new Date().toISOString(),
-                options: JSON.stringify(selectedOptions),
-                total: total,
-                description: description,
-                status: 'pending'
-            };
-
-            supabase.from('orders').insert([order])
-                .then(function() {
-                    var uploadPromises = currentOrderFiles.map(function(file) {
-                        return uploadFileToSupabase(file, 'references/' + (user?.id || 'anonymous'));
-                    });
-                    return Promise.all(uploadPromises);
-                })
-                .then(function(urls) {
-                    var chatText = encodeURIComponent(orderText + (urls.length > 0 ? '\n\n📎 Референсы загружены.' : ''));
-                    if (window.telegramAvailable && window.tg) {
-                        window.tg.openTelegramLink('https://t.me/Mark1zDesign_bot?text=' + chatText);
-                    } else {
-                        window.open('https://t.me/Mark1zDesign_bot?text=' + chatText, '_blank');
-                    }
-                    closeModal();
-                    alert('✅ Заявка отправлена! Я свяжусь с вами для уточнения деталей.');
-                })
-                .catch(function(err) {
-                    alert('❌ Ошибка: ' + err.message);
-                });
-        }
+            
+            var chatText = encodeURIComponent(orderText);
+            if (window.telegramAvailable && window.tg) {
+                window.tg.openTelegramLink('https://t.me/Mark1zDesign_bot?text=' + chatText);
+            } else {
+                window.open('https://t.me/Mark1zDesign_bot?text=' + chatText, '_blank');
+            }
+            
+            closeModal();
+            alert('✅ Заявка отправлена! Я свяжусь с вами для уточнения деталей.');
+        })
+        .catch(function(err) {
+            alert('❌ Ошибка: ' + err.message);
+        });
+}
 
         // ================================================================
         // РАЗДЕЛ ЗАКАЗЫ
@@ -2449,34 +2460,83 @@ function updateQuantityDisplay(optId) {
             renderOrdersSection();
         }
 
-        function renderOrdersList(orders) {
-            var container = document.getElementById('adminOrdersList');
-            if (!container) return;
-            var html = '';
-            if (!orders || orders.length === 0) {
-                html = '<p style="color:var(--text-muted)">Нет заказов</p>';
-            } else {
-                orders.forEach(function(order) {
-                    var userName = order.user_name || 'Пользователь';
-                    var userUsername = order.user_username || null;
-                    var options = order.options ? JSON.parse(order.options) : [];
-                    var optionsText = options.map(function(o) { return o.name + ' ×' + o.quantity; }).join(', ');
-                    html += `
-                        <div class="order-item">
-                            <div class="order-info">
-                                <h4>${order.service}</h4>
-                                <p>От: ${userName} ${userUsername ? '(<a href="https://t.me/' + userUsername + '" target="_blank">@' + userUsername + '</a>)' : ''}</p>
-                                <p style="font-size:12px;">${optionsText || 'Без опций'}</p>
-                                <p style="font-weight:600; color:var(--accent);">${order.total || 0} ₽</p>
-                                <p style="font-size:11px; color:var(--text-muted);">${order.time || ''}</p>
-                            </div>
-                            <button class="btn btn-sm" onclick="deleteOrder(${order.id})">🗑️</button>
-                        </div>
-                    `;
-                });
+function renderOrdersList(orders) {
+    var container = document.getElementById('adminOrdersList');
+    if (!container) return;
+    
+    var html = '';
+    if (!orders || orders.length === 0) {
+        html = `
+            <div style="text-align:center;padding:30px;background:rgba(255,255,255,0.03);border-radius:12px;">
+                <p style="font-size:48px;margin-bottom:10px;">📭</p>
+                <p style="color:var(--text-muted);">Нет заказов</p>
+            </div>
+        `;
+    } else {
+        html = '<div style="display:flex;flex-direction:column;gap:12px;">';
+        orders.forEach(function(order) {
+            var userName = order.user_name || 'Пользователь';
+            var userUsername = order.user_username || null;
+            var options = [];
+            try {
+                options = order.options ? JSON.parse(order.options) : [];
+            } catch(e) {
+                options = [];
             }
-            container.innerHTML = html;
-        }
+            
+            var optionsSummary = options.map(function(o) { 
+                return o.name + ' ×' + o.quantity; 
+            }).join(', ');
+            
+            html += `
+                <div class="order-card" onclick="viewOrderDetails(${order.id})" style="
+                    background:rgba(15,7,25,0.8);
+                    border:1px solid var(--card-border);
+                    border-radius:16px;
+                    padding:16px;
+                    cursor:pointer;
+                    transition:border-color 0.2s;
+                    margin-bottom:10px;
+                " onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--card-border)'">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                        <div style="flex:1;">
+                            <h4 style="font-size:16px;font-weight:600;margin-bottom:8px;">${order.service}</h4>
+                            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
+                                ${options.map(function(o) {
+                                    return `<span style="
+                                        background:rgba(124,58,237,0.2);
+                                        border:1px solid rgba(124,58,237,0.3);
+                                        padding:4px 10px;
+                                        border-radius:12px;
+                                        font-size:12px;
+                                        color:#ddd6fe;
+                                    ">${o.name} ×${o.quantity}</span>`;
+                                }).join('')}
+                            </div>
+                            <p style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">
+                                От: ${userName}
+                                ${userUsername ? '<a href="https://t.me/' + userUsername + '" target="_blank" onclick="event.stopPropagation();" style="color:var(--accent);text-decoration:none;">@' + userUsername + '</a>' : ''}
+                            </p>
+                            <p style="font-size:11px;color:var(--text-muted);">${order.time || ''}</p>
+                        </div>
+                        <div style="text-align:right;flex-shrink:0;margin-left:10px;">
+                            <div style="font-weight:700;color:#c084fc;font-size:18px;margin-bottom:8px;">${order.total || 0} ₽</div>
+                            <span style="
+                                background:rgba(255,193,7,0.2);
+                                color:#ffc107;
+                                padding:4px 8px;
+                                border-radius:8px;
+                                font-size:11px;
+                            ">В ожидании</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+    }
+    container.innerHTML = html;
+}
 
         // ================================================================
         // УПРАВЛЕНИЕ УСЛУГАМИ
@@ -2952,17 +3012,116 @@ function updateQuantityDisplay(optId) {
             supabase.from('portfolio_categories').insert([{ name: name, icon: icon, items: [], order: nextOrder }]);
         }
 
-        function deleteOrder(id) {
-            if (confirm('Удалить заказ?')) {
-                supabase.from('orders').delete().eq('id', id);
+function deleteOrder(id) {
+    if (!confirm('Удалить заказ?')) return;
+    
+    // Получаем информацию о заказе перед удалением
+    supabase.from('orders').select('*').eq('id', id).single()
+        .then(function(res) {
+            if (res.error || !res.data) {
+                alert('Заказ не найден');
+                return;
             }
-        }
+            
+            var order = res.data;
+            
+            // Удаляем референсы из хранилища
+            var deletePromises = [];
+            if (order.reference_urls && order.reference_urls.length > 0) {
+                order.reference_urls.forEach(function(url) {
+                    var path = url.split('/public/')[1];
+                    if (path) {
+                        deletePromises.push(
+                            supabase.storage.from('public').remove([path])
+                        );
+                    }
+                });
+            }
+            
+            return Promise.all(deletePromises)
+                .catch(function(err) {
+                    console.error('Ошибка при удалении файлов:', err);
+                })
+                .then(function() {
+                    return supabase.from('orders').delete().eq('id', id);
+                });
+        })
+        .then(function() {
+            alert('✅ Заказ удален!');
+            
+            // Обновляем список
+            if (adminOrdersMode === 'orders') {
+                supabase.from('orders').select('*').order('timestamp', { ascending: false })
+                    .then(function(res) {
+                        if (!res.error && res.data) {
+                            renderOrdersList(res.data);
+                        }
+                    });
+            }
+        })
+        .catch(function(err) {
+            alert('Ошибка: ' + err.message);
+            console.error('Ошибка при удалении заказа:', err);
+        });
+}
 
-        function clearOrders() {
-            if (confirm('Очистить все заказы?')) {
-                supabase.from('orders').delete().neq('id', 0);
+function clearOrders() {
+    if (!confirm('Очистить все заказы? Все референсы будут удалены!')) return;
+    
+    // Получаем все заказы
+    supabase.from('orders').select('*')
+        .then(function(res) {
+            if (res.error) {
+                alert('Ошибка: ' + res.error.message);
+                return;
             }
-        }
+            
+            var orders = res.data || [];
+            
+            // Собираем все URL референсов
+            var allUrls = [];
+            orders.forEach(function(order) {
+                if (order.reference_urls && order.reference_urls.length > 0) {
+                    allUrls = allUrls.concat(order.reference_urls);
+                }
+            });
+            
+            // Удаляем все файлы из хранилища
+            var deletePromises = [];
+            allUrls.forEach(function(url) {
+                var path = url.split('/public/')[1];
+                if (path) {
+                    deletePromises.push(
+                        supabase.storage.from('public').remove([path])
+                    );
+                }
+            });
+            
+            return Promise.all(deletePromises)
+                .catch(function(err) {
+                    console.error('Ошибка при удалении файлов:', err);
+                })
+                .then(function() {
+                    return supabase.from('orders').delete().neq('id', 0);
+                });
+        })
+        .then(function() {
+            alert('✅ Все заказы удалены!');
+            
+            if (adminOrdersMode === 'orders') {
+                supabase.from('orders').select('*').order('timestamp', { ascending: false })
+                    .then(function(res) {
+                        if (!res.error && res.data) {
+                            renderOrdersList(res.data);
+                        }
+                    });
+            }
+        })
+        .catch(function(err) {
+            alert('Ошибка: ' + err.message);
+            console.error('Ошибка при очистке заказов:', err);
+        });
+}
 
         function closeModal() {
             document.getElementById('modalOverlay').style.display = 'none';
@@ -3250,6 +3409,206 @@ function preventModalCloseOnInput() {
             e.stopPropagation();
         }
     }, true);
+}
+
+        function viewOrderDetails(orderId) {
+    supabase.from('orders').select('*').eq('id', orderId).single()
+        .then(function(res) {
+            if (res.error || !res.data) {
+                alert('Заказ не найден');
+                return;
+            }
+            
+            var order = res.data;
+            var modal = document.getElementById('modalOverlay');
+            var content = document.getElementById('modalContent');
+            
+            var userName = order.user_name || 'Пользователь';
+            var userUsername = order.user_username || null;
+            var options = [];
+            try {
+                options = order.options ? JSON.parse(order.options) : [];
+            } catch(e) {
+                options = [];
+            }
+            
+            var optionsHtml = options.map(function(o) {
+                return `
+                    <div style="
+                        display:flex;
+                        justify-content:space-between;
+                        align-items:center;
+                        padding:12px;
+                        background:rgba(255,255,255,0.05);
+                        border-radius:12px;
+                        margin-bottom:8px;
+                    ">
+                        <div>
+                            <div style="font-weight:600;">${o.name}</div>
+                            <div style="font-size:12px;color:var(--text-muted);">
+                                ${o.quantity} шт. × ${o.price} ₽
+                            </div>
+                        </div>
+                        <div style="font-weight:700;color:#c084fc;">${o.total} ₽</div>
+                    </div>
+                `;
+            }).join('');
+            
+            content.innerHTML = `
+                <div style="max-height:80vh;overflow-y:auto;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                        <h3>📋 Заказ #${order.id}</h3>
+                        <button class="btn" onclick="closeModal()" style="margin:0;">×</button>
+                    </div>
+                    
+                    <!-- Информация о клиенте -->
+                    <div style="
+                        background:rgba(124,58,237,0.1);
+                        border:1px solid var(--card-border);
+                        border-radius:12px;
+                        padding:16px;
+                        margin-bottom:20px;
+                    ">
+                        <div style="font-size:14px;color:var(--text-muted);margin-bottom:8px;">👤 Клиент:</div>
+                        <div style="font-size:18px;font-weight:600;margin-bottom:4px;">${userName}</div>
+                        ${userUsername ? `
+                            <a href="https://t.me/${userUsername}" target="_blank" style="
+                                color:var(--accent);
+                                text-decoration:none;
+                                font-size:14px;
+                                display:inline-block;
+                                margin-bottom:8px;
+                            ">@${userUsername} →</a>
+                        ` : ''}
+                        <div style="font-size:12px;color:var(--text-muted);">${order.time || ''}</div>
+                    </div>
+                    
+                    <!-- Услуга и опции -->
+                    <div style="margin-bottom:20px;">
+                        <div style="font-size:14px;color:var(--text-muted);margin-bottom:8px;">🛠️ Услуга:</div>
+                        <div style="font-size:16px;font-weight:600;margin-bottom:16px;">${order.service}</div>
+                        
+                        <div style="font-size:14px;color:var(--text-muted);margin-bottom:8px;">📦 Выбранные опции:</div>
+                        ${optionsHtml}
+                        
+                        <div style="
+                            display:flex;
+                            justify-content:space-between;
+                            align-items:center;
+                            padding:16px;
+                            background:rgba(124,58,237,0.15);
+                            border:1px solid var(--card-border);
+                            border-radius:12px;
+                            margin-top:16px;
+                        ">
+                            <span style="font-weight:600;">Итого:</span>
+                            <span style="font-size:24px;font-weight:700;color:#c084fc;">${order.total || 0} ₽</span>
+                        </div>
+                    </div>
+                    
+                    <!-- ТЗ -->
+                    ${order.description ? `
+                        <div style="margin-bottom:20px;">
+                            <div style="font-size:14px;color:var(--text-muted);margin-bottom:8px;">📝 Техническое задание:</div>
+                            <div style="
+                                background:rgba(255,255,255,0.05);
+                                border:1px solid var(--card-border);
+                                border-radius:12px;
+                                padding:16px;
+                                line-height:1.6;
+                                white-space:pre-wrap;
+                            ">${order.description}</div>
+                        </div>
+                    ` : ''}
+                    
+                    <!-- Референсы -->
+                    ${order.reference_urls && order.reference_urls.length > 0 ? `
+                        <div style="margin-bottom:20px;">
+                            <div style="font-size:14px;color:var(--text-muted);margin-bottom:8px;">📎 Референсы:</div>
+                            <div style="display:flex;flex-wrap:wrap;gap:10px;">
+                                ${order.reference_urls.map(function(url) {
+                                    return `
+                                        <img src="${url}" 
+                                             alt="референс" 
+                                             style="width:80px;height:80px;object-fit:cover;border-radius:8px;cursor:pointer;border:1px solid var(--card-border);"
+                                             onclick="viewImage('${url}', 'Референс', false)">
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    <!-- Кнопки действий -->
+                    <div style="display:flex;gap:10px;margin-top:20px;">
+                        <button class="btn" onclick="completeOrder(${order.id})" style="flex:1;background:linear-gradient(135deg, #10b981, #059669);">
+                            ✅ Я выполнил заказ
+                        </button>
+                        <button class="btn" onclick="deleteOrder(${order.id})" style="background:rgba(255,0,0,0.5);">
+                            🗑️
+                        </button>
+                    </div>
+                </div>
+            `;
+            modal.style.display = 'flex';
+        });
+}
+
+        function completeOrder(orderId) {
+    if (!confirm('Отметить заказ как выполненный? Заказ будет удален из списка.')) return;
+    
+    // Получаем информацию о заказе перед удалением
+    supabase.from('orders').select('*').eq('id', orderId).single()
+        .then(function(res) {
+            if (res.error || !res.data) {
+                alert('Заказ не найден');
+                return;
+            }
+            
+            var order = res.data;
+            
+            // Удаляем референсы из хранилища
+            var deletePromises = [];
+            if (order.reference_urls && order.reference_urls.length > 0) {
+                order.reference_urls.forEach(function(url) {
+                    // Извлекаем путь из URL
+                    var path = url.split('/public/')[1];
+                    if (path) {
+                        deletePromises.push(
+                            supabase.storage.from('public').remove([path])
+                        );
+                    }
+                });
+            }
+            
+            // Ждем удаления файлов
+            return Promise.all(deletePromises)
+                .catch(function(err) {
+                    console.error('Ошибка при удалении файлов:', err);
+                    // Продолжаем даже если файлы не удалились
+                })
+                .then(function() {
+                    // Удаляем заказ из базы
+                    return supabase.from('orders').delete().eq('id', orderId);
+                });
+        })
+        .then(function() {
+            closeModal();
+            alert('✅ Заказ выполнен и удален из списка!');
+            
+            // Обновляем список заказов
+            if (adminOrdersMode === 'orders') {
+                supabase.from('orders').select('*').order('timestamp', { ascending: false })
+                    .then(function(res) {
+                        if (!res.error && res.data) {
+                            renderOrdersList(res.data);
+                        }
+                    });
+            }
+        })
+        .catch(function(err) {
+            alert('Ошибка: ' + err.message);
+            console.error('Ошибка при выполнении заказа:', err);
+        });
 }
 
         // ================================================================
