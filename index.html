@@ -8,16 +8,11 @@
     <!-- Telegram WebApp JS -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
-    <!-- Supabase JS (проверенный CDN) -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-    <!-- Запасной вариант через unpkg, если первый не загрузится -->
-    <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js" async></script>
-
     <!-- SortableJS -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
     <style>
-        /* ========== ВЕСЬ ВАШ СТИЛЬ (БЕЗ ИЗМЕНЕНИЙ) ========== */
+        /* ========== ВСЕ ВАШИ СТИЛИ ========== */
         :root {
             --bg-start: #0a050d;
             --bg-mid: #100820;
@@ -293,16 +288,47 @@
     </div>
 
     <script>
+        // ================== ДИНАМИЧЕСКАЯ ЗАГРУЗКА SUPABASE ==================
+        function loadSupabase() {
+            return new Promise((resolve, reject) => {
+                if (typeof window.supabase !== 'undefined') {
+                    resolve(window.supabase);
+                    return;
+                }
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
+                script.async = true;
+                script.onload = () => {
+                    if (typeof window.supabase !== 'undefined') {
+                        resolve(window.supabase);
+                    } else {
+                        reject(new Error('window.supabase not set after load'));
+                    }
+                };
+                script.onerror = () => {
+                    // Попробуем резервный источник
+                    const script2 = document.createElement('script');
+                    script2.src = 'https://unpkg.com/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js';
+                    script2.async = true;
+                    script2.onload = () => {
+                        if (typeof window.supabase !== 'undefined') {
+                            resolve(window.supabase);
+                        } else {
+                            reject(new Error('window.supabase not set after fallback load'));
+                        }
+                    };
+                    script2.onerror = () => reject(new Error('Failed to load Supabase JS from both CDN sources'));
+                    document.head.appendChild(script2);
+                };
+                document.head.appendChild(script);
+            });
+        }
+
         // ================== SUPABASE CONFIG ==================
         const SUPABASE_URL = 'https://lcgbpwowppwwpjjlphod.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZ2Jwd293cHB3d3BqamxwaG9kIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODY0MDA1MywiZXhwIjoyMTA0MjE2MDUzfQ.RBoeuqHBzrpnCr9ev__fPYR-EF3okB4G6kcAH9Ww-FM';
 
-        // Создаём клиент только если библиотека загружена
-        if (typeof window.supabase !== 'undefined' && typeof supabase === 'undefined') {
-            var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        } else if (typeof window.supabase === 'undefined') {
-            console.warn('Supabase library not loaded yet. Will retry in init.');
-        }
+        let supabaseClient = null;
 
         // ================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==================
         window.tg = null;
@@ -402,17 +428,18 @@
         }
 
         async function uploadFileToSupabase(file, folder) {
+            if (!supabaseClient) throw new Error('Supabase client not initialized');
             const timestamp = Date.now();
             const fileName = `${timestamp}_${file.name}`;
             const path = `${folder}/${fileName}`;
-            const { data, error } = await supabase.storage
+            const { data, error } = await supabaseClient.storage
                 .from('public')
                 .upload(path, file, {
                     cacheControl: '3600',
                     upsert: false
                 });
             if (error) throw error;
-            const { data: urlData } = supabase.storage
+            const { data: urlData } = supabaseClient.storage
                 .from('public')
                 .getPublicUrl(path);
             return urlData.publicUrl;
@@ -649,8 +676,12 @@
 
         // ================== ПРОМОКОДЫ ==================
         async function applyPromo(code) {
+            if (!supabaseClient) {
+                alert('База данных ещё не загружена, попробуйте позже');
+                return;
+            }
             try {
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('promocodes')
                     .select('*')
                     .eq('code', code)
@@ -675,7 +706,7 @@
                         applyDiscount(100);
                         alert('Промокод даёт бесплатную услугу!');
                     }
-                    await supabase
+                    await supabaseClient
                         .from('promocodes')
                         .update({ used: true })
                         .eq('code', code);
@@ -708,10 +739,14 @@
         }
 
         async function createPromo(type) {
+            if (!supabaseClient) {
+                alert('База данных не загружена');
+                return;
+            }
             const code = prompt('Введите промокод:');
             if (!code) return;
             if (type === 'wheel') {
-                const { error } = await supabase
+                const { error } = await supabaseClient
                     .from('promocodes')
                     .insert([{ code, type: 'wheel', used: false }]);
                 if (error) {
@@ -728,7 +763,7 @@
                 } else {
                     data.discount_percent = parseInt(discount);
                 }
-                const { error } = await supabase
+                const { error } = await supabaseClient
                     .from('promocodes')
                     .insert([data]);
                 if (error) {
@@ -755,9 +790,10 @@
         }
 
         async function loadPostsList() {
+            if (!supabaseClient) return;
             const container = document.getElementById('postsList');
             container.innerHTML = '';
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from('posts')
                 .select('*')
                 .eq('active', true);
@@ -812,6 +848,10 @@
         }
 
         async function savePost() {
+            if (!supabaseClient) {
+                alert('База данных не загружена');
+                return;
+            }
             const title = document.getElementById('postTitle').value.trim();
             const content = document.getElementById('postContent').value.trim();
             const conditions = document.getElementById('postConditions').value.trim();
@@ -847,7 +887,7 @@
                 }
                 tempPostFile = null;
             }
-            const { error } = await supabase
+            const { error } = await supabaseClient
                 .from('posts')
                 .insert([postData]);
             if (error) {
@@ -859,8 +899,9 @@
         }
 
         async function deletePost(id) {
+            if (!supabaseClient) return;
             if (confirm('Удалить этот пост для всех?')) {
-                const { error } = await supabase
+                const { error } = await supabaseClient
                     .from('posts')
                     .update({ active: false })
                     .eq('id', id);
@@ -874,8 +915,9 @@
 
         // ================== ПОКАЗ ПОСТОВ ПРИ ЗАГРУЗКЕ ==================
         async function loadActivePosts() {
+            if (!supabaseClient) return;
             try {
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('posts')
                     .select('*')
                     .eq('active', true);
@@ -883,7 +925,7 @@
                 activePosts = [];
                 data.forEach(post => {
                     if (post.active_until && new Date(post.active_until) < new Date()) {
-                        supabase.from('posts').update({ active: false }).eq('id', post.id);
+                        supabaseClient.from('posts').update({ active: false }).eq('id', post.id);
                         return;
                     }
                     activePosts.push(post);
@@ -948,7 +990,8 @@
 
         // ================== ИНИЦИАЛИЗАЦИЯ ДАННЫХ ==================
         async function initDefaultServices() {
-            const { data, error } = await supabase
+            if (!supabaseClient) return;
+            const { data, error } = await supabaseClient
                 .from('services')
                 .select('*');
             if (error) {
@@ -972,17 +1015,18 @@
                     { emoji: '📄', name: 'Документы Word', description: 'Оформление, структурирование, шаблоны', price: 500, price_to: 1500 }
                 ];
                 for (const s of defaultServices) {
-                    await supabase.from('services').insert([s]);
+                    await supabaseClient.from('services').insert([s]);
                 }
             }
         }
 
         function setupRealTimeListeners() {
+            if (!supabaseClient) return;
             // Загружаем about
-            supabase.from('about').select('*').eq('id', 'main').single()
+            supabaseClient.from('about').select('*').eq('id', 'main').single()
                 .then(({ data, error }) => {
                     if (error) {
-                        supabase.from('about').insert([{
+                        supabaseClient.from('about').insert([{
                             id: 'main',
                             highlight: '«Создаю дизайн, который выделяет вас среди конкурентов»',
                             text1: 'Специализируюсь на графическом, веб- и игровом дизайне. Оформляю сообщества, создаю карточки для маркетплейсов, разрабатываю интерфейсы приложений и сайтов, а также Telegram Mini Apps.',
@@ -1000,7 +1044,7 @@
                 });
 
             // Категории портфолио
-            supabase.from('portfolio_categories').select('*').order('order', { ascending: true })
+            supabaseClient.from('portfolio_categories').select('*').order('order', { ascending: true })
                 .then(({ data, error }) => {
                     if (!error && data) {
                         portfolioCategoriesData = data;
@@ -1009,7 +1053,7 @@
                 });
 
             // Услуги
-            supabase.from('services').select('*').order('order', { ascending: true })
+            supabaseClient.from('services').select('*').order('order', { ascending: true })
                 .then(({ data, error }) => {
                     if (!error && data) {
                         servicesData = data;
@@ -1018,7 +1062,7 @@
                 });
 
             // Отзывы
-            supabase.from('reviews').select('*').order('timestamp', { ascending: false })
+            supabaseClient.from('reviews').select('*').order('timestamp', { ascending: false })
                 .then(({ data, error }) => {
                     if (!error && data) {
                         renderReviews(data);
@@ -1026,7 +1070,7 @@
                 });
 
             // Логотип
-            supabase.from('settings').select('*').eq('key', 'logo').single()
+            supabaseClient.from('settings').select('*').eq('key', 'logo').single()
                 .then(({ data, error }) => {
                     if (!error && data && data.value) {
                         document.getElementById('logoImage').src = data.value;
@@ -1113,9 +1157,10 @@
         }
 
         async function updateOrder(tableName, items) {
+            if (!supabaseClient) return;
             for (let i = 0; i < items.length; i++) {
                 const id = items[i].dataset.id;
-                await supabase
+                await supabaseClient
                     .from(tableName)
                     .update({ order: i })
                     .eq('id', id);
@@ -1123,7 +1168,8 @@
         }
 
         async function updateWorksOrder(fromIndex, toIndex) {
-            const { data: cat, error } = await supabase
+            if (!supabaseClient) return;
+            const { data: cat, error } = await supabaseClient
                 .from('portfolio_categories')
                 .select('items')
                 .eq('id', currentCategoryId)
@@ -1132,7 +1178,7 @@
             const items = cat.items || [];
             const [moved] = items.splice(fromIndex, 1);
             items.splice(toIndex, 0, moved);
-            await supabase
+            await supabaseClient
                 .from('portfolio_categories')
                 .update({ items })
                 .eq('id', currentCategoryId);
@@ -1171,7 +1217,7 @@
             const file = new File([blob], window.tempCoverFile.name, { type: 'image/jpeg' });
             try {
                 const url = await uploadFileToSupabase(file, 'covers');
-                await supabase
+                await supabaseClient
                     .from('portfolio_categories')
                     .update({ cover_image: url })
                     .eq('id', categoryId);
@@ -1183,8 +1229,9 @@
         }
 
         async function deleteCategory(categoryId) {
+            if (!supabaseClient) return;
             if (confirm('Удалить папку и все работы внутри?')) {
-                await supabase
+                await supabaseClient
                     .from('portfolio_categories')
                     .delete()
                     .eq('id', categoryId);
@@ -1192,8 +1239,9 @@
         }
 
         async function openCategory(categoryId) {
+            if (!supabaseClient) return;
             currentCategoryId = categoryId;
-            const { data: cat, error } = await supabase
+            const { data: cat, error } = await supabaseClient
                 .from('portfolio_categories')
                 .select('*')
                 .eq('id', categoryId)
@@ -1278,6 +1326,10 @@
         }
 
         async function saveWork() {
+            if (!supabaseClient) {
+                alert('База данных не загружена');
+                return;
+            }
             const title = document.getElementById('workTitleInput').value.trim();
             if (!title) { alert('Введите название'); return; }
             if (!tempWorkFile) { alert('Загрузите изображение'); return; }
@@ -1288,7 +1340,7 @@
                 const file = new File([blob], tempWorkFile.name, { type: 'image/jpeg' });
                 const url = await uploadFileToSupabase(file, `portfolio/${currentCategoryId}`);
 
-                const { data: cat, error } = await supabase
+                const { data: cat, error } = await supabaseClient
                     .from('portfolio_categories')
                     .select('items')
                     .eq('id', currentCategoryId)
@@ -1299,7 +1351,7 @@
                 }
                 const items = cat.items || [];
                 items.push({ title, image: url });
-                await supabase
+                await supabaseClient
                     .from('portfolio_categories')
                     .update({ items })
                     .eq('id', currentCategoryId);
@@ -1312,7 +1364,8 @@
         }
 
         async function deleteWork(index) {
-            const { data: cat, error } = await supabase
+            if (!supabaseClient) return;
+            const { data: cat, error } = await supabaseClient
                 .from('portfolio_categories')
                 .select('items')
                 .eq('id', currentCategoryId)
@@ -1320,7 +1373,7 @@
             if (error || !cat) return;
             const items = cat.items || [];
             items.splice(index, 1);
-            await supabase
+            await supabaseClient
                 .from('portfolio_categories')
                 .update({ items })
                 .eq('id', currentCategoryId);
@@ -1345,8 +1398,8 @@
                     html += '<div id="adminOrdersList"></div>';
                 }
                 container.innerHTML = html;
-                if (adminOrdersMode === 'orders') {
-                    supabase.from('orders').select('*').order('timestamp', { ascending: false })
+                if (adminOrdersMode === 'orders' && supabaseClient) {
+                    supabaseClient.from('orders').select('*').order('timestamp', { ascending: false })
                         .then(({ data, error }) => {
                             if (!error && data) renderOrdersList(data);
                         });
@@ -1469,6 +1522,10 @@
         }
 
         async function saveNewService() {
+            if (!supabaseClient) {
+                alert('База данных не загружена');
+                return;
+            }
             const emoji = document.getElementById('serviceEmoji').value.trim() || '✨';
             const name = document.getElementById('serviceName').value.trim();
             const description = document.getElementById('serviceDescription').value.trim();
@@ -1485,7 +1542,7 @@
             const price = priceFrom ? parseFloat(priceFrom) : null;
             const priceToVal = priceTo ? parseFloat(priceTo) : null;
             const nextOrder = servicesData.length > 0 ? Math.max(...servicesData.map(s => s.order ?? 0)) + 1 : 0;
-            await supabase
+            await supabaseClient
                 .from('services')
                 .insert([{
                     emoji, name, description,
@@ -1497,7 +1554,8 @@
         }
 
         async function editService(id) {
-            const { data: s, error } = await supabase
+            if (!supabaseClient) return;
+            const { data: s, error } = await supabaseClient
                 .from('services')
                 .select('*')
                 .eq('id', id)
@@ -1519,6 +1577,7 @@
         }
 
         async function saveServiceChanges(id) {
+            if (!supabaseClient) return;
             const emoji = document.getElementById('serviceEmoji').value.trim() || '✨';
             const name = document.getElementById('serviceName').value.trim();
             const description = document.getElementById('serviceDescription').value.trim();
@@ -1527,7 +1586,7 @@
             if (!name) { alert('Введите название услуги'); return; }
             const price = priceFrom ? parseFloat(priceFrom) : null;
             const priceToVal = priceTo ? parseFloat(priceTo) : null;
-            await supabase
+            await supabaseClient
                 .from('services')
                 .update({
                     emoji, name, description,
@@ -1539,8 +1598,9 @@
         }
 
         async function deleteService(id) {
+            if (!supabaseClient) return;
             if (confirm('Удалить услугу?')) {
-                await supabase
+                await supabaseClient
                     .from('services')
                     .delete()
                     .eq('id', id);
@@ -1682,7 +1742,9 @@
                 discount_applied: discountApplied || false,
                 discount_percent: discountApplied ? currentDiscount : 0
             };
-            supabase.from('orders').insert([order]);
+            if (supabaseClient) {
+                supabaseClient.from('orders').insert([order]);
+            }
             
             if (discountApplied) {
                 currentDiscount = 0;
@@ -1798,6 +1860,10 @@
         }
 
         async function submitReview() {
+            if (!supabaseClient) {
+                alert('База данных не загружена');
+                return;
+            }
             const text = document.getElementById('reviewText').value.trim();
             if (!text) { alert('Введите текст отзыва'); return; }
             if (!selectedRating) { alert('Поставьте оценку'); return; }
@@ -1809,7 +1875,7 @@
             }
 
             // Проверяем последний отзыв
-            const { data: lastReview, error } = await supabase
+            const { data: lastReview, error } = await supabaseClient
                 .from('user_last_review')
                 .select('timestamp')
                 .eq('user_id', user.id.toString())
@@ -1854,8 +1920,8 @@
                 timestamp: new Date().toISOString()
             };
 
-            await supabase.from('reviews').insert([reviewData]);
-            await supabase.from('user_last_review').upsert({
+            await supabaseClient.from('reviews').insert([reviewData]);
+            await supabaseClient.from('user_last_review').upsert({
                 user_id: authorId.toString(),
                 timestamp: new Date().toISOString()
             });
@@ -1909,59 +1975,68 @@
 
         // ================== АДМИН-ФУНКЦИИ ==================
         async function editAbout() {
-            const { data, error } = await supabase
+            if (!supabaseClient) return;
+            const { data, error } = await supabaseClient
                 .from('about')
                 .select('*')
                 .eq('id', 'main')
                 .single();
             if (error || !data) return;
             const newHighlight = prompt('Статус:', data.highlight);
-            if (newHighlight !== null) await supabase.from('about').update({ highlight: newHighlight }).eq('id', 'main');
+            if (newHighlight !== null) await supabaseClient.from('about').update({ highlight: newHighlight }).eq('id', 'main');
             const newText1 = prompt('Текст 1:', data.text1);
-            if (newText1 !== null) await supabase.from('about').update({ text1: newText1 }).eq('id', 'main');
+            if (newText1 !== null) await supabaseClient.from('about').update({ text1: newText1 }).eq('id', 'main');
             const newText2 = prompt('Текст 2:', data.text2);
-            if (newText2 !== null) await supabase.from('about').update({ text2: newText2 }).eq('id', 'main');
+            if (newText2 !== null) await supabaseClient.from('about').update({ text2: newText2 }).eq('id', 'main');
         }
 
         function addCategory() {
+            if (!supabaseClient) {
+                alert('База данных не загружена');
+                return;
+            }
             const name = prompt('Название категории:');
             if (!name) return;
             const icon = prompt('Эмодзи-иконка:');
             if (!icon) return;
             const nextOrder = portfolioCategoriesData.length > 0 ? Math.max(...portfolioCategoriesData.map(c => c.order ?? 0)) + 1 : 0;
-            supabase.from('portfolio_categories').insert([{ name, icon, items: [], order: nextOrder }]);
+            supabaseClient.from('portfolio_categories').insert([{ name, icon, items: [], order: nextOrder }]);
         }
 
         async function editReview(id) {
+            if (!supabaseClient) return;
             const newText = prompt('Новый текст отзыва:');
             if (newText !== null) {
-                await supabase.from('reviews').update({ text: newText }).eq('id', id);
+                await supabaseClient.from('reviews').update({ text: newText }).eq('id', id);
             }
         }
 
         async function deleteReview(id) {
+            if (!supabaseClient) return;
             if (confirm('Удалить отзыв?')) {
-                const { data: review } = await supabase
+                const { data: review } = await supabaseClient
                     .from('reviews')
                     .select('author_id')
                     .eq('id', id)
                     .single();
                 if (review && window.currentUser && review.author_id === window.currentUser.id.toString()) {
-                    await supabase.from('user_last_review').delete().eq('user_id', review.author_id);
+                    await supabaseClient.from('user_last_review').delete().eq('user_id', review.author_id);
                 }
-                await supabase.from('reviews').delete().eq('id', id);
+                await supabaseClient.from('reviews').delete().eq('id', id);
             }
         }
 
         async function deleteOrder(id) {
+            if (!supabaseClient) return;
             if (confirm('Удалить заказ?')) {
-                await supabase.from('orders').delete().eq('id', id);
+                await supabaseClient.from('orders').delete().eq('id', id);
             }
         }
 
         function clearOrders() {
+            if (!supabaseClient) return;
             if (confirm('Очистить все заказы?')) {
-                supabase.from('orders').delete().neq('id', 0);
+                supabaseClient.from('orders').delete().neq('id', 0);
             }
         }
 
@@ -2003,7 +2078,7 @@
             const file = new File([blob], window.tempLogoFile.name, { type: 'image/jpeg' });
             try {
                 const url = await uploadFileToSupabase(file, 'logo');
-                await supabase.from('settings').upsert({ key: 'logo', value: url });
+                await supabaseClient.from('settings').upsert({ key: 'logo', value: url });
                 window.tempLogoFile = null;
                 closeModal();
                 document.getElementById('logoImage').src = url;
@@ -2106,24 +2181,7 @@
         }
 
         // ================== ЗАПУСК ==================
-        let retryCount = 0;
-        const maxRetries = 10;
-
-        function init() {
-            // Проверяем, что supabase загружен
-            if (typeof supabase === 'undefined' || !supabase.from) {
-                retryCount++;
-                if (retryCount <= maxRetries) {
-                    console.warn(`Supabase not ready, retry ${retryCount}/${maxRetries}...`);
-                    setTimeout(init, 1000);
-                } else {
-                    console.error('Supabase failed to load after multiple attempts. Please refresh.');
-                }
-                return;
-            }
-
-            console.log('Supabase loaded successfully!');
-
+        function initApp() {
             createStars();
             createAsteroids();
             createLoadingStars();
@@ -2142,7 +2200,26 @@
             }, 800);
         }
 
-        window.addEventListener('load', init);
+        // Динамически загружаем Supabase и запускаем приложение
+        loadSupabase()
+            .then(() => {
+                console.log('Supabase загружен!');
+                // Создаём клиент
+                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                // Запускаем приложение
+                initApp();
+            })
+            .catch(err => {
+                console.error('Ошибка загрузки Supabase:', err);
+                alert('Не удалось загрузить библиотеку Supabase. Проверьте интернет-соединение и перезагрузите страницу.');
+                document.getElementById('loadingScreen').innerHTML = `
+                    <div style="text-align: center; color: #f87171;">
+                        <h2>Ошибка загрузки</h2>
+                        <p>Не удалось подключиться к базе данных.</p>
+                        <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #7c3aed; color: white; border: none; border-radius: 10px; cursor: pointer;">Перезагрузить</button>
+                    </div>
+                `;
+            });
     </script>
 </body>
 </html>
