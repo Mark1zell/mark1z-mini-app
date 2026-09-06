@@ -8,11 +8,13 @@
     <!-- Telegram WebApp JS -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <!-- SortableJS -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
     <style>
-        /* ========== СТИЛИ (без изменений) ========== */
         :root {
             --bg-start: #0a050d;
             --bg-mid: #100820;
@@ -183,7 +185,6 @@
         .preview-thumb img { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid var(--card-border); }
         .preview-thumb .remove-btn { position: absolute; top: -8px; left: -8px; background: rgba(255, 0, 0, 0.8); color: white; border: none; width: 20px; height: 20px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; padding: 0; }
 
-        /* Кейс */
         .case-container { position: relative; width: 100%; max-width: 400px; margin: 20px auto; overflow: hidden; }
         .case-strip { display: flex; transition: transform 0.1s linear; }
         .case-item { min-width: 120px; height: 100px; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; color: #fff; background: linear-gradient(145deg, #2a1a3e, #1a0b2e); border: 2px solid var(--card-border); border-radius: 16px; margin: 0 5px; }
@@ -192,7 +193,6 @@
         .case-modal .close-btn { position: absolute; top: 10px; right: 10px; background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; }
         .case-timer { margin: 10px 0; font-size: 14px; color: #fbbf24; }
 
-        /* Посты */
         .post-modal { text-align: center; }
         .post-modal .close-btn { position: absolute; top: 10px; right: 10px; background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; }
         .post-content { margin: 15px 0; line-height: 1.5; }
@@ -205,7 +205,6 @@
     </style>
 </head>
 <body>
-    <!-- Загрузочный экран -->
     <div id="loadingScreen">
         <div class="loading-stars" id="loadingStars"></div>
         <div style="text-align: center; position: relative; z-index: 1;">
@@ -214,7 +213,6 @@
         </div>
     </div>
 
-    <!-- Звёзды и астероиды -->
     <div class="stars-container" id="starsContainer"></div>
     <div class="asteroid-container" id="asteroidContainer"></div>
 
@@ -288,46 +286,11 @@
     </div>
 
     <script>
-        // ================== ДИНАМИЧЕСКАЯ ЗАГРУЗКА SUPABASE ==================
-        function loadSupabase() {
-            return new Promise((resolve, reject) => {
-                if (typeof window.supabase !== 'undefined') {
-                    resolve(window.supabase);
-                    return;
-                }
-                const script = document.createElement('script');
-                script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
-                script.async = true;
-                script.onload = () => {
-                    if (typeof window.supabase !== 'undefined') {
-                        resolve(window.supabase);
-                    } else {
-                        reject(new Error('window.supabase not set after load'));
-                    }
-                };
-                script.onerror = () => {
-                    const script2 = document.createElement('script');
-                    script2.src = 'https://unpkg.com/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js';
-                    script2.async = true;
-                    script2.onload = () => {
-                        if (typeof window.supabase !== 'undefined') {
-                            resolve(window.supabase);
-                        } else {
-                            reject(new Error('window.supabase not set after fallback load'));
-                        }
-                    };
-                    script2.onerror = () => reject(new Error('Failed to load Supabase JS from both CDN sources'));
-                    document.head.appendChild(script2);
-                };
-                document.head.appendChild(script);
-            });
-        }
-
         // ================== SUPABASE CONFIG ==================
-        const SUPABASE_URL = 'https://lcgbpwowppwwpjjlphod.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZ2Jwd293cHB3d3BqamxwaG9kIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODY0MDA1MywiZXhwIjoyMTA0MjE2MDUzfQ.RBoeuqHBzrpnCr9ev__fPYR-EF3okB4G6kcAH9Ww-FM';
+        const SUPABASE_URL = 'https://axplgeclfbqvvfykndkx.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF4cGxnZWNsZmJxdnZmeWtuZGt4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMyNzg2NjAsImV4cCI6MjA1ODg1NDY2MH0.Hldi26Ik2CeQVITWAG9trA15DXjFm_N4r7YFdXRsFkA';
 
-        let supabaseClient = null;
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // ================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==================
         window.tg = null;
@@ -371,7 +334,6 @@
                 tg.MainButton.setParams({ text: 'НАПИСАТЬ ДИЗАЙНЕРУ', color: '#7c3aed', text_color: '#ffffff' });
                 const user = tg.initDataUnsafe?.user;
                 window.currentUser = user;
-                console.log('Telegram user:', user);
                 if (user?.username?.toLowerCase() === 'mark1zell') {
                     window.isAdmin = true;
                     document.body.classList.add('admin-mode');
@@ -428,21 +390,21 @@
         }
 
         async function uploadFileToSupabase(file, folder) {
-            if (!supabaseClient) throw new Error('Supabase client not initialized');
+            const cleanName = file.name.replace(/[^\w\d\-_.]/g, '_');
             const timestamp = Date.now();
-            const fileName = `${timestamp}_${file.name}`;
+            const fileName = `${timestamp}_${cleanName}`;
             const path = `${folder}/${fileName}`;
-            const { data, error } = await supabaseClient.storage
+            
+            const { data, error } = await supabase.storage
                 .from('public')
                 .upload(path, file, {
                     cacheControl: '3600',
                     upsert: false
                 });
-            if (error) {
-                console.error('Storage upload error:', error);
-                throw error;
-            }
-            const { data: urlData } = supabaseClient.storage
+            
+            if (error) throw error;
+            
+            const { data: urlData } = supabase.storage
                 .from('public')
                 .getPublicUrl(path);
             return urlData.publicUrl;
@@ -483,24 +445,18 @@
                 <div style="line-height: 1.6; max-height: 60vh; overflow-y: auto;">
                     <p><strong>Описание товаров и услуг</strong><br>
                     Графический дизайн: оформление соцсетей, логотипы, баннеры, карточки маркетплейсов, веб-дизайн, дизайн приложений, презентации и др. Все услуги выполняются индивидуально, с учётом требований заказчика. Характеристики: высокое качество, соответствие брендбуку, передача исходников.</p>
-
                     <p><strong>Цены</strong><br>
                     Стоимость зависит от сложности и объёма работ. Диапазоны цен указаны в разделе «Услуги». Точная стоимость согласовывается до начала работы.</p>
-
                     <p><strong>Контакты</strong><br>
                     Telegram: @Mark1zell (личные сообщения)<br>
                     Email: keklolorbidollol321@gmail.com<br>
                     Телефон: +7 902 (900) 87-41</p>
-
                     <p><strong>Заказ</strong><br>
                     Заказ оформляется путём выбора услуги в приложении, после чего заказчик переходит в чат с ботом для уточнения деталей. Сроки исполнения – от 1 до 7 рабочих дней, в зависимости от задачи. Точный срок оговаривается до начала работы.</p>
-
                     <p><strong>Оплата</strong><br>
                     Работаю по 100% предоплате. Способы оплаты: банковская карта, СБП, электронные кошельки (через платёжный сервис).</p>
-
                     <p><strong>Доставка / Оказание услуг</strong><br>
                     Услуги оказываются удалённо. Готовые материалы передаются в электронном виде (файлы, ссылки). Физическая доставка не предусмотрена.</p>
-
                     <p><strong>Возврат и отказ от покупки</strong><br>
                     Заказчик вправе отказаться от услуги до момента начала её выполнения (до отправки первого промежуточного результата). Для этого необходимо написать в Telegram @Mark1zell или на email keklolorbidollol321@gmail.com с указанием причины отказа.<br>
                     Алгоритм возврата средств:<br>
@@ -509,11 +465,9 @@
                     3. Если услуга ещё не начата, возврат производится в полном объёме в течение 5 рабочих дней на те же реквизиты, с которых была произведена оплата.<br>
                     Если работа уже начата, возврат невозможен (согласно ст. 32 Закона о защите прав потребителей, исполнитель вправе удержать фактически понесённые расходы, но не более).<br>
                     Комиссии платёжных систем и банков не удерживаются.</p>
-
                     <p><strong>Реквизиты самозанятого</strong><br>
                     ФИО: Кузнецов Дмитрий Александрович<br>
                     ИНН: 710609555942</p>
-
                     <p><strong>Политика обработки персональных данных</strong><br>
                     Персональные данные (имя, Telegram ID, контактная информация) обрабатываются исключительно для исполнения заказа и связи с клиентом. Данные не передаются третьим лицам, за исключением случаев, предусмотренных законодательством РФ. Согласие на обработку даётся при оформлении заказа. Клиент может отозвать согласие, обратившись к @Mark1zell.</p>
                 </div>
@@ -679,12 +633,8 @@
 
         // ================== ПРОМОКОДЫ ==================
         async function applyPromo(code) {
-            if (!supabaseClient) {
-                alert('База данных ещё не загружена, попробуйте позже');
-                return;
-            }
             try {
-                const { data, error } = await supabaseClient
+                const { data, error } = await supabase
                     .from('promocodes')
                     .select('*')
                     .eq('code', code)
@@ -709,7 +659,7 @@
                         applyDiscount(100);
                         alert('Промокод даёт бесплатную услугу!');
                     }
-                    await supabaseClient
+                    await supabase
                         .from('promocodes')
                         .update({ used: true })
                         .eq('code', code);
@@ -742,14 +692,10 @@
         }
 
         async function createPromo(type) {
-            if (!supabaseClient) {
-                alert('База данных не загружена');
-                return;
-            }
             const code = prompt('Введите промокод:');
             if (!code) return;
             if (type === 'wheel') {
-                const { error } = await supabaseClient
+                const { error } = await supabase
                     .from('promocodes')
                     .insert([{ code, type: 'wheel', used: false }]);
                 if (error) {
@@ -766,7 +712,7 @@
                 } else {
                     data.discount_percent = parseInt(discount);
                 }
-                const { error } = await supabaseClient
+                const { error } = await supabase
                     .from('promocodes')
                     .insert([data]);
                 if (error) {
@@ -793,10 +739,9 @@
         }
 
         async function loadPostsList() {
-            if (!supabaseClient) return;
             const container = document.getElementById('postsList');
             container.innerHTML = '';
-            const { data, error } = await supabaseClient
+            const { data, error } = await supabase
                 .from('posts')
                 .select('*')
                 .eq('active', true);
@@ -851,10 +796,6 @@
         }
 
         async function savePost() {
-            if (!supabaseClient) {
-                alert('База данных не загружена');
-                return;
-            }
             const title = document.getElementById('postTitle').value.trim();
             const content = document.getElementById('postContent').value.trim();
             const conditions = document.getElementById('postConditions').value.trim();
@@ -890,7 +831,7 @@
                 }
                 tempPostFile = null;
             }
-            const { error } = await supabaseClient
+            const { error } = await supabase
                 .from('posts')
                 .insert([postData]);
             if (error) {
@@ -902,9 +843,8 @@
         }
 
         async function deletePost(id) {
-            if (!supabaseClient) return;
             if (confirm('Удалить этот пост для всех?')) {
-                const { error } = await supabaseClient
+                const { error } = await supabase
                     .from('posts')
                     .update({ active: false })
                     .eq('id', id);
@@ -918,9 +858,8 @@
 
         // ================== ПОКАЗ ПОСТОВ ПРИ ЗАГРУЗКЕ ==================
         async function loadActivePosts() {
-            if (!supabaseClient) return;
             try {
-                const { data, error } = await supabaseClient
+                const { data, error } = await supabase
                     .from('posts')
                     .select('*')
                     .eq('active', true);
@@ -928,7 +867,7 @@
                 activePosts = [];
                 data.forEach(post => {
                     if (post.active_until && new Date(post.active_until) < new Date()) {
-                        supabaseClient.from('posts').update({ active: false }).eq('id', post.id);
+                        supabase.from('posts').update({ active: false }).eq('id', post.id);
                         return;
                     }
                     activePosts.push(post);
@@ -991,16 +930,17 @@
             }
         }
 
-        // ================== ИНИЦИАЛИЗАЦИЯ ДАННЫХ ==================
+        // ================== ЗАГРУЗКА ДАННЫХ ==================
         async function initDefaultServices() {
-            if (!supabaseClient) return;
-            const { data, error } = await supabaseClient
+            const { data, error } = await supabase
                 .from('services')
                 .select('*');
+            
             if (error) {
                 console.error('Ошибка проверки услуг:', error);
                 return;
             }
+            
             if (!data || data.length === 0) {
                 const defaultServices = [
                     { emoji: '🎨', name: 'Оформление соцсетей', description: 'VK, YouTube, Telegram: шапки, аватарки, обложки', price: 1000, price_to: 3000 },
@@ -1018,92 +958,133 @@
                     { emoji: '📄', name: 'Документы Word', description: 'Оформление, структурирование, шаблоны', price: 500, price_to: 1500 }
                 ];
                 for (const s of defaultServices) {
-                    await supabaseClient.from('services').insert([s]);
+                    await supabase.from('services').insert([s]);
                 }
             }
         }
 
+        // ================== REAL-TIME LISTENERS ==================
         function setupRealTimeListeners() {
-            if (!supabaseClient) return;
-
-            // Загружаем about
-            supabaseClient.from('about').select('*').eq('id', 'main').single()
-                .then(({ data, error }) => {
-                    if (error) {
-                        supabaseClient.from('about').insert([{
-                            id: 'main',
-                            highlight: '«Создаю дизайн, который выделяет вас среди конкурентов»',
-                            text1: 'Специализируюсь на графическом, веб- и игровом дизайне. Оформляю сообщества, создаю карточки для маркетплейсов, разрабатываю интерфейсы приложений и сайтов, а также Telegram Mini Apps.',
-                            text2: 'Также делаю постеры, обложки, превью, презентации и документы. Работаю быстро и качественно, учитывая все пожелания.',
-                            skills: ['Графический дизайн', 'Веб-дизайн', 'UI/UX', 'Киберспортивный дизайн', 'Типографика', 'Презентации', 'Моушн (изучаю)']
-                        }]);
-                        return;
-                    }
-                    if (data) {
-                        document.getElementById('aboutHighlight').textContent = data.highlight || '';
-                        document.getElementById('aboutText1').textContent = data.text1 || '';
-                        document.getElementById('aboutText2').textContent = data.text2 || '';
-                        document.getElementById('skillsList').innerHTML = (data.skills || []).map(s => `<span class="skill-badge">${s}</span>`).join('');
-                    }
-                });
-
-            // Категории портфолио
-            supabaseClient.from('portfolio_categories').select('*').order('order', { ascending: true })
-                .then(({ data, error }) => {
-                    if (!error && data) {
-                        portfolioCategoriesData = data;
-                        renderPortfolioCategories(data);
-                    }
-                });
-
-            // Услуги
-            supabaseClient.from('services').select('*').order('order', { ascending: true })
-                .then(({ data, error }) => {
-                    if (!error && data) {
-                        servicesData = data;
-                        renderOrdersSection();
-                    }
-                });
-
-            // Отзывы с real-time
-            const reviewsChannel = supabaseClient
-                .channel('reviews_channel')
-                .on(
-                    'postgres_changes',
-                    { event: '*', schema: 'public', table: 'reviews' },
-                    () => {
-                        // При любом изменении перезагружаем отзывы
-                        supabaseClient.from('reviews').select('*').order('timestamp', { ascending: false })
-                            .then(({ data, error }) => {
-                                if (!error && data) {
-                                    renderReviews(data);
-                                }
-                            });
-                    }
-                )
+            supabase
+                .channel('portfolio_categories_changes')
+                .on('postgres_changes', { 
+                    event: '*', 
+                    schema: 'public', 
+                    table: 'portfolio_categories' 
+                }, () => {
+                    loadPortfolioCategories();
+                })
                 .subscribe();
 
-            // Первоначальная загрузка отзывов
-            supabaseClient.from('reviews').select('*').order('timestamp', { ascending: false })
-                .then(({ data, error }) => {
-                    if (!error && data) {
-                        renderReviews(data);
-                    }
-                });
+            supabase
+                .channel('services_changes')
+                .on('postgres_changes', { 
+                    event: '*', 
+                    schema: 'public', 
+                    table: 'services' 
+                }, () => {
+                    loadServices();
+                })
+                .subscribe();
 
-            // Логотип
-            supabaseClient.from('settings').select('*').eq('key', 'logo').single()
-                .then(({ data, error }) => {
-                    if (!error && data && data.value) {
-                        document.getElementById('logoImage').src = data.value;
-                    }
-                });
+            supabase
+                .channel('reviews_changes')
+                .on('postgres_changes', { 
+                    event: '*', 
+                    schema: 'public', 
+                    table: 'reviews' 
+                }, () => {
+                    loadReviews();
+                })
+                .subscribe();
+
+            loadAbout();
+            loadPortfolioCategories();
+            loadServices();
+            loadReviews();
+            loadLogo();
+        }
+
+        async function loadAbout() {
+            const { data, error } = await supabase
+                .from('about')
+                .select('*')
+                .eq('id', 'main')
+                .single();
+            
+            if (error && error.code === 'PGRST116') {
+                await supabase.from('about').insert([{
+                    id: 'main',
+                    highlight: '«Создаю дизайн, который выделяет вас среди конкурентов»',
+                    text1: 'Специализируюсь на графическом, веб- и игровом дизайне. Оформляю сообщества, создаю карточки для маркетплейсов, разрабатываю интерфейсы приложений и сайтов, а также Telegram Mini Apps.',
+                    text2: 'Также делаю постеры, обложки, превью, презентации и документы. Работаю быстро и качественно, учитывая все пожелания.',
+                    skills: ['Графический дизайн', 'Веб-дизайн', 'UI/UX', 'Киберспортивный дизайн', 'Типографика', 'Презентации', 'Моушн (изучаю)']
+                }]);
+                loadAbout();
+                return;
+            }
+            
+            if (data) {
+                document.getElementById('aboutHighlight').textContent = data.highlight || '';
+                document.getElementById('aboutText1').textContent = data.text1 || '';
+                document.getElementById('aboutText2').textContent = data.text2 || '';
+                document.getElementById('skillsList').innerHTML = (data.skills || []).map(s => `<span class="skill-badge">${s}</span>`).join('');
+            }
+        }
+
+        async function loadPortfolioCategories() {
+            const { data, error } = await supabase
+                .from('portfolio_categories')
+                .select('*')
+                .order('order', { ascending: true });
+            
+            if (!error && data) {
+                portfolioCategoriesData = data;
+                renderPortfolioCategories(data);
+            }
+        }
+
+        async function loadServices() {
+            const { data, error } = await supabase
+                .from('services')
+                .select('*')
+                .order('order', { ascending: true });
+            
+            if (!error && data) {
+                servicesData = data;
+                renderOrdersSection();
+            }
+        }
+
+        async function loadReviews() {
+            const { data, error } = await supabase
+                .from('reviews')
+                .select('*')
+                .order('timestamp', { ascending: false });
+            
+            if (!error && data) {
+                renderReviews(data);
+            }
+        }
+
+        async function loadLogo() {
+            const { data, error } = await supabase
+                .from('settings')
+                .select('*')
+                .eq('key', 'logo')
+                .single();
+            
+            if (!error && data && data.value) {
+                document.getElementById('logoImage').src = data.value;
+            }
         }
 
         // ================== ПОРТФОЛИО ==================
         function renderPortfolioCategories(cats) {
             const container = document.getElementById('portfolioCategories');
-            if (!container || container.style.display === 'none') return;
+            if (!container) return;
+            container.style.display = 'block';
+            
             let html = '<div class="card"><h3>Портфолио</h3><div class="categories-grid" id="categoriesGrid">';
             cats.forEach((cat, idx) => {
                 const coverStyle = cat.cover_image ? `style="background-image:url('${cat.cover_image}');"` : '';
@@ -1111,7 +1092,7 @@
                 html += `
                     <div class="category-card" data-id="${cat.id}" data-index="${idx}" onclick="openCategory(${cat.id})">
                         <div class="cover-bg" ${coverStyle}></div>
-                        <div class="folder-icon">${cat.icon}</div>
+                        <div class="folder-icon">${cat.icon || '📁'}</div>
                         <div class="category-name">${cat.name}</div>
                         <div class="work-count">${items.length} работ(ы)</div>
                         <div class="admin-actions">
@@ -1127,6 +1108,7 @@
             }
             html += '</div>';
             container.innerHTML = html;
+            
             if (window.isAdmin) {
                 setupSortableForCategories();
             }
@@ -1179,10 +1161,9 @@
         }
 
         async function updateOrder(tableName, items) {
-            if (!supabaseClient) return;
             for (let i = 0; i < items.length; i++) {
                 const id = items[i].dataset.id;
-                await supabaseClient
+                await supabase
                     .from(tableName)
                     .update({ order: i })
                     .eq('id', id);
@@ -1190,8 +1171,7 @@
         }
 
         async function updateWorksOrder(fromIndex, toIndex) {
-            if (!supabaseClient) return;
-            const { data: cat, error } = await supabaseClient
+            const { data: cat, error } = await supabase
                 .from('portfolio_categories')
                 .select('items')
                 .eq('id', currentCategoryId)
@@ -1200,7 +1180,7 @@
             const items = cat.items || [];
             const [moved] = items.splice(fromIndex, 1);
             items.splice(toIndex, 0, moved);
-            await supabaseClient
+            await supabase
                 .from('portfolio_categories')
                 .update({ items })
                 .eq('id', currentCategoryId);
@@ -1233,14 +1213,13 @@
         }
 
         async function saveCover(categoryId) {
-            if (!supabaseClient) { alert('База данных не загружена'); return; }
             if (!window.tempCoverFile) { alert('Загрузите изображение'); return; }
             const compressedDataUrl = await compressImage(window.tempCoverFile, 600, 0.6);
             const blob = dataURLToBlob(compressedDataUrl);
             const file = new File([blob], window.tempCoverFile.name, { type: 'image/jpeg' });
             try {
                 const url = await uploadFileToSupabase(file, 'covers');
-                await supabaseClient
+                await supabase
                     .from('portfolio_categories')
                     .update({ cover_image: url })
                     .eq('id', categoryId);
@@ -1252,9 +1231,8 @@
         }
 
         async function deleteCategory(categoryId) {
-            if (!supabaseClient) return;
             if (confirm('Удалить папку и все работы внутри?')) {
-                await supabaseClient
+                await supabase
                     .from('portfolio_categories')
                     .delete()
                     .eq('id', categoryId);
@@ -1262,9 +1240,8 @@
         }
 
         async function openCategory(categoryId) {
-            if (!supabaseClient) return;
             currentCategoryId = categoryId;
-            const { data: cat, error } = await supabaseClient
+            const { data: cat, error } = await supabase
                 .from('portfolio_categories')
                 .select('*')
                 .eq('id', categoryId)
@@ -1319,7 +1296,6 @@
             alert('Редактирование работы пока не реализовано. Удалите и добавьте заново.');
         }
 
-        // ================== ДОБАВЛЕНИЕ РАБОТЫ ==================
         function addWork() {
             if (!currentCategoryId) { alert('Сначала откройте категорию'); return; }
             const modal = document.getElementById('modalOverlay');
@@ -1349,10 +1325,6 @@
         }
 
         async function saveWork() {
-            if (!supabaseClient) {
-                alert('База данных не загружена');
-                return;
-            }
             const title = document.getElementById('workTitleInput').value.trim();
             if (!title) { alert('Введите название'); return; }
             if (!tempWorkFile) { alert('Загрузите изображение'); return; }
@@ -1363,7 +1335,7 @@
                 const file = new File([blob], tempWorkFile.name, { type: 'image/jpeg' });
                 const url = await uploadFileToSupabase(file, `portfolio/${currentCategoryId}`);
 
-                const { data: cat, error } = await supabaseClient
+                const { data: cat, error } = await supabase
                     .from('portfolio_categories')
                     .select('items')
                     .eq('id', currentCategoryId)
@@ -1374,7 +1346,7 @@
                 }
                 const items = cat.items || [];
                 items.push({ title, image: url });
-                await supabaseClient
+                await supabase
                     .from('portfolio_categories')
                     .update({ items })
                     .eq('id', currentCategoryId);
@@ -1387,8 +1359,7 @@
         }
 
         async function deleteWork(index) {
-            if (!supabaseClient) return;
-            const { data: cat, error } = await supabaseClient
+            const { data: cat, error } = await supabase
                 .from('portfolio_categories')
                 .select('items')
                 .eq('id', currentCategoryId)
@@ -1396,7 +1367,7 @@
             if (error || !cat) return;
             const items = cat.items || [];
             items.splice(index, 1);
-            await supabaseClient
+            await supabase
                 .from('portfolio_categories')
                 .update({ items })
                 .eq('id', currentCategoryId);
@@ -1421,8 +1392,8 @@
                     html += '<div id="adminOrdersList"></div>';
                 }
                 container.innerHTML = html;
-                if (adminOrdersMode === 'orders' && supabaseClient) {
-                    supabaseClient.from('orders').select('*').order('timestamp', { ascending: false })
+                if (adminOrdersMode === 'orders') {
+                    supabase.from('orders').select('*').order('timestamp', { ascending: false })
                         .then(({ data, error }) => {
                             if (!error && data) renderOrdersList(data);
                         });
@@ -1545,10 +1516,6 @@
         }
 
         async function saveNewService() {
-            if (!supabaseClient) {
-                alert('База данных не загружена');
-                return;
-            }
             const emoji = document.getElementById('serviceEmoji').value.trim() || '✨';
             const name = document.getElementById('serviceName').value.trim();
             const description = document.getElementById('serviceDescription').value.trim();
@@ -1565,7 +1532,7 @@
             const price = priceFrom ? parseFloat(priceFrom) : null;
             const priceToVal = priceTo ? parseFloat(priceTo) : null;
             const nextOrder = servicesData.length > 0 ? Math.max(...servicesData.map(s => s.order ?? 0)) + 1 : 0;
-            await supabaseClient
+            await supabase
                 .from('services')
                 .insert([{
                     emoji, name, description,
@@ -1577,8 +1544,7 @@
         }
 
         async function editService(id) {
-            if (!supabaseClient) return;
-            const { data: s, error } = await supabaseClient
+            const { data: s, error } = await supabase
                 .from('services')
                 .select('*')
                 .eq('id', id)
@@ -1600,7 +1566,6 @@
         }
 
         async function saveServiceChanges(id) {
-            if (!supabaseClient) return;
             const emoji = document.getElementById('serviceEmoji').value.trim() || '✨';
             const name = document.getElementById('serviceName').value.trim();
             const description = document.getElementById('serviceDescription').value.trim();
@@ -1609,7 +1574,7 @@
             if (!name) { alert('Введите название услуги'); return; }
             const price = priceFrom ? parseFloat(priceFrom) : null;
             const priceToVal = priceTo ? parseFloat(priceTo) : null;
-            await supabaseClient
+            await supabase
                 .from('services')
                 .update({
                     emoji, name, description,
@@ -1621,9 +1586,8 @@
         }
 
         async function deleteService(id) {
-            if (!supabaseClient) return;
             if (confirm('Удалить услугу?')) {
-                await supabaseClient
+                await supabase
                     .from('services')
                     .delete()
                     .eq('id', id);
@@ -1765,9 +1729,7 @@
                 discount_applied: discountApplied || false,
                 discount_percent: discountApplied ? currentDiscount : 0
             };
-            if (supabaseClient) {
-                supabaseClient.from('orders').insert([order]);
-            }
+            supabase.from('orders').insert([order]);
             
             if (discountApplied) {
                 currentDiscount = 0;
@@ -1883,10 +1845,6 @@
         }
 
         async function submitReview() {
-            if (!supabaseClient) {
-                alert('База данных не загружена');
-                return;
-            }
             const text = document.getElementById('reviewText').value.trim();
             if (!text) { alert('Введите текст отзыва'); return; }
             if (!selectedRating) { alert('Поставьте оценку'); return; }
@@ -1897,8 +1855,7 @@
                 return;
             }
 
-            // Проверяем последний отзыв
-            const { data: lastReview, error } = await supabaseClient
+            const { data: lastReview, error } = await supabase
                 .from('user_last_review')
                 .select('timestamp')
                 .eq('user_id', user.id.toString())
@@ -1912,7 +1869,6 @@
                 }
             }
 
-            // Загружаем изображения в Storage
             const imageUrls = [];
             for (const file of tempReviewFiles) {
                 const compressedDataUrl = await compressImage(file, 600, 0.6);
@@ -1929,7 +1885,7 @@
 
             const authorName = user.first_name || user.username || 'Пользователь';
             const authorUsername = user.username || null;
-            const photoUrl = user.photo_url || null; // Может быть null, если нет аватарки
+            const photoUrl = user.photo_url || null;
             const authorId = user.id;
 
             const reviewData = {
@@ -1943,8 +1899,8 @@
                 timestamp: new Date().toISOString()
             };
 
-            await supabaseClient.from('reviews').insert([reviewData]);
-            await supabaseClient.from('user_last_review').upsert({
+            await supabase.from('reviews').insert([reviewData]);
+            await supabase.from('user_last_review').upsert({
                 user_id: authorId.toString(),
                 timestamp: new Date().toISOString()
             });
@@ -1960,11 +1916,8 @@
                 const authorName = review.author_name || 'Пользователь';
                 const authorUsername = review.author_username || null;
                 const isAuthor = window.currentUser && (window.currentUser.id === review.author_id || window.currentUser.username === review.author_username);
-                // Аватарка – если есть photo_url, показываем её, иначе инициалы
                 let avatarHtml = `<div class="review-avatar">${(authorName && authorName !== 'Пользователь') ? authorName.charAt(0) : '👤'}</div>`;
-                if (review.photo_url) {
-                    avatarHtml = `<div class="review-avatar"><img src="${review.photo_url}" alt="avatar" onerror="this.style.display='none';this.parentElement.textContent='${authorName.charAt(0)||'👤'}'"></div>`;
-                }
+                if (review.photo_url) avatarHtml = `<div class="review-avatar"><img src="${review.photo_url}" alt="avatar"></div>`;
                 let imagesHtml = '';
                 if (review.images && review.images.length > 0) {
                     imagesHtml = '<div class="review-images">';
@@ -2001,78 +1954,59 @@
 
         // ================== АДМИН-ФУНКЦИИ ==================
         async function editAbout() {
-            if (!supabaseClient) return;
-            const { data, error } = await supabaseClient
+            const { data, error } = await supabase
                 .from('about')
                 .select('*')
                 .eq('id', 'main')
                 .single();
             if (error || !data) return;
             const newHighlight = prompt('Статус:', data.highlight);
-            if (newHighlight !== null) await supabaseClient.from('about').update({ highlight: newHighlight }).eq('id', 'main');
+            if (newHighlight !== null) await supabase.from('about').update({ highlight: newHighlight }).eq('id', 'main');
             const newText1 = prompt('Текст 1:', data.text1);
-            if (newText1 !== null) await supabaseClient.from('about').update({ text1: newText1 }).eq('id', 'main');
+            if (newText1 !== null) await supabase.from('about').update({ text1: newText1 }).eq('id', 'main');
             const newText2 = prompt('Текст 2:', data.text2);
-            if (newText2 !== null) await supabaseClient.from('about').update({ text2: newText2 }).eq('id', 'main');
+            if (newText2 !== null) await supabase.from('about').update({ text2: newText2 }).eq('id', 'main');
         }
 
         function addCategory() {
-            if (!supabaseClient) {
-                alert('База данных не загружена');
-                return;
-            }
             const name = prompt('Название категории:');
             if (!name) return;
             const icon = prompt('Эмодзи-иконка:');
             if (!icon) return;
             const nextOrder = portfolioCategoriesData.length > 0 ? Math.max(...portfolioCategoriesData.map(c => c.order ?? 0)) + 1 : 0;
-            supabaseClient.from('portfolio_categories').insert([{ name, icon, items: [], order: nextOrder }])
-                .then(() => {
-                    // Обновляем список категорий
-                    supabaseClient.from('portfolio_categories').select('*').order('order', { ascending: true })
-                        .then(({ data, error }) => {
-                            if (!error && data) {
-                                portfolioCategoriesData = data;
-                                renderPortfolioCategories(data);
-                            }
-                        });
-                });
+            supabase.from('portfolio_categories').insert([{ name, icon, items: [], order: nextOrder }]);
         }
 
         async function editReview(id) {
-            if (!supabaseClient) return;
             const newText = prompt('Новый текст отзыва:');
             if (newText !== null) {
-                await supabaseClient.from('reviews').update({ text: newText }).eq('id', id);
+                await supabase.from('reviews').update({ text: newText }).eq('id', id);
             }
         }
 
         async function deleteReview(id) {
-            if (!supabaseClient) return;
             if (confirm('Удалить отзыв?')) {
-                const { data: review } = await supabaseClient
+                const { data: review } = await supabase
                     .from('reviews')
                     .select('author_id')
                     .eq('id', id)
                     .single();
                 if (review && window.currentUser && review.author_id === window.currentUser.id.toString()) {
-                    await supabaseClient.from('user_last_review').delete().eq('user_id', review.author_id);
+                    await supabase.from('user_last_review').delete().eq('user_id', review.author_id);
                 }
-                await supabaseClient.from('reviews').delete().eq('id', id);
+                await supabase.from('reviews').delete().eq('id', id);
             }
         }
 
         async function deleteOrder(id) {
-            if (!supabaseClient) return;
             if (confirm('Удалить заказ?')) {
-                await supabaseClient.from('orders').delete().eq('id', id);
+                await supabase.from('orders').delete().eq('id', id);
             }
         }
 
         function clearOrders() {
-            if (!supabaseClient) return;
             if (confirm('Очистить все заказы?')) {
-                supabaseClient.from('orders').delete().neq('id', 0);
+                supabase.from('orders').delete().neq('id', 0);
             }
         }
 
@@ -2108,14 +2042,13 @@
         }
 
         async function saveLogo() {
-            if (!supabaseClient) { alert('База данных не загружена'); return; }
             if (!window.tempLogoFile) { alert('Загрузите изображение'); return; }
             const compressedDataUrl = await compressImage(window.tempLogoFile, 400, 0.6);
             const blob = dataURLToBlob(compressedDataUrl);
             const file = new File([blob], window.tempLogoFile.name, { type: 'image/jpeg' });
             try {
                 const url = await uploadFileToSupabase(file, 'logo');
-                await supabaseClient.from('settings').upsert({ key: 'logo', value: url });
+                await supabase.from('settings').upsert({ key: 'logo', value: url });
                 window.tempLogoFile = null;
                 closeModal();
                 document.getElementById('logoImage').src = url;
@@ -2218,7 +2151,7 @@
         }
 
         // ================== ЗАПУСК ==================
-        function initApp() {
+        function init() {
             createStars();
             createAsteroids();
             createLoadingStars();
@@ -2237,24 +2170,11 @@
             }, 800);
         }
 
-        // Динамически загружаем Supabase и запускаем приложение
-        loadSupabase()
-            .then(() => {
-                console.log('Supabase загружен!');
-                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                initApp();
-            })
-            .catch(err => {
-                console.error('Ошибка загрузки Supabase:', err);
-                alert('Не удалось загрузить библиотеку Supabase. Проверьте интернет-соединение и перезагрузите страницу.');
-                document.getElementById('loadingScreen').innerHTML = `
-                    <div style="text-align: center; color: #f87171;">
-                        <h2>Ошибка загрузки</h2>
-                        <p>Не удалось подключиться к базе данных.</p>
-                        <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #7c3aed; color: white; border: none; border-radius: 10px; cursor: pointer;">Перезагрузить</button>
-                    </div>
-                `;
-            });
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
     </script>
 </body>
 </html>
