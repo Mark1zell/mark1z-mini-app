@@ -286,17 +286,24 @@
     </div>
 
     <script>
-// ================== ИНИЦИАЛИЗАЦИЯ SUPABASE (ГАРАНТИРОВАННО ОДИН РАЗ) ==================
-var supabase = (function() {
-    if (typeof window.supabaseClient === 'undefined') {
-        const SUPABASE_URL = 'https://axplgeclfbqvvfykndkx.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF4cGxnZWNsZmJxdnZmeWtuZGt4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMyNzg2NjAsImV4cCI6MjA1ODg1NDY2MH0.Hldi26Ik2CeQVITWAG9trA15DXjFm_N4r7YFdXRsFkA';
-        window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    }
-    return window.supabaseClient;
-})();
+        // =================================================================
+        // 1. ИНИЦИАЛИЗАЦИЯ SUPABASE (ГЛОБАЛЬНО, ТОЛЬКО ОДИН РАЗ)
+        // =================================================================
+        (function initSupabase() {
+            if (typeof window.supabaseClient === 'undefined') {
+                const SUPABASE_URL = 'https://axplgeclfbqvvfykndkx.supabase.co';
+                const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF4cGxnZWNsZmJxdnZmeWtuZGt4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMyNzg2NjAsImV4cCI6MjA1ODg1NDY2MH0.Hldi26Ik2CeQVITWAG9trA15DXjFm_N4r7YFdXRsFkA';
+                window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                console.log('Supabase initialized');
+            }
+        })();
 
-        // ================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==================
+        // Создаём локальный алиас для удобства
+        const supabase = window.supabaseClient;
+
+        // =================================================================
+        // 2. ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
+        // =================================================================
         window.tg = null;
         window.currentUser = null;
         window.isAdmin = false;
@@ -325,7 +332,9 @@ var supabase = (function() {
 
         currentDiscount = lastSpinDiscount;
 
-        // ================== TELEGRAM INIT ==================
+        // =================================================================
+        // 3. TELEGRAM INIT
+        // =================================================================
         function initTelegram() {
             const tg = window.Telegram?.WebApp;
             if (tg) {
@@ -333,8 +342,9 @@ var supabase = (function() {
                 window.tg = tg;
                 tg.ready();
                 tg.expand();
-                tg.setHeaderColor('#0a050d');
-                tg.setBackgroundColor('#0a0012');
+                // Проверяем поддержку методов (старые версии могут не поддерживать)
+                if (tg.setHeaderColor) tg.setHeaderColor('#0a050d');
+                if (tg.setBackgroundColor) tg.setBackgroundColor('#0a0012');
                 tg.MainButton.setParams({ text: 'НАПИСАТЬ ДИЗАЙНЕРУ', color: '#7c3aed', text_color: '#ffffff' });
                 const user = tg.initDataUnsafe?.user;
                 window.currentUser = user;
@@ -351,7 +361,9 @@ var supabase = (function() {
             }
         }
 
-        // ================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==================
+        // =================================================================
+        // 4. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (сжатие, загрузка в Storage)
+        // =================================================================
         function dataURLToBlob(dataUrl) {
             const parts = dataUrl.split(',');
             const mime = parts[0].match(/:(.*?);/)[1];
@@ -414,7 +426,9 @@ var supabase = (function() {
             return urlData.publicUrl;
         }
 
-        // ================== FAQ, LEGAL, PRIVACY ==================
+        // =================================================================
+        // 5. FAQ, LEGAL, PRIVACY (без изменений)
+        // =================================================================
         function openFaqModal() {
             const modal = document.getElementById('modalOverlay');
             const content = document.getElementById('modalContent');
@@ -500,7 +514,9 @@ var supabase = (function() {
             modal.style.display = 'flex';
         }
 
-        // ================== КЕЙС ==================
+        // =================================================================
+        // 6. КЕЙС (case)
+        // =================================================================
         const caseItems = ['10%', '15%', '25%', '50%'];
         const caseProbabilities = [60, 25, 12, 3];
 
@@ -635,7 +651,9 @@ var supabase = (function() {
             applyPromo(code);
         }
 
-        // ================== ПРОМОКОДЫ ==================
+        // =================================================================
+        // 7. ПРОМОКОДЫ
+        // =================================================================
         async function applyPromo(code) {
             try {
                 const { data, error } = await supabase
@@ -681,7 +699,9 @@ var supabase = (function() {
             if (code) applyPromo(code);
         }
 
-        // ================== АДМИН-ПАНЕЛЬ ==================
+        // =================================================================
+        // 8. АДМИН-ПАНЕЛЬ
+        // =================================================================
         function openAdminPromoPanel() {
             const modal = document.getElementById('modalOverlay');
             const content = document.getElementById('modalContent');
@@ -728,7 +748,9 @@ var supabase = (function() {
             closeModal();
         }
 
-        // ================== УПРАВЛЕНИЕ ПОСТАМИ ==================
+        // =================================================================
+        // 9. УПРАВЛЕНИЕ ПОСТАМИ
+        // =================================================================
         async function openPostManager() {
             const modal = document.getElementById('modalOverlay');
             const content = document.getElementById('modalContent');
@@ -860,7 +882,9 @@ var supabase = (function() {
             }
         }
 
-        // ================== ПОКАЗ ПОСТОВ ПРИ ЗАГРУЗКЕ ==================
+        // =================================================================
+        // 10. ПОКАЗ ПОСТОВ ПРИ ЗАГРУЗКЕ
+        // =================================================================
         async function loadActivePosts() {
             try {
                 const { data, error } = await supabase
@@ -934,41 +958,45 @@ var supabase = (function() {
             }
         }
 
-        // ================== ЗАГРУЗКА ДАННЫХ ==================
+        // =================================================================
+        // 11. ИНИЦИАЛИЗАЦИЯ ДАННЫХ (услуги, реальное время)
+        // =================================================================
         async function initDefaultServices() {
-            const { data, error } = await supabase
-                .from('services')
-                .select('*');
-            
-            if (error) {
-                console.error('Ошибка проверки услуг:', error);
-                return;
-            }
-            
-            if (!data || data.length === 0) {
-                const defaultServices = [
-                    { emoji: '🎨', name: 'Оформление соцсетей', description: 'VK, YouTube, Telegram: шапки, аватарки, обложки', price: 1000, price_to: 3000 },
-                    { emoji: '🎮', name: 'Дизайн игровых кланов', description: 'Логотипы, аватарки, шапки для кланов', price: 1500, price_to: 4000 },
-                    { emoji: '🏆', name: 'Дизайн турниров', description: 'Сетки, баннеры за призовые места, аватарки', price: 2000, price_to: 6000 },
-                    { emoji: '🛒', name: 'Карточки товаров', description: 'Wildberries, Ozon, Avito: инфографика', price: 800, price_to: 2000 },
-                    { emoji: '🔤', name: 'Типографика', description: 'Шрифтовые композиции, айдентика', price: 500, price_to: 1500 },
-                    { emoji: '📱', name: 'Дизайн мобильных приложений', description: 'UI/UX интерфейсы для iOS и Android', price: 5000, price_to: 15000 },
-                    { emoji: '🌐', name: 'Дизайн сайтов', description: 'Лендинги, многостраничники, корпоративные сайты', price: 3000, price_to: 10000 },
-                    { emoji: '🤖', name: 'Telegram Mini Apps', description: 'Дизайн и разработка интерфейсов для ботов', price: 7000, price_to: 20000 },
-                    { emoji: '🖼️', name: 'Постеры и баннеры', description: 'Рекламные постеры, промо-материалы', price: 800, price_to: 2500 },
-                    { emoji: '🎵', name: 'Обложки треков', description: 'Обложки для музыкальных релизов', price: 500, price_to: 1500 },
-                    { emoji: '▶️', name: 'Превью для YouTube', description: 'Яркие кликабельные превью', price: 400, price_to: 1200 },
-                    { emoji: '📊', name: 'Презентации', description: 'PowerPoint, Google Slides: оформление', price: 1000, price_to: 3000 },
-                    { emoji: '📄', name: 'Документы Word', description: 'Оформление, структурирование, шаблоны', price: 500, price_to: 1500 }
-                ];
-                for (const s of defaultServices) {
-                    await supabase.from('services').insert([s]);
+            try {
+                const { data, error } = await supabase
+                    .from('services')
+                    .select('*');
+                if (error) {
+                    console.error('Ошибка проверки услуг:', error);
+                    return;
                 }
+                if (!data || data.length === 0) {
+                    const defaultServices = [
+                        { emoji: '🎨', name: 'Оформление соцсетей', description: 'VK, YouTube, Telegram: шапки, аватарки, обложки', price: 1000, price_to: 3000 },
+                        { emoji: '🎮', name: 'Дизайн игровых кланов', description: 'Логотипы, аватарки, шапки для кланов', price: 1500, price_to: 4000 },
+                        { emoji: '🏆', name: 'Дизайн турниров', description: 'Сетки, баннеры за призовые места, аватарки', price: 2000, price_to: 6000 },
+                        { emoji: '🛒', name: 'Карточки товаров', description: 'Wildberries, Ozon, Avito: инфографика', price: 800, price_to: 2000 },
+                        { emoji: '🔤', name: 'Типографика', description: 'Шрифтовые композиции, айдентика', price: 500, price_to: 1500 },
+                        { emoji: '📱', name: 'Дизайн мобильных приложений', description: 'UI/UX интерфейсы для iOS и Android', price: 5000, price_to: 15000 },
+                        { emoji: '🌐', name: 'Дизайн сайтов', description: 'Лендинги, многостраничники, корпоративные сайты', price: 3000, price_to: 10000 },
+                        { emoji: '🤖', name: 'Telegram Mini Apps', description: 'Дизайн и разработка интерфейсов для ботов', price: 7000, price_to: 20000 },
+                        { emoji: '🖼️', name: 'Постеры и баннеры', description: 'Рекламные постеры, промо-материалы', price: 800, price_to: 2500 },
+                        { emoji: '🎵', name: 'Обложки треков', description: 'Обложки для музыкальных релизов', price: 500, price_to: 1500 },
+                        { emoji: '▶️', name: 'Превью для YouTube', description: 'Яркие кликабельные превью', price: 400, price_to: 1200 },
+                        { emoji: '📊', name: 'Презентации', description: 'PowerPoint, Google Slides: оформление', price: 1000, price_to: 3000 },
+                        { emoji: '📄', name: 'Документы Word', description: 'Оформление, структурирование, шаблоны', price: 500, price_to: 1500 }
+                    ];
+                    for (const s of defaultServices) {
+                        await supabase.from('services').insert([s]);
+                    }
+                }
+            } catch (e) {
+                console.warn('Не удалось инициализировать услуги (возможно, нет соединения с Supabase)', e);
             }
         }
 
-        // ================== REAL-TIME LISTENERS ==================
         function setupRealTimeListeners() {
+            // Подписка на изменения категорий
             supabase
                 .channel('portfolio_categories_changes')
                 .on('postgres_changes', { 
@@ -980,6 +1008,7 @@ var supabase = (function() {
                 })
                 .subscribe();
 
+            // Подписка на изменения услуг
             supabase
                 .channel('services_changes')
                 .on('postgres_changes', { 
@@ -991,6 +1020,7 @@ var supabase = (function() {
                 })
                 .subscribe();
 
+            // Подписка на изменения отзывов
             supabase
                 .channel('reviews_changes')
                 .on('postgres_changes', { 
@@ -1002,6 +1032,7 @@ var supabase = (function() {
                 })
                 .subscribe();
 
+            // Первичная загрузка
             loadAbout();
             loadPortfolioCategories();
             loadServices();
@@ -1009,81 +1040,101 @@ var supabase = (function() {
             loadLogo();
         }
 
+        // =================================================================
+        // 12. ЗАГРУЗКА ДАННЫХ
+        // =================================================================
         async function loadAbout() {
-            const { data, error } = await supabase
-                .from('about')
-                .select('*')
-                .eq('id', 'main')
-                .single();
-            
-            if (error && error.code === 'PGRST116') {
-                await supabase.from('about').insert([{
-                    id: 'main',
-                    highlight: '«Создаю дизайн, который выделяет вас среди конкурентов»',
-                    text1: 'Специализируюсь на графическом, веб- и игровом дизайне. Оформляю сообщества, создаю карточки для маркетплейсов, разрабатываю интерфейсы приложений и сайтов, а также Telegram Mini Apps.',
-                    text2: 'Также делаю постеры, обложки, превью, презентации и документы. Работаю быстро и качественно, учитывая все пожелания.',
-                    skills: ['Графический дизайн', 'Веб-дизайн', 'UI/UX', 'Киберспортивный дизайн', 'Типографика', 'Презентации', 'Моушн (изучаю)']
-                }]);
-                loadAbout();
-                return;
-            }
-            
-            if (data) {
-                document.getElementById('aboutHighlight').textContent = data.highlight || '';
-                document.getElementById('aboutText1').textContent = data.text1 || '';
-                document.getElementById('aboutText2').textContent = data.text2 || '';
-                document.getElementById('skillsList').innerHTML = (data.skills || []).map(s => `<span class="skill-badge">${s}</span>`).join('');
+            try {
+                const { data, error } = await supabase
+                    .from('about')
+                    .select('*')
+                    .eq('id', 'main')
+                    .single();
+                if (error && error.code === 'PGRST116') {
+                    // Создаём запись, если её нет
+                    await supabase.from('about').insert([{
+                        id: 'main',
+                        highlight: '«Создаю дизайн, который выделяет вас среди конкурентов»',
+                        text1: 'Специализируюсь на графическом, веб- и игровом дизайне. Оформляю сообщества, создаю карточки для маркетплейсов, разрабатываю интерфейсы приложений и сайтов, а также Telegram Mini Apps.',
+                        text2: 'Также делаю постеры, обложки, превью, презентации и документы. Работаю быстро и качественно, учитывая все пожелания.',
+                        skills: ['Графический дизайн', 'Веб-дизайн', 'UI/UX', 'Киберспортивный дизайн', 'Типографика', 'Презентации', 'Моушн (изучаю)']
+                    }]);
+                    loadAbout(); // повторная загрузка
+                    return;
+                }
+                if (data) {
+                    document.getElementById('aboutHighlight').textContent = data.highlight || '';
+                    document.getElementById('aboutText1').textContent = data.text1 || '';
+                    document.getElementById('aboutText2').textContent = data.text2 || '';
+                    document.getElementById('skillsList').innerHTML = (data.skills || []).map(s => `<span class="skill-badge">${s}</span>`).join('');
+                }
+            } catch (e) {
+                console.warn('Ошибка загрузки about:', e);
             }
         }
 
         async function loadPortfolioCategories() {
-            const { data, error } = await supabase
-                .from('portfolio_categories')
-                .select('*')
-                .order('order', { ascending: true });
-            
-            if (!error && data) {
-                portfolioCategoriesData = data;
-                renderPortfolioCategories(data);
+            try {
+                const { data, error } = await supabase
+                    .from('portfolio_categories')
+                    .select('*')
+                    .order('order', { ascending: true });
+                if (!error && data) {
+                    portfolioCategoriesData = data;
+                    renderPortfolioCategories(data);
+                }
+            } catch (e) {
+                console.warn('Ошибка загрузки портфолио:', e);
             }
         }
 
         async function loadServices() {
-            const { data, error } = await supabase
-                .from('services')
-                .select('*')
-                .order('order', { ascending: true });
-            
-            if (!error && data) {
-                servicesData = data;
-                renderOrdersSection();
+            try {
+                const { data, error } = await supabase
+                    .from('services')
+                    .select('*')
+                    .order('order', { ascending: true });
+                if (!error && data) {
+                    servicesData = data;
+                    renderOrdersSection();
+                }
+            } catch (e) {
+                console.warn('Ошибка загрузки услуг:', e);
             }
         }
 
         async function loadReviews() {
-            const { data, error } = await supabase
-                .from('reviews')
-                .select('*')
-                .order('timestamp', { ascending: false });
-            
-            if (!error && data) {
-                renderReviews(data);
+            try {
+                const { data, error } = await supabase
+                    .from('reviews')
+                    .select('*')
+                    .order('timestamp', { ascending: false });
+                if (!error && data) {
+                    renderReviews(data);
+                }
+            } catch (e) {
+                console.warn('Ошибка загрузки отзывов:', e);
             }
         }
 
         async function loadLogo() {
-            const { data, error } = await supabase
-                .from('settings')
-                .select('*')
-                .eq('key', 'logo')
-                .single();
-            
-            if (!error && data && data.value) {
-                document.getElementById('logoImage').src = data.value;
+            try {
+                const { data, error } = await supabase
+                    .from('settings')
+                    .select('*')
+                    .eq('key', 'logo')
+                    .single();
+                if (!error && data && data.value) {
+                    document.getElementById('logoImage').src = data.value;
+                }
+            } catch (e) {
+                console.warn('Ошибка загрузки логотипа:', e);
             }
         }
 
-        // ================== ПОРТФОЛИО ==================
+        // =================================================================
+        // 13. ПОРТФОЛИО (рендеринг, сортировка, CRUD)
+        // =================================================================
         function renderPortfolioCategories(cats) {
             const container = document.getElementById('portfolioCategories');
             if (!container) return;
@@ -1378,7 +1429,9 @@ var supabase = (function() {
             await openCategory(currentCategoryId);
         }
 
-        // ================== РАЗДЕЛ ЗАКАЗЫ ==================
+        // =================================================================
+        // 14. РАЗДЕЛ ЗАКАЗЫ
+        // =================================================================
         function renderOrdersSection() {
             const container = document.getElementById('ordersContent');
             if (!container) return;
@@ -1502,7 +1555,9 @@ var supabase = (function() {
             container.innerHTML = html;
         }
 
-        // ================== УПРАВЛЕНИЕ УСЛУГАМИ ==================
+        // =================================================================
+        // 15. УПРАВЛЕНИЕ УСЛУГАМИ
+        // =================================================================
         function addService() {
             const modal = document.getElementById('modalOverlay');
             const content = document.getElementById('modalContent');
@@ -1598,7 +1653,9 @@ var supabase = (function() {
             }
         }
 
-        // ================== ПОЛНОЭКРАННЫЙ ПРОСМОТР ==================
+        // =================================================================
+        // 16. ПОЛНОЭКРАННЫЙ ПРОСМОТР (viewer)
+        // =================================================================
         function viewImage(src, title, allowSave = false) {
             currentViewImageSrc = src;
             const viewer = document.getElementById('imageViewer');
@@ -1715,7 +1772,9 @@ var supabase = (function() {
             return Math.sqrt(dx*dx + dy*dy);
         }
 
-        // ================== ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ ==================
+        // =================================================================
+        // 17. ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ (заказы)
+        // =================================================================
         function placeOrder(service, discountApplied) {
             if (isOrderProcessing) return;
             isOrderProcessing = true;
@@ -1762,7 +1821,9 @@ var supabase = (function() {
             document.body.removeChild(a);
         }
 
-        // ================== ОТЗЫВЫ ==================
+        // =================================================================
+        // 18. ОТЗЫВЫ
+        // =================================================================
         function openReviewModal() {
             const modal = document.getElementById('modalOverlay');
             const content = document.getElementById('modalContent');
@@ -1956,7 +2017,9 @@ var supabase = (function() {
             container.innerHTML = html;
         }
 
-        // ================== АДМИН-ФУНКЦИИ ==================
+        // =================================================================
+        // 19. АДМИН-ФУНКЦИИ
+        // =================================================================
         async function editAbout() {
             const { data, error } = await supabase
                 .from('about')
@@ -2018,7 +2081,9 @@ var supabase = (function() {
             document.getElementById('modalOverlay').style.display = 'none';
         }
 
-        // ================== СМЕНА ЛОГОТИПА ==================
+        // =================================================================
+        // 20. СМЕНА ЛОГОТИПА
+        // =================================================================
         function changeLogo() {
             const modal = document.getElementById('modalOverlay');
             const content = document.getElementById('modalContent');
@@ -2061,7 +2126,9 @@ var supabase = (function() {
             }
         }
 
-        // ================== МОДАЛЬНОЕ ОКНО "НАПИСАТЬ ДИЗАЙНЕРУ" ==================
+        // =================================================================
+        // 21. МОДАЛЬНОЕ ОКНО "НАПИСАТЬ ДИЗАЙНЕРУ"
+        // =================================================================
         function openContactModal() {
             const modal = document.getElementById('modalOverlay');
             const content = document.getElementById('modalContent');
@@ -2075,7 +2142,9 @@ var supabase = (function() {
             modal.style.display = 'flex';
         }
 
-        // ================== ВКЛАДКИ ==================
+        // =================================================================
+        // 22. ВКЛАДКИ
+        // =================================================================
         function setupTabs() {
             const tabs = document.querySelectorAll('.tab-btn');
             const sections = document.querySelectorAll('.section');
@@ -2096,7 +2165,9 @@ var supabase = (function() {
             });
         }
 
-        // ================== ЗВЁЗДЫ И АСТЕРОИДЫ ==================
+        // =================================================================
+        // 23. ЗВЁЗДЫ И АСТЕРОИДЫ
+        // =================================================================
         function createStars() {
             const container = document.getElementById('starsContainer');
             for (let i = 0; i < 45; i++) {
@@ -2154,7 +2225,9 @@ var supabase = (function() {
             }
         }
 
-        // ================== ЗАПУСК ==================
+        // =================================================================
+        // 24. ЗАПУСК
+        // =================================================================
         function init() {
             createStars();
             createAsteroids();
