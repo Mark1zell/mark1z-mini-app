@@ -15,7 +15,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
     <style>
-        /* ===== ПОЛНЫЙ CSS ===== */
+        /* ===== ПОЛНЫЙ CSS (без изменений) ===== */
         :root {
             --bg-start: #0a050d;
             --bg-mid: #100820;
@@ -288,7 +288,7 @@
         <div class="footer">
             <div>© Mark1z Design · Дмитрий Маркизов</div>
             <a href="#" onclick="openPrivacyPolicy()">Политика конфиденциальности</a>
-            <span class="version">V.1.0.1</span>
+            <span class="version">V.1.0.2</span>
         </div>
     </div>
 
@@ -346,6 +346,7 @@
         var viewedPosts = JSON.parse(localStorage.getItem('viewedPosts') || '[]');
         var currentPostId = null;
         var tempPostFile = null;
+        var categorySubscription = null; // для realtime подписки на категорию
 
         currentDiscount = lastSpinDiscount;
 
@@ -430,11 +431,18 @@
                 .then(function(res) {
                     if (res.error) throw res.error;
                     var publicUrl = window._supabaseClient.storage.from('public').getPublicUrl(path);
-                    return publicUrl.data.publicUrl;
+                    // Исправление: гарантируем, что возвращаем строку URL
+                    var url = publicUrl.data.publicUrl;
+                    if (!url) throw new Error('Не удалось получить URL загруженного файла');
+                    return url;
                 });
         }
 
         function downloadImage(url, filename) {
+            if (!url) {
+                alert('Ошибка: URL изображения не указан');
+                return;
+            }
             fetch(url)
                 .then(function(response) { return response.blob(); })
                 .then(function(blob) {
@@ -995,7 +1003,7 @@
         }
 
         // ================================================================
-        // ЗАГРУЗКА ДАННЫХ
+        // ЗАГРУЗКА ДАННЫХ (С REALTIME ПОДПИСКАМИ)
         // ================================================================
         function initDefaultServices() {
             var supabase = window._supabaseClient;
@@ -1030,15 +1038,43 @@
 
         function setupRealTimeListeners() {
             var supabase = window._supabaseClient;
+            // Подписка на изменения категорий портфолио
             supabase.channel('portfolio_categories_changes')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'portfolio_categories' }, function() { loadPortfolioCategories(); })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'portfolio_categories' }, function() {
+                    loadPortfolioCategories();
+                    // Если открыта категория, обновляем её содержимое
+                    if (currentCategoryId) {
+                        openCategory(currentCategoryId);
+                    }
+                })
                 .subscribe();
+
+            // Подписка на изменения услуг
             supabase.channel('services_changes')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'services' }, function() { loadServices(); })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'services' }, function() {
+                    loadServices();
+                })
                 .subscribe();
+
+            // Подписка на изменения отзывов
             supabase.channel('reviews_changes')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews' }, function() { loadReviews(); })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews' }, function() {
+                    loadReviews();
+                })
                 .subscribe();
+
+            // Подписка на изменения постов (для админки)
+            supabase.channel('posts_changes')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, function() {
+                    // Если открыт менеджер постов, обновляем список
+                    var postsList = document.getElementById('postsList');
+                    if (postsList && postsList.innerHTML !== '') {
+                        loadPostsList();
+                    }
+                })
+                .subscribe();
+
+            // Первичная загрузка
             loadAbout();
             loadPortfolioCategories();
             loadServices();
@@ -1112,7 +1148,7 @@
         }
 
         // ================================================================
-        // ПОРТФОЛИО
+        // ПОРТФОЛИО (с подпиской на изменения внутри категории)
         // ================================================================
         function renderPortfolioCategories(cats) {
             var container = document.getElementById('portfolioCategories');
@@ -1301,12 +1337,33 @@
                     html += '</div></div>';
                     worksContainer.innerHTML = html;
                     if (window.isAdmin) setupSortableForWorks();
+
+                    // Подписка на изменения этой категории (реальное время)
+                    if (categorySubscription) {
+                        categorySubscription.unsubscribe();
+                    }
+                    categorySubscription = supabase.channel('category_' + categoryId)
+                        .on('postgres_changes', {
+                            event: 'UPDATE',
+                            schema: 'public',
+                            table: 'portfolio_categories',
+                            filter: 'id=eq.' + categoryId
+                        }, function() {
+                            // Обновляем содержимое категории
+                            openCategory(categoryId);
+                        })
+                        .subscribe();
                 });
         }
 
         function showPortfolioCategories() {
             document.getElementById('portfolioWorks').style.display = 'none';
             document.getElementById('portfolioCategories').style.display = 'block';
+            if (categorySubscription) {
+                categorySubscription.unsubscribe();
+                categorySubscription = null;
+            }
+            currentCategoryId = null;
         }
 
         function editWork(index) {
@@ -1364,6 +1421,7 @@
                 .then(function() {
                     tempWorkFile = null;
                     closeModal();
+                    // Обновляем отображение категории
                     openCategory(currentCategoryId);
                 })
                 .catch(function(err) {
@@ -1638,7 +1696,7 @@
         }
 
         // ================================================================
-        // ОТЗЫВЫ (ИСПРАВЛЕНО: сравнение через String, обновление после удаления)
+        // ОТЗЫВЫ
         // ================================================================
         function openReviewModal() {
             var modal = document.getElementById('modalOverlay');
@@ -1776,7 +1834,8 @@
                 .then(function() {
                     closeModal();
                     tempReviewFiles = [];
-                    loadReviews(); // сразу обновляем список
+                    // Обновляем отзывы сразу
+                    loadReviews();
                 })
                 .catch(function(err) {
                     alert('Ошибка: ' + err.message);
@@ -1790,7 +1849,6 @@
             reviews.forEach(function(review) {
                 var authorName = review.author_name || 'Пользователь';
                 var authorUsername = review.author_username || null;
-                // Приводим к строке для корректного сравнения
                 var isAuthor = window.currentUser && 
                     (String(window.currentUser.id) === String(review.author_id) || 
                      window.currentUser.username === review.author_username);
@@ -1830,9 +1888,6 @@
             container.innerHTML = html;
         }
 
-        // ================================================================
-        // УДАЛЕНИЕ ОТЗЫВА (ИСПРАВЛЕНО)
-        // ================================================================
         function deleteReview(id) {
             if (!confirm('Удалить отзыв?')) return;
             var supabase = window._supabaseClient;
@@ -1853,7 +1908,7 @@
                     }
                     supabase.from('reviews').delete().eq('id', id)
                         .then(function() {
-                            loadReviews(); // обновляем список
+                            loadReviews();
                         });
                 })
                 .catch(function(err) {
@@ -1862,7 +1917,7 @@
         }
 
         // ================================================================
-        // ОСТАЛЬНЫЕ АДМИН-ФУНКЦИИ
+        // АДМИН-ФУНКЦИИ
         // ================================================================
         function editAbout() {
             var supabase = window._supabaseClient;
