@@ -2961,19 +2961,19 @@
             if (img.complete) img.onload();
         }
 
-        function closeImageViewer() {
-            document.getElementById('imageViewer').style.display = 'none';
-            currentViewImageSrc = null;
-            viewerScale = 1;
-            viewerPanX = 0;
-            viewerPanY = 0;
-            var img = document.getElementById('imageViewerImg');
-            if (img) {
-                img.style.transform = 'scale(1)';
-                img.style.left = '0px';
-                img.style.top = '0px';
-            }
-        }
+function closeImageViewer() {
+    document.getElementById('imageViewer').style.display = 'none';
+    currentViewImageSrc = null;
+    viewerScale = 1;      // не scale
+    viewerPanX = 0;
+    viewerPanY = 0;
+    var img = document.getElementById('imageViewerImg');
+    if (img) {
+        img.style.transform = 'scale(1)';
+        img.style.left = '0px';
+        img.style.top = '0px';
+    }
+}
 
         function saveCurrentImage() {
             if (currentViewImageSrc) downloadImage(currentViewImageSrc, 'image.jpg');
