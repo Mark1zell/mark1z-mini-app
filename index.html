@@ -746,21 +746,15 @@ function spinCase() {
         } else {
             var discount = parseInt(caseItems[chosenIndex]);
             if (!window.isAdmin) {
-                // Применяем скидку
                 applyDiscount(discount);
-                
-                // Сохраняем время и скидку
                 localStorage.setItem('lastSpinTime', Date.now());
                 localStorage.setItem('lastSpinDiscount', discount);
-                localStorage.removeItem('discountUsed'); // Сбрасываем флаг использования
-                
-                // Обновляем глобальные переменные
+                localStorage.removeItem('discountUsed');
                 lastSpinTime = Date.now();
                 lastSpinDiscount = discount;
-                
                 alert('🎉 Поздравляем! Ваша скидка: ' + discount + '%');
             } else {
-                alert('👑 Вы админ, скидка не применена (тестовый режим). Выпало: ' + discount + '%');
+                alert('👑 Вы админ, скидка не применена. Выпало: ' + discount + '%');
             }
             
             canSpinNow = false;
@@ -780,7 +774,6 @@ function canSpin() {
 
         function applyDiscount(percent) {
     currentDiscount = percent;
-    // Сохраняем в localStorage
     localStorage.setItem('lastSpinDiscount', percent);
     localStorage.removeItem('discountUsed');
     lastSpinDiscount = percent;
@@ -807,22 +800,26 @@ function applyPromo(code) {
                 alert('Промокод активирован! Теперь вы можете крутить кейс.');
                 openCaseModal();
             } else if (data.type === 'discount') {
-                if (data.discount_percent !== undefined && data.discount_percent !== null && data.discount_percent > 0) {
+                if (data.free) {
+                    // Бесплатный промокод
+                    applyDiscount(100);
+                    localStorage.removeItem('discountUsed');
+                    alert('🎁 Промокод активирован! Ваш заказ будет БЕСПЛАТНЫМ!');
+                    supabase.from('promocodes').update({ used: true }).eq('code', code).then(function() {
+                        closeModal();
+                        renderOrdersSection();
+                    });
+                } else if (data.discount_percent !== undefined && data.discount_percent !== null && data.discount_percent > 0) {
                     applyDiscount(data.discount_percent);
                     localStorage.removeItem('discountUsed');
                     alert('Скидка ' + data.discount_percent + '% применена!');
-                } else if (data.free) {
-                    applyDiscount(100);
-                    localStorage.removeItem('discountUsed');
-                    alert('Промокод даёт бесплатную услугу!');
+                    supabase.from('promocodes').update({ used: true }).eq('code', code).then(function() {
+                        closeModal();
+                        renderOrdersSection();
+                    });
                 } else {
                     alert('Ошибка: у промокода нет скидки');
-                    return;
                 }
-                supabase.from('promocodes').update({ used: true }).eq('code', code).then(function() {
-                    closeModal();
-                    renderOrdersSection();
-                });
             }
         })
         .catch(function(err) {
@@ -830,7 +827,6 @@ function applyPromo(code) {
             console.error(err);
         });
 }
-
         function openPromoModal() {
             var code = prompt('Введите промокод:');
             if (code) applyPromo(code);
@@ -2104,7 +2100,6 @@ function openOrderConstructor(serviceId) {
             var requiredBadge = opt.is_required ? '<span class="required-badge">Обязательная</span>' : '';
             var isRequired = opt.is_required || false;
             
-            // Для обязательных опций сразу активируем
             if (isRequired) {
                 currentOrderQuantities[opt.id] = isSingle ? 1 : (opt.min_quantity || 1);
             }
@@ -2122,7 +2117,7 @@ function openOrderConstructor(serviceId) {
                         </div>
                         <div class="option-info">
                             <div class="option-name">${opt.name} ${requiredBadge}</div>
-                            <div class="option-price">${opt.price} ₽ ${opt.description ? '· ' + opt.description : ''}</div>
+                            <div class="option-price">${opt.price} ₽${opt.description ? ' · ' + opt.description : ''}</div>
                         </div>
                     </div>
                     ${!isSingle ? `
@@ -2130,7 +2125,7 @@ function openOrderConstructor(serviceId) {
                         <button class="qty-btn" onclick="event.stopPropagation(); changeQuantity(${opt.id}, -1)">−</button>
                         <span class="qty-display" id="qtyDisplay_${opt.id}">${opt.min_quantity || 1}</span>
                         <button class="qty-btn" onclick="event.stopPropagation(); changeQuantity(${opt.id}, 1)">+</button>
-                        <span class="price-detail" id="priceDisplay_${opt.id}">${opt.price} ₽ × ${opt.min_quantity || 1} = ${opt.price * (opt.min_quantity || 1)} ₽</span>
+                        <span class="price-detail" id="priceDisplay_${opt.id}">${opt.price} × ${opt.min_quantity || 1} = ${opt.price * (opt.min_quantity || 1)} ₽</span>
                         ${opt.discount_min_quantity ? `<span class="discount-badge">скидка от ${opt.discount_min_quantity} шт.</span>` : ''}
                     </div>
                     ` : ''}
@@ -2142,7 +2137,7 @@ function openOrderConstructor(serviceId) {
     html += `
                     </div>
                     <div class="order-total">
-                        Итого: <span id="orderTotalPrice">0</span> ₽
+                        Итого: <span id="orderTotalPrice">0 ₽</span>
                     </div>
                     <div style="margin-top:15px;">
                         <textarea id="orderDescription" placeholder="Опишите ваше ТЗ (что нужно сделать, стиль, цвета, примеры...)" style="min-height:80px;"></textarea>
@@ -2161,11 +2156,15 @@ function openOrderConstructor(serviceId) {
     updateOrderTotal();
     
     // Показываем информацию о скидке
-    if (currentDiscount > 0 && currentDiscount < 100) {
+    if (currentDiscount > 0 && currentDiscount <= 100) {
         var discountInfo = document.createElement('div');
         discountInfo.id = 'discountInfo';
         discountInfo.style.cssText = 'margin-top:10px;padding:10px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);border-radius:8px;font-size:12px;color:#fbbf24;';
-        discountInfo.innerHTML = '🎁 У вас есть скидка ' + currentDiscount + '% из кейса! Она применится к общей сумме заказа.';
+        if (currentDiscount === 100) {
+            discountInfo.innerHTML = '🎁 У вас БЕСПЛАТНЫЙ заказ! Скидка 100% применена.';
+        } else {
+            discountInfo.innerHTML = '🎁 У вас есть скидка ' + currentDiscount + '%! Она применится к общей сумме заказа.';
+        }
         var totalEl = document.querySelector('.order-total');
         if (totalEl) totalEl.parentNode.insertBefore(discountInfo, totalEl);
     }
@@ -2252,39 +2251,43 @@ function changeQuantity(optId, delta) {
 }
 
         function updateQuantityDisplay(optId) {
-            var display = document.getElementById('qtyDisplay_' + optId);
-            var priceDisplay = document.getElementById('priceDisplay_' + optId);
-            
-            var opt = currentOrderOptions.find(function(o) { return o.id == optId; });
-            if (!opt) return;
-            
-            var qty = currentOrderQuantities[optId] || 0;
-            var maxQty = opt.max_quantity || 1;
-            var isSingle = maxQty <= 1;
-            
-            if (isSingle) {
-                if (display) display.textContent = qty > 0 ? '1' : '0';
-                if (priceDisplay) {
-                    priceDisplay.textContent = qty > 0 ? opt.price + ' ₽' : '0 ₽';
-                }
+    var display = document.getElementById('qtyDisplay_' + optId);
+    var priceDisplay = document.getElementById('priceDisplay_' + optId);
+    
+    var opt = currentOrderOptions.find(function(o) { return o.id == optId; });
+    if (!opt) return;
+    
+    var qty = currentOrderQuantities[optId] || 0;
+    var maxQty = opt.max_quantity || 1;
+    var isSingle = maxQty <= 1;
+    
+    if (isSingle) {
+        if (display) display.textContent = qty > 0 ? '1' : '0';
+        if (priceDisplay) {
+            priceDisplay.textContent = qty > 0 ? opt.price + ' ₽' : '0 ₽';
+        }
+    } else {
+        if (display) display.textContent = qty;
+        
+        var price = opt.price;
+        var total = price * qty;
+        var discountText = '';
+        
+        if (opt.discount_min_quantity && qty >= opt.discount_min_quantity && opt.discount_price) {
+            price = opt.discount_price;
+            total = price * qty;
+            discountText = ' <span style="color:#fbbf24;font-size:12px;">(скидка ' + opt.discount_price + ' ₽/шт.)</span>';
+        }
+        
+        if (priceDisplay) {
+            if (discountText) {
+                priceDisplay.innerHTML = opt.discount_price + ' × ' + qty + ' = ' + total + ' ₽' + discountText;
             } else {
-                if (display) display.textContent = qty;
-                
-                var price = opt.price;
-                var total = price * qty;
-                var discountText = '';
-                
-                if (opt.discount_min_quantity && qty >= opt.discount_min_quantity && opt.discount_price) {
-                    price = opt.discount_price;
-                    total = price * qty;
-                    discountText = ' <span style="color:#fbbf24;font-size:12px;">(скидка ' + opt.discount_price + ' ₽/шт.)</span>';
-                }
-                
-                if (priceDisplay) {
-                    priceDisplay.innerHTML = price + ' ₽ × ' + qty + ' = ' + total + ' ₽' + discountText;
-                }
+                priceDisplay.textContent = price + ' × ' + qty + ' = ' + total + ' ₽';
             }
         }
+    }
+}
 
 function updateOrderTotal() {
     var total = 0;
@@ -2299,27 +2302,33 @@ function updateOrderTotal() {
         }
     });
     
-    // Применяем скидку из кейса или промокода
-    var discountAmount = 0;
-    if (currentDiscount > 0 && currentDiscount < 100) {
+    var finalTotal = total;
+    
+    if (currentDiscount === 100) {
+        // Бесплатно
+        finalTotal = 0;
+    } else if (currentDiscount > 0 && currentDiscount < 100) {
         var excludedServices = ['Telegram Mini Apps', 'Дизайн сайтов', 'Дизайн мобильных приложений'];
         var isExcluded = excludedServices.indexOf(currentOrderService.name) !== -1;
         
         if (!isExcluded && total > 0) {
-            discountAmount = Math.round(total * currentDiscount / 100);
+            var discountAmount = Math.round(total * currentDiscount / 100);
+            finalTotal = total - discountAmount;
         }
     }
     
     var totalEl = document.getElementById('orderTotalPrice');
     if (totalEl) {
-        if (discountAmount > 0) {
-            totalEl.innerHTML = total + ' ₽ <span style="text-decoration:line-through;font-size:14px;color:var(--text-muted);">' + (total + discountAmount) + ' ₽</span> <span style="color:#fbbf24;font-size:14px;">(-' + currentDiscount + '%)</span>';
+        if (currentDiscount === 100) {
+            totalEl.innerHTML = '<span style="text-decoration:line-through;color:var(--text-muted);">' + total + ' ₽</span> <span style="color:#10b981;font-weight:700;">0 ₽ (Бесплатно!)</span>';
+        } else if (finalTotal !== total && currentDiscount > 0) {
+            totalEl.innerHTML = '<span style="text-decoration:line-through;color:var(--text-muted);font-size:14px;">' + total + ' ₽</span> <span style="color:#c084fc;font-weight:700;">' + finalTotal + ' ₽</span> <span style="color:#fbbf24;font-size:14px;">(-' + currentDiscount + '%)</span>';
         } else {
             totalEl.textContent = total + ' ₽';
         }
     }
     
-    window.currentOrderFinalTotal = total - discountAmount;
+    window.currentOrderFinalTotal = finalTotal;
 }
 
         function handleRefFiles(event) {
@@ -2417,7 +2426,10 @@ function submitOrderWithOptions() {
     }
 
     var description = document.getElementById('orderDescription').value.trim();
-    var total = window.currentOrderFinalTotal || selectedOptions.reduce(function(sum, opt) { return sum + opt.total; }, 0);
+    
+    var total = window.currentOrderFinalTotal !== undefined && window.currentOrderFinalTotal !== null 
+        ? window.currentOrderFinalTotal 
+        : selectedOptions.reduce(function(sum, opt) { return sum + opt.total; }, 0);
 
     var user = window.currentUser;
     var userName = user?.first_name || user?.username || 'Пользователь';
@@ -2450,16 +2462,18 @@ function submitOrderWithOptions() {
                 return;
             }
             
-            // ===== СБРАСЫВАЕМ СКИДКУ ПОСЛЕ ИСПОЛЬЗОВАНИЯ =====
             resetDiscount();
             
             var orderText = '📋 **Заказ:** ' + currentOrderService.name + '\n\n';
             selectedOptions.forEach(function(opt) {
                 orderText += '• ' + opt.name + ' — ' + opt.quantity + ' шт. × ' + opt.price + ' ₽ = ' + opt.total + ' ₽\n';
             });
-            orderText += '\n**Итого:** ' + total + ' ₽\n\n';
+            if (total === 0) {
+                orderText += '\n**Итого: БЕСПЛАТНО!**\n\n';
+            } else {
+                orderText += '\n**Итого:** ' + total + ' ₽\n\n';
+            }
             if (description) orderText += '**ТЗ:**\n' + description + '\n\n';
-            orderText += 'Жду счёт для оплаты.';
             
             var chatText = encodeURIComponent(orderText);
             if (window.telegramAvailable && window.tg) {
@@ -2470,18 +2484,17 @@ function submitOrderWithOptions() {
             
             closeModal();
             renderOrdersSection();
-            alert('✅ Заявка отправлена! Скидка аннулирована.');
+            alert('✅ Заявка отправлена!');
         })
         .catch(function(err) {
             alert('❌ Ошибка: ' + err.message);
         });
 }
-
 // ===== НОВАЯ ФУНКЦИЯ ДЛЯ СБРОСА СКИДКИ =====
 function resetDiscount() {
     currentDiscount = 0;
     localStorage.removeItem('lastSpinDiscount');
-    localStorage.setItem('discountUsed', 'true'); // Помечаем, что скидка использована
+    localStorage.setItem('discountUsed', 'true');
     lastSpinDiscount = 0;
     window.currentOrderFinalTotal = 0;
     // НЕ удаляем lastSpinTime! Пользователь должен ждать неделю до следующего кейса
@@ -3816,16 +3829,12 @@ function init() {
     initTelegram();
     renderOrdersSection();
     
-    // Проверяем, не использована ли скидка
     var discountUsed = localStorage.getItem('discountUsed');
     if (discountUsed === 'true') {
-        // Скидка уже использована — сбрасываем только скидку, но НЕ время
         currentDiscount = 0;
         localStorage.removeItem('lastSpinDiscount');
         lastSpinDiscount = 0;
-        // lastSpinTime остаётся! Пользователь должен ждать неделю
-    } else if (lastSpinDiscount > 0 && lastSpinDiscount < 100) {
-        // Скидка есть и не использована — применяем
+    } else if (lastSpinDiscount > 0 && lastSpinDiscount <= 100) {
         currentDiscount = lastSpinDiscount;
         applyDiscount(lastSpinDiscount);
     } else {
