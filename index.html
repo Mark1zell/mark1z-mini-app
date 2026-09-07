@@ -2786,6 +2786,95 @@
                 });
         }
 
+                // ================================================================
+        // ДОБАВЛЕНИЕ КАТЕГОРИИ
+        // ================================================================
+        function addCategory() {
+            var name = prompt('Название категории:');
+            if (!name) return;
+            var icon = prompt('Эмодзи-иконка (например: 🎨):');
+            if (!icon) icon = '📁';
+            
+            var nextOrder = 0;
+            if (portfolioCategoriesData && portfolioCategoriesData.length > 0) {
+                nextOrder = Math.max.apply(null, portfolioCategoriesData.map(function(c) { return c.order || 0; })) + 1;
+            }
+            
+            supabase.from('portfolio_categories').insert([{ 
+                name: name, 
+                icon: icon, 
+                items: [], 
+                order: nextOrder 
+            }])
+            .then(function(res) {
+                if (res.error) {
+                    alert('Ошибка: ' + res.error.message);
+                    return;
+                }
+                loadPortfolioCategories();
+            })
+            .catch(function(err) {
+                alert('Ошибка: ' + err.message);
+            });
+        }
+
+        // ================================================================
+        // РЕДАКТИРОВАНИЕ РАЗДЕЛА "ОБО МНЕ"
+        // ================================================================
+        function editAbout() {
+            supabase.from('about').select('*').eq('id', 'main').single()
+                .then(function(res) {
+                    if (res.error || !res.data) return;
+                    var data = res.data;
+                    var newHighlight = prompt('Статус:', data.highlight);
+                    if (newHighlight !== null) supabase.from('about').update({ highlight: newHighlight }).eq('id', 'main');
+                    var newText1 = prompt('Текст 1:', data.text1);
+                    if (newText1 !== null) supabase.from('about').update({ text1: newText1 }).eq('id', 'main');
+                    var newText2 = prompt('Текст 2:', data.text2);
+                    if (newText2 !== null) supabase.from('about').update({ text2: newText2 }).eq('id', 'main');
+                });
+        }
+
+        // ================================================================
+        // РЕДАКТИРОВАНИЕ ОТЗЫВА (АДМИН)
+        // ================================================================
+        function editReview(id) {
+            var newText = prompt('Новый текст отзыва:');
+            if (newText !== null) {
+                supabase.from('reviews').update({ text: newText }).eq('id', id);
+            }
+        }
+
+        // ================================================================
+        // СКАЧИВАНИЕ РАБОТЫ
+        // ================================================================
+        function downloadWork(imageData, title) {
+            downloadImage(imageData, title + '.jpg');
+        }
+
+                // ================================================================
+        // КОНТАКТНАЯ МОДАЛКА
+        // ================================================================
+        function openContactModal() {
+            var modal = document.getElementById('modalOverlay');
+            var content = document.getElementById('modalContent');
+            content.innerHTML = `
+                <h3>Связаться с нами</h3>
+                <p>Выберите способ:</p>
+                <button class="btn" onclick="window.open('https://t.me/Mark1zDesign_bot', '_blank')">🤖 Написать боту</button>
+                <button class="btn" onclick="contactDesigner()">👤 Написать дизайнеру (@Mark1zell)</button>
+                <button class="btn" onclick="closeModal()">Отмена</button>
+            `;
+            modal.style.display = 'flex';
+        }
+
+        // ================================================================
+        // ЗАКРЫТИЕ МОДАЛКИ
+        // ================================================================
+        function closeModal() {
+            document.getElementById('modalOverlay').style.display = 'none';
+        }
+
         function closeModal() {
             document.getElementById('modalOverlay').style.display = 'none';
         }
