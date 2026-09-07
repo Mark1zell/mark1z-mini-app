@@ -708,60 +708,69 @@ function openPrivacyPolicy() {
             }
         }
 
-        function spinCase() {
-            var spinBtn = document.getElementById('caseSpinBtn');
-            if (spinBtn.disabled) return;
-            spinBtn.disabled = true;
-            var strip = document.getElementById('caseStrip');
-            var items = strip.children;
-            var itemWidth = items[0].offsetWidth + 10;
-            var totalItems = items.length;
+function spinCase() {
+    var spinBtn = document.getElementById('caseSpinBtn');
+    if (spinBtn.disabled) return;
+    spinBtn.disabled = true;
+    var strip = document.getElementById('caseStrip');
+    var items = strip.children;
+    var itemWidth = items[0].offsetWidth + 10;
+    var totalItems = items.length;
 
-            var totalProb = caseProbabilities.reduce(function(a,b){ return a+b; }, 0);
-            var r = Math.random() * totalProb;
-            var chosenIndex = 0;
-            for (var i = 0; i < caseProbabilities.length; i++) {
-                r -= caseProbabilities[i];
-                if (r <= 0) { chosenIndex = i; break; }
-            }
+    var totalProb = caseProbabilities.reduce(function(a,b){ return a+b; }, 0);
+    var r = Math.random() * totalProb;
+    var chosenIndex = 0;
+    for (var i = 0; i < caseProbabilities.length; i++) {
+        r -= caseProbabilities[i];
+        if (r <= 0) { chosenIndex = i; break; }
+    }
 
-            var repetitions = totalItems / caseItems.length;
-            var targetItemIndex = (repetitions - 1) * caseItems.length + chosenIndex;
+    var repetitions = totalItems / caseItems.length;
+    var targetItemIndex = (repetitions - 1) * caseItems.length + chosenIndex;
 
-            var containerWidth = document.getElementById('caseContainer').clientWidth;
-            var targetX = -(targetItemIndex * itemWidth) + (containerWidth - itemWidth) / 2;
-            var startX = strip.getBoundingClientRect().left - document.getElementById('caseContainer').getBoundingClientRect().left;
-            var duration = Math.random() * (5000 - 3000) + 3000;
-            var startTime = performance.now();
+    var containerWidth = document.getElementById('caseContainer').clientWidth;
+    var targetX = -(targetItemIndex * itemWidth) + (containerWidth - itemWidth) / 2;
+    var startX = strip.getBoundingClientRect().left - document.getElementById('caseContainer').getBoundingClientRect().left;
+    var duration = Math.random() * (5000 - 3000) + 3000;
+    var startTime = performance.now();
 
-            function animate(now) {
-                var elapsed = now - startTime;
-                var progress = Math.min(elapsed / duration, 1);
-                var ease = 1 - Math.pow(1 - progress, 3);
-                var x = startX + (targetX - startX) * ease;
-                strip.style.transform = 'translateX(' + x + 'px)';
-                if (progress < 1) {
-                    requestAnimationFrame(animate);
-                } else {
-                    var discount = parseInt(caseItems[chosenIndex]);
-                    if (!window.isAdmin) {
-                        applyDiscount(discount);
-                        localStorage.setItem('lastSpinTime', Date.now());
-                        localStorage.setItem('lastSpinDiscount', discount);
-                        lastSpinTime = Date.now();
-                        lastSpinDiscount = discount;
-                        alert('Поздравляем! Ваша скидка: ' + discount + '%');
-                    } else {
-                        alert('Вы админ, скидка не применена (тестовый режим). Выпало: ' + discount + '%');
-                    }
-                    canSpinNow = false;
-                    spinBtn.disabled = false;
-                    closeModal();
-                    renderOrdersSection();
-                }
-            }
+    function animate(now) {
+        var elapsed = now - startTime;
+        var progress = Math.min(elapsed / duration, 1);
+        var ease = 1 - Math.pow(1 - progress, 3);
+        var x = startX + (targetX - startX) * ease;
+        strip.style.transform = 'translateX(' + x + 'px)';
+        
+        if (progress < 1) {
             requestAnimationFrame(animate);
+        } else {
+            var discount = parseInt(caseItems[chosenIndex]);
+            if (!window.isAdmin) {
+                // Применяем скидку
+                applyDiscount(discount);
+                
+                // Сохраняем в localStorage
+                localStorage.setItem('lastSpinTime', Date.now());
+                localStorage.setItem('lastSpinDiscount', discount);
+                localStorage.removeItem('discountUsed'); // Сбрасываем флаг использования
+                
+                // Обновляем глобальные переменные
+                lastSpinTime = Date.now();
+                lastSpinDiscount = discount;
+                
+                alert('🎉 Поздравляем! Ваша скидка: ' + discount + '%');
+            } else {
+                alert('👑 Вы админ, скидка не применена (тестовый режим). Выпало: ' + discount + '%');
+            }
+            
+            canSpinNow = false;
+            spinBtn.disabled = false;
+            closeModal();
+            renderOrdersSection();
         }
+    }
+    requestAnimationFrame(animate);
+}
 
         function canSpin() {
             var oneWeek = 7 * 24 * 60 * 60 * 1000;
@@ -2437,15 +2446,8 @@ function submitOrderWithOptions() {
                 return;
             }
             
-            // ===== СБРАСЫВАЕМ СКИДКУ ПОСЛЕ ИСПОЛЬЗОВАНИЯ =====
-            if (currentDiscount > 0 && currentDiscount < 100) {
-                currentDiscount = 0;
-                localStorage.removeItem('lastSpinDiscount');
-                localStorage.removeItem('lastSpinTime');
-                lastSpinDiscount = 0;
-                lastSpinTime = 0;
-                window.currentOrderFinalTotal = 0;
-            }
+            // ===== НЕМЕДЛЕННО СБРАСЫВАЕМ СКИДКУ =====
+            resetDiscount();
             
             var orderText = '📋 **Заказ:** ' + currentOrderService.name + '\n\n';
             selectedOptions.forEach(function(opt) {
@@ -2464,11 +2466,22 @@ function submitOrderWithOptions() {
             
             closeModal();
             renderOrdersSection();
-            alert('✅ Заявка отправлена! Скидка была применена и теперь аннулирована.');
+            alert('✅ Заявка отправлена! Скидка аннулирована.');
         })
         .catch(function(err) {
             alert('❌ Ошибка: ' + err.message);
         });
+}
+
+// ===== НОВАЯ ФУНКЦИЯ ДЛЯ СБРОСА СКИДКИ =====
+function resetDiscount() {
+    currentDiscount = 0;
+    localStorage.removeItem('lastSpinDiscount');
+    localStorage.removeItem('lastSpinTime');
+    localStorage.setItem('discountUsed', 'true'); // Помечаем, что скидка использована
+    lastSpinDiscount = 0;
+    lastSpinTime = 0;
+    window.currentOrderFinalTotal = 0;
 }
 
                 // ================================================================
@@ -3786,9 +3799,6 @@ function updateReviewButton(canReview) {
         // ================================================================
         // ЗАПУСК
         // ================================================================
-// ================================================================
-// ЗАПУСК
-// ================================================================
 function init() {
     createStars();
     createAsteroids();
@@ -3803,8 +3813,17 @@ function init() {
     initTelegram();
     renderOrdersSection();
     
-    // Применяем скидку из кейса, если она есть
-    if (lastSpinDiscount > 0 && lastSpinDiscount < 100) {
+    // Проверяем, не использована ли скидка
+    var discountUsed = localStorage.getItem('discountUsed');
+    if (discountUsed === 'true') {
+        // Скидка уже использована — сбрасываем
+        currentDiscount = 0;
+        localStorage.removeItem('lastSpinDiscount');
+        localStorage.removeItem('lastSpinTime');
+        lastSpinDiscount = 0;
+        lastSpinTime = 0;
+    } else if (lastSpinDiscount > 0 && lastSpinDiscount < 100) {
+        // Скидка есть и не использована — применяем
         currentDiscount = lastSpinDiscount;
         applyDiscount(lastSpinDiscount);
     } else {
@@ -3818,7 +3837,6 @@ function init() {
     }, 800);
 }
 
-// Запуск при загрузке страницы
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
 } else {
