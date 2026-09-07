@@ -1933,65 +1933,76 @@
         // ================================================================
         // КОНСТРУКТОР ЗАКАЗА
         // ================================================================
-        function openOrderConstructor(serviceId) {
-            var service = servicesData.find(function(s) { return s.id == serviceId; });
-            if (!service) return;
+function openOrderConstructor(serviceId) {
+    var service = servicesData.find(function(s) { return s.id == serviceId; });
+    if (!service) return;
 
-            var options = serviceOptionsData.filter(function(o) { return o.service_id == serviceId; });
+    var options = serviceOptionsData.filter(function(o) { return o.service_id == serviceId; });
 
-            var modal = document.getElementById('modalOverlay');
-            var content = document.getElementById('modalContent');
+    var modal = document.getElementById('modalOverlay');
+    var content = document.getElementById('modalContent');
 
-            currentOrderService = service;
-            currentOrderOptions = options;
-            currentOrderQuantities = {};
-            currentOrderFiles = [];
-            currentOrderDescription = '';
+    currentOrderService = service;
+    currentOrderOptions = options;
+    currentOrderQuantities = {};
+    currentOrderFiles = [];
+    currentOrderDescription = '';
 
-            var html = `
-                <div style="max-height:75vh; overflow-y:auto;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                        <h3>${service.emoji} ${service.name}</h3>
-                        <button class="btn" onclick="closeModal()" style="margin:0;">×</button>
-                    </div>
-                    <p style="color:var(--text-muted); font-size:14px; margin-bottom:15px;">${service.description || ''}</p>
-                    <div id="orderOptionsContainer">
-            `;
+    var html = `
+        <div style="max-height:75vh; overflow-y:auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h3>${service.emoji} ${service.name}</h3>
+                <button class="btn" onclick="closeModal()" style="margin:0;">×</button>
+            </div>
+            <p style="color:var(--text-muted); font-size:14px; margin-bottom:15px;">${service.description || ''}</p>
+            <div id="orderOptionsContainer">
+    `;
 
-            if (options.length === 0) {
-                html += '<p style="color:var(--text-muted)">Для этой услуги пока нет опций. Свяжитесь с дизайнером для уточнения.</p>';
-            } else {
-                options.forEach(function(opt, idx) {
-                    var maxQty = opt.max_quantity || 1;
-                    var isSingle = maxQty <= 1;
-                    var requiredBadge = opt.is_required ? '<span class="required-badge">Обязательная</span>' : '';
-                    
-                    html += `
-                        <div class="option-group" data-opt-id="${opt.id}">
-                            <div class="option-header" onclick="toggleOptionUI(${opt.id})">
-                                <div class="option-checkbox" id="checkbox_${opt.id}">
-                                    <span class="checkmark" id="checkmark_${opt.id}">✓</span>
-                                </div>
-                                <div class="option-info">
-                                    <div class="option-name">${opt.name} ${requiredBadge}</div>
-                                    <div class="option-price">${opt.price} ₽ ${opt.description ? '· ' + opt.description : ''}</div>
-                                </div>
-                            </div>
-                            ${!isSingle ? `
-                            <div class="option-quantity" id="qtyControl_${opt.id}" style="display:none;">
-                                <button class="qty-btn" onclick="event.stopPropagation(); changeQuantity(${opt.id}, -1)">−</button>
-                                <span class="qty-display" id="qtyDisplay_${opt.id}">${opt.min_quantity || 1}</span>
-                                <button class="qty-btn" onclick="event.stopPropagation(); changeQuantity(${opt.id}, 1)">+</button>
-                                <span class="price-detail" id="priceDisplay_${opt.id}">${opt.price} ₽ × ${opt.min_quantity || 1} = ${opt.price * (opt.min_quantity || 1)} ₽</span>
-                                ${opt.discount_min_quantity ? `<span class="discount-badge">скидка от ${opt.discount_min_quantity} шт.</span>` : ''}
-                            </div>
-                            ` : ''}
-                        </div>
-                    `;
-                });
+    if (options.length === 0) {
+        html += '<p style="color:var(--text-muted)">Для этой услуги пока нет опций. Свяжитесь с дизайнером для уточнения.</p>';
+    } else {
+        options.forEach(function(opt, idx) {
+            var maxQty = opt.max_quantity || 1;
+            var isSingle = maxQty <= 1;
+            var requiredBadge = opt.is_required ? '<span class="required-badge">Обязательная</span>' : '';
+            var isRequired = opt.is_required || false;
+            
+            // Для обязательных опций сразу активируем
+            if (isRequired) {
+                currentOrderQuantities[opt.id] = isSingle ? 1 : (opt.min_quantity || 1);
             }
-
+            
+            var checkboxActive = isRequired ? 'active' : '';
+            var checkboxBg = isRequired ? 'linear-gradient(135deg, #7c3aed, #be185d)' : 'transparent';
+            var checkboxBorder = isRequired ? '#7c3aed' : 'rgba(255,255,255,0.2)';
+            var checkmarkOpacity = isRequired ? '1' : '0';
+            
             html += `
+                <div class="option-group" data-opt-id="${opt.id}">
+                    <div class="option-header" onclick="${isRequired ? '' : 'toggleOptionUI(' + opt.id + ')'}">
+                        <div class="option-checkbox ${checkboxActive}" id="checkbox_${opt.id}" style="background:${checkboxBg};border-color:${checkboxBorder};${isRequired ? 'cursor:not-allowed;' : ''}">
+                            <span class="checkmark" id="checkmark_${opt.id}" style="opacity:${checkmarkOpacity};">✓</span>
+                        </div>
+                        <div class="option-info">
+                            <div class="option-name">${opt.name} ${requiredBadge}</div>
+                            <div class="option-price">${opt.price} ₽ ${opt.description ? '· ' + opt.description : ''}</div>
+                        </div>
+                    </div>
+                    ${!isSingle ? `
+                    <div class="option-quantity" id="qtyControl_${opt.id}" style="display:${isRequired ? 'flex' : 'none'};">
+                        <button class="qty-btn" onclick="event.stopPropagation(); changeQuantity(${opt.id}, -1)">−</button>
+                        <span class="qty-display" id="qtyDisplay_${opt.id}">${opt.min_quantity || 1}</span>
+                        <button class="qty-btn" onclick="event.stopPropagation(); changeQuantity(${opt.id}, 1)">+</button>
+                        <span class="price-detail" id="priceDisplay_${opt.id}">${opt.price} ₽ × ${opt.min_quantity || 1} = ${opt.price * (opt.min_quantity || 1)} ₽</span>
+                        ${opt.discount_min_quantity ? `<span class="discount-badge">скидка от ${opt.discount_min_quantity} шт.</span>` : ''}
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+        });
+    }
+
+    html += `
                     </div>
                     <div class="order-total">
                         Итого: <span id="orderTotalPrice">0</span> ₽
@@ -2006,85 +2017,92 @@
                     </div>
                     <button class="btn" onclick="submitOrderWithOptions()" style="width:100%; margin-top:15px;">✅ Отправить заявку</button>
                 </div>
-            `;
+    `;
 
-            content.innerHTML = html;
-            modal.style.display = 'flex';
-            updateOrderTotal();
-        }
+    content.innerHTML = html;
+    modal.style.display = 'flex';
+    updateOrderTotal();
+}
 
-        function toggleOptionUI(optId) {
-            var checkbox = document.getElementById('checkbox_' + optId);
-            var checkmark = document.getElementById('checkmark_' + optId);
-            var qtyControl = document.getElementById('qtyControl_' + optId);
-            
-            if (!checkbox) return;
-            
-            var opt = currentOrderOptions.find(function(o) { return o.id == optId; });
-            if (!opt) return;
-            
-            var maxQty = opt.max_quantity || 1;
-            var isSingle = maxQty <= 1;
-            
-            var isActive = checkbox.classList.contains('active');
-            
-            if (isActive) {
-                checkbox.classList.remove('active');
-                checkbox.style.background = 'transparent';
-                checkbox.style.borderColor = 'rgba(255,255,255,0.2)';
-                checkmark.style.opacity = '0';
-                if (qtyControl) qtyControl.style.display = 'none';
-                currentOrderQuantities[optId] = 0;
-            } else {
-                checkbox.classList.add('active');
-                checkbox.style.background = 'linear-gradient(135deg, #7c3aed, #be185d)';
-                checkbox.style.borderColor = '#7c3aed';
-                checkmark.style.opacity = '1';
-                
-                if (isSingle) {
-                    currentOrderQuantities[optId] = 1;
-                } else {
-                    if (qtyControl) qtyControl.style.display = 'flex';
-                    currentOrderQuantities[optId] = opt.min_quantity || 1;
-                }
-            }
-            updateOrderTotal();
-            updateQuantityDisplay(optId);
+function toggleOptionUI(optId) {
+    var checkbox = document.getElementById('checkbox_' + optId);
+    var checkmark = document.getElementById('checkmark_' + optId);
+    var qtyControl = document.getElementById('qtyControl_' + optId);
+    
+    if (!checkbox) return;
+    
+    var opt = currentOrderOptions.find(function(o) { return o.id == optId; });
+    if (!opt) return;
+    
+    // Если опция обязательная - не даем снять галочку
+    if (opt.is_required) {
+        return;
+    }
+    
+    var maxQty = opt.max_quantity || 1;
+    var isSingle = maxQty <= 1;
+    
+    var isActive = checkbox.classList.contains('active');
+    
+    if (isActive) {
+        checkbox.classList.remove('active');
+        checkbox.style.background = 'transparent';
+        checkbox.style.borderColor = 'rgba(255,255,255,0.2)';
+        checkmark.style.opacity = '0';
+        if (qtyControl) qtyControl.style.display = 'none';
+        currentOrderQuantities[optId] = 0;
+    } else {
+        checkbox.classList.add('active');
+        checkbox.style.background = 'linear-gradient(135deg, #7c3aed, #be185d)';
+        checkbox.style.borderColor = '#7c3aed';
+        checkmark.style.opacity = '1';
+        
+        if (isSingle) {
+            currentOrderQuantities[optId] = 1;
+        } else {
+            if (qtyControl) qtyControl.style.display = 'flex';
+            currentOrderQuantities[optId] = opt.min_quantity || 1;
         }
+    }
+    updateOrderTotal();
+    updateQuantityDisplay(optId);
+}
 
-        function changeQuantity(optId, delta) {
-            var current = currentOrderQuantities[optId] || 0;
-            var opt = currentOrderOptions.find(function(o) { return o.id == optId; });
-            if (!opt) return;
-            
-            var maxQty = opt.max_quantity || 1;
-            var isSingle = maxQty <= 1;
-            
-            if (isSingle) return;
-            
-            var newQty = Math.max(0, current + delta);
-            if (newQty === 0) {
-                var checkbox = document.getElementById('checkbox_' + optId);
-                if (checkbox && checkbox.classList.contains('active')) {
-                    toggleOptionUI(optId);
-                    return;
-                }
-            }
-            
-            if (opt.max_quantity && newQty > opt.max_quantity) {
-                alert('Максимум ' + opt.max_quantity + ' шт.');
-                return;
-            }
-            
-            if (newQty < (opt.min_quantity || 1)) {
-                alert('Минимум ' + (opt.min_quantity || 1) + ' шт.');
-                return;
-            }
-            
-            currentOrderQuantities[optId] = newQty;
-            updateQuantityDisplay(optId);
-            updateOrderTotal();
+function changeQuantity(optId, delta) {
+    var current = currentOrderQuantities[optId] || 0;
+    var opt = currentOrderOptions.find(function(o) { return o.id == optId; });
+    if (!opt) return;
+    
+    var maxQty = opt.max_quantity || 1;
+    var isSingle = maxQty <= 1;
+    
+    if (isSingle) return;
+    
+    var newQty = current + delta;
+    
+    // Для обязательных опций минимум = min_quantity
+    var minAllowed = opt.is_required ? (opt.min_quantity || 1) : 1;
+    
+    if (newQty < minAllowed) {
+        if (opt.is_required) {
+            alert('Это обязательная опция. Минимальное количество: ' + minAllowed);
+            return;
         }
+        if (newQty <= 0) {
+            toggleOptionUI(optId);
+            return;
+        }
+    }
+    
+    if (opt.max_quantity && newQty > opt.max_quantity) {
+        alert('Максимум ' + opt.max_quantity + ' шт.');
+        return;
+    }
+    
+    currentOrderQuantities[optId] = newQty;
+    updateQuantityDisplay(optId);
+    updateOrderTotal();
+}
 
         function updateQuantityDisplay(optId) {
             var display = document.getElementById('qtyDisplay_' + optId);
