@@ -329,7 +329,7 @@
         <div class="footer">
             <div>© Mark1z Design · <a href="https://t.me/mark1zell" target="_blank" class="designer-link">Дмитрий Маркизов</a></div>
             <a href="#" onclick="openPrivacyPolicy()">Политика конфиденциальности</a>
-            <span class="version">V.1.0.8</span>
+            <span class="version">V.1.0.9</span>
         </div>
     </div>
     <div class="modal-overlay" id="modalOverlay">
@@ -396,6 +396,7 @@
         var currentOrderDescription = '';
         var tempEditWorkFile = null;
         var currentEditWorkIndex = null;
+        var userOrdersMode = 'services';
 
         currentDiscount = lastSpinDiscount;
 
@@ -2654,6 +2655,100 @@ function payByStars(orderId, total, starsAmount) {
     }
 }
 
+        // Оплата pending заказа
+function payPendingOrder(orderId, total) {
+    console.log('💳 Оплата заказа:', orderId, total);
+    payByKassa(orderId, total);
+}
+
+// Отмена заказа
+function cancelOrder(orderId) {
+    if (!confirm('Вы уверены, что хотите отменить заказ?')) return;
+    
+    supabase.from('orders')
+        .update({ status: 'cancelled' })
+        .eq('id', orderId)
+        .then(function(res) {
+            if (res.error) {
+                alert('Ошибка: ' + res.error.message);
+                return;
+            }
+            
+            alert('✅ Заказ отменен');
+            loadUserOrders();
+        })
+        .catch(function(err) {
+            alert('Ошибка: ' + err.message);
+        });
+}
+
+// Автоматическая отмена просроченных заказов
+function autoCancelExpiredOrders() {
+    console.log('🔄 Проверка просроченных заказов...');
+    
+    var tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    
+    supabase.from('orders')
+        .select('*')
+        .eq('status', 'pending_payment')
+        .lt('timestamp', tenMinutesAgo)
+        .then(function(res) {
+            if (res.error) {
+                console.error('Ошибка:', res.error);
+                return;
+            }
+            
+            if (res.data && res.data.length > 0) {
+                console.log('Найдено просроченных заказов:', res.data.length);
+                
+                res.data.forEach(function(order) {
+                    supabase.from('orders')
+                        .update({ status: 'cancelled' })
+                        .eq('id', order.id)
+                        .then(function() {
+                            console.log('Заказ #' + order.id + ' отменен автоматически');
+                        });
+                });
+            }
+        });
+}
+
+// Обновление таймера в заказах
+function updateOrderTimers() {
+    var orderCards = document.querySelectorAll('[data-order-id]');
+    orderCards.forEach(function(card) {
+        var orderId = card.dataset.orderId;
+        var timestamp = card.dataset.timestamp;
+        
+        if (timestamp && orderId) {
+            var orderTime = new Date(timestamp).getTime();
+            var now = Date.now();
+            var remaining = 10 * 60 * 1000 - (now - orderTime);
+            
+            if (remaining <= 0) {
+                // Заказ просрочен
+                var timerEl = card.querySelector('.order-timer');
+                if (timerEl) {
+                    timerEl.textContent = 'Заказ просрочен';
+                    timerEl.style.color = '#ff6b6b';
+                }
+                
+                var cancelBtn = card.querySelector('.cancel-order-btn');
+                if (cancelBtn) cancelBtn.style.display = 'inline-block';
+            } else {
+                var minutes = Math.floor(remaining / 60000);
+                var seconds = Math.floor((remaining % 60000) / 1000);
+                
+                var timerEl = card.querySelector('.order-timer');
+                if (timerEl) {
+                    timerEl.textContent = 'Осталось: ' + minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+                    timerEl.style.color = '#ffc107';
+                }
+            }
+        }
+    });
+}
+
         function checkPaymentStatus(paymentId, orderId) {
     console.log('🔍 Проверка статуса платежа:', paymentId);
     
@@ -3053,13 +3148,32 @@ function resetDiscount() {
             setupSortableForServices();
         }
     } else {
-        var html = '<h3 style="margin-bottom:15px;">Мои заказы</h3>';
-        html += '<div id="userOrdersList"></div>';
-        html += '<h3 style="margin:25px 0 15px;">Наши услуги</h3>';
-        html += renderServicesForUser();
+        // Для пользователя - две вкладки
+        var html = `
+            <div style="display:flex; gap:10px; margin-bottom:15px;">
+                <button class="btn ${userOrdersMode === 'services' ? 'active' : ''}" onclick="switchUserMode('services')" style="flex:1;">🛠️ Услуги</button>
+                <button class="btn ${userOrdersMode === 'orders' ? 'active' : ''}" onclick="switchUserMode('orders')" style="flex:1;">📋 Мои заказы</button>
+            </div>
+            <div id="userOrdersContent"></div>
+        `;
         container.innerHTML = html;
-        loadUserOrders();
+        
+        if (userOrdersMode === 'services') {
+            document.getElementById('userOrdersContent').innerHTML = renderServicesForUser();
+        } else {
+            document.getElementById('userOrdersContent').innerHTML = '<div id="userOrdersList"></div>';
+            loadUserOrders();
+        }
     }
+}
+
+// Добавьте глобальную переменную
+var userOrdersMode = 'services'; // 'services' или 'orders'
+
+// Функция переключения режима для пользователя
+function switchUserMode(mode) {
+    userOrdersMode = mode;
+    renderOrdersSection();
 }
 
 // Загрузка заказов для админа (только оплаченные)
@@ -3181,7 +3295,17 @@ function renderUserOrdersList(orders) {
     var container = document.getElementById('userOrdersList');
     if (!container) return;
     
-    var html = '<div style="display:flex;flex-direction:column;gap:12px;">';
+    if (!orders || orders.length === 0) {
+        container.innerHTML = `
+            <div style="text-align:center;padding:30px;background:rgba(255,255,255,0.03);border-radius:12px;">
+                <p style="font-size:48px;margin-bottom:10px;">📋</p>
+                <p style="color:var(--text-muted);">У вас пока нет заказов</p>
+            </div>
+        `;
+        return;
+    }
+    
+    var html = '<div style="display:flex;flex-direction:column;gap:15px;">';
     
     orders.forEach(function(order) {
         var statusInfo = getStatusInfo(order.status);
@@ -3192,46 +3316,69 @@ function renderUserOrdersList(orders) {
             options = [];
         }
         
+        // Проверяем, не истекло ли время ожидания оплаты
+        var isExpired = false;
+        if (order.status === 'pending_payment' && order.timestamp) {
+            var orderTime = new Date(order.timestamp).getTime();
+            var now = Date.now();
+            var tenMinutes = 10 * 60 * 1000;
+            isExpired = (now - orderTime) > tenMinutes;
+        }
+        
         html += `
             <div style="
-                background:rgba(15,7,25,0.8);
+                background:rgba(15,7,25,0.9);
                 border:1px solid ${statusInfo.borderColor};
                 border-radius:16px;
                 padding:20px;
                 margin-bottom:10px;
+                position:relative;
             ">
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
-                    <h4 style="font-size:18px;font-weight:600;">${order.service}</h4>
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:15px;">
+                    <div>
+                        <h4 style="font-size:18px;font-weight:600;margin-bottom:5px;">${order.service}</h4>
+                        <p style="font-size:12px;color:var(--text-muted);">Заказ #${order.id} · ${order.time || ''}</p>
+                    </div>
                     <span style="
                         background:${statusInfo.bgColor};
                         color:${statusInfo.textColor};
-                        padding:6px 12px;
+                        padding:8px 14px;
                         border-radius:8px;
                         font-size:12px;
                         font-weight:600;
+                        white-space:nowrap;
                     ">${statusInfo.label}</span>
                 </div>
                 
-                <div style="margin-bottom:12px;">
-                    <p style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">Дата заказа:</p>
-                    <p style="font-size:14px;">${order.time || 'Не указана'}</p>
-                </div>
+                ${order.status === 'ready' ? `
+                    <div style="
+                        background:rgba(16,185,129,0.15);
+                        border:1px solid rgba(16,185,129,0.3);
+                        border-radius:12px;
+                        padding:15px;
+                        margin-bottom:15px;
+                        text-align:center;
+                    ">
+                        <p style="font-size:16px;font-weight:600;color:#10b981;">✅ Работа готова!</p>
+                        <p style="font-size:13px;color:var(--text-muted);margin-top:5px;">Поделитесь впечатлениями в отзывах</p>
+                    </div>
+                ` : ''}
                 
-                <div style="margin-bottom:12px;">
-                    <p style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">Выбранные опции:</p>
+                <div style="margin-bottom:15px;">
+                    <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Выбранные опции:</p>
                     ${options.map(function(o) {
                         return `
                             <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
-                                <span>${o.name} ×${o.quantity}</span>
-                                <span>${o.total} ₽</span>
+                                <span style="font-size:14px;">${o.name} ×${o.quantity}</span>
+                                <span style="font-size:14px;font-weight:600;">${o.total} ₽</span>
                             </div>
                         `;
                     }).join('')}
                 </div>
                 
                 ${order.description ? `
-                    <div style="margin-bottom:12px;">
-                        <p style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">Ваше ТЗ:</p>
+                    <div style="margin-bottom:15px;">
+                        <p style="font-size:12px;color:var(--text-muted);margin-bottom:5px;">Ваше ТЗ:</p>
                         <div style="
                             background:rgba(255,255,255,0.05);
                             border:1px solid var(--card-border);
@@ -3239,13 +3386,14 @@ function renderUserOrdersList(orders) {
                             padding:12px;
                             font-size:13px;
                             white-space:pre-wrap;
+                            line-height:1.5;
                         ">${order.description}</div>
                     </div>
                 ` : ''}
                 
                 ${order.reference_urls && order.reference_urls.length > 0 ? `
-                    <div style="margin-bottom:12px;">
-                        <p style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">Референсы:</p>
+                    <div style="margin-bottom:15px;">
+                        <p style="font-size:12px;color:var(--text-muted);margin-bottom:5px;">Референсы:</p>
                         <div style="display:flex;flex-wrap:wrap;gap:8px;">
                             ${order.reference_urls.map(function(url) {
                                 return `<img src="${url}" onclick="viewImage('${url}', 'Референс', false)" style="width:60px;height:60px;object-fit:cover;border-radius:8px;cursor:pointer;">`;
@@ -3257,17 +3405,33 @@ function renderUserOrdersList(orders) {
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-top:15px;padding-top:15px;border-top:1px solid var(--card-border);">
                     <div>
                         <p style="font-size:12px;color:var(--text-muted);">Итого:</p>
-                        <p style="font-size:20px;font-weight:700;color:#c084fc;">${order.total || 0} ₽</p>
+                        <p style="font-size:22px;font-weight:700;color:#c084fc;">${order.total || 0} ₽</p>
                     </div>
-                    <a href="https://t.me/mark1zell" target="_blank" style="
-                        background:linear-gradient(135deg, #7c3aed, #be185d);
-                        color:#fff;
-                        padding:10px 16px;
-                        border-radius:20px;
-                        text-decoration:none;
-                        font-size:13px;
-                        font-weight:600;
-                    ">💬 Связаться с дизайнером</a>
+                    
+                    ${order.status === 'pending_payment' && !isExpired ? `
+                        <div style="display:flex;gap:8px;">
+                            <button class="btn btn-sm" onclick="payPendingOrder(${order.id}, ${order.total})" style="background:linear-gradient(135deg, #10b981, #059669);">
+                                💳 Оплатить
+                            </button>
+                            <button class="btn btn-sm" onclick="cancelOrder(${order.id})" style="background:rgba(255,0,0,0.3);">
+                                Отменить
+                            </button>
+                        </div>
+                    ` : order.status === 'pending_payment' && isExpired ? `
+                        <button class="btn btn-sm" onclick="cancelOrder(${order.id})" style="background:rgba(255,0,0,0.3);">
+                            ❌ Отменить заказ
+                        </button>
+                    ` : `
+                        <a href="https://t.me/mark1zell" target="_blank" style="
+                            background:linear-gradient(135deg, #7c3aed, #be185d);
+                            color:#fff;
+                            padding:10px 16px;
+                            border-radius:20px;
+                            text-decoration:none;
+                            font-size:13px;
+                            font-weight:600;
+                        ">💬 Связаться</a>
+                    `}
                 </div>
             </div>
         `;
@@ -4805,66 +4969,551 @@ function updateReviewButton(canReview) {
         }
 
         // ================================================================
-        // ЗАПУСК
-        // ================================================================
-function init() {
-    try {
-        console.log('🚀 Начало инициализации...');
+// ФУНКЦИИ ДЛЯ РАБОТЫ С ЗАКАЗАМИ
+// ================================================================
+
+// Оплата pending заказа
+function payPendingOrder(orderId, total) {
+    console.log('💳 Оплата заказа:', orderId, total);
+    payByKassa(orderId, total);
+}
+
+// Отмена заказа
+function cancelOrder(orderId) {
+    if (!confirm('Вы уверены, что хотите отменить заказ?')) return;
+    
+    supabase.from('orders')
+        .update({ status: 'cancelled' })
+        .eq('id', orderId)
+        .then(function(res) {
+            if (res.error) {
+                alert('Ошибка: ' + res.error.message);
+                return;
+            }
+            
+            alert('✅ Заказ отменен');
+            loadUserOrders();
+            renderOrdersSection();
+        })
+        .catch(function(err) {
+            alert('Ошибка: ' + err.message);
+        });
+}
+
+// Автоматическая отмена просроченных заказов
+function autoCancelExpiredOrders() {
+    console.log('🔄 Проверка просроченных заказов...');
+    
+    var tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    
+    supabase.from('orders')
+        .select('*')
+        .eq('status', 'pending_payment')
+        .lt('timestamp', tenMinutesAgo)
+        .then(function(res) {
+            if (res.error) {
+                console.error('Ошибка проверки просроченных:', res.error);
+                return;
+            }
+            
+            if (res.data && res.data.length > 0) {
+                console.log('Найдено просроченных заказов:', res.data.length);
+                
+                res.data.forEach(function(order) {
+                    supabase.from('orders')
+                        .update({ status: 'cancelled' })
+                        .eq('id', order.id)
+                        .then(function(updateRes) {
+                            if (!updateRes.error) {
+                                console.log('✅ Заказ #' + order.id + ' отменен автоматически');
+                            }
+                        });
+                });
+            } else {
+                console.log('Нет просроченных заказов');
+            }
+        })
+        .catch(function(err) {
+            console.error('Ошибка:', err);
+        });
+}
+
+// Обновление таймеров в заказах
+function updateOrderTimers() {
+    var orderCards = document.querySelectorAll('[data-order-id]');
+    
+    orderCards.forEach(function(card) {
+        var orderId = card.dataset.orderId;
+        var timestamp = card.dataset.timestamp;
         
-        createStars();
-        createAsteroids();
-        createLoadingStars();
-        
-        setupTabs();
-        setupModalHandlers();
-        preventModalCloseOnInput();
-        
-        initTelegram();
-        
-        var loadingScreen = document.getElementById('loadingScreen');
-        if (loadingScreen) {
-            loadingScreen.classList.add('hidden');
-            loadingScreen.style.display = 'none';
+        if (timestamp && orderId) {
+            var orderTime = new Date(timestamp).getTime();
+            var now = Date.now();
+            var remaining = 10 * 60 * 1000 - (now - orderTime);
+            
+            var timerEl = card.querySelector('.order-timer');
+            
+            if (remaining <= 0) {
+                if (timerEl) {
+                    timerEl.textContent = '⏰ Заказ просрочен';
+                    timerEl.style.color = '#ff6b6b';
+                }
+                
+                var cancelBtn = card.querySelector('.cancel-order-btn');
+                if (cancelBtn) cancelBtn.style.display = 'inline-block';
+            } else {
+                var minutes = Math.floor(remaining / 60000);
+                var seconds = Math.floor((remaining % 60000) / 1000);
+                
+                if (timerEl) {
+                    timerEl.textContent = '⏰ Осталось: ' + minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+                    timerEl.style.color = '#ffc107';
+                }
+            }
         }
-        
-        console.log('📦 Загрузка данных...');
-        
-        initDefaultServices();
-        initDefaultServiceOptions();
-        setupRealTimeListeners();
-        renderOrdersSection();
-        
-        // Восстанавливаем скидку
-        var discountUsed = localStorage.getItem('discountUsed');
-        if (discountUsed === 'true') {
-            currentDiscount = 0;
-            localStorage.removeItem('lastSpinDiscount');
-            lastSpinDiscount = 0;
-        } else if (lastSpinDiscount > 0 && lastSpinDiscount <= 100) {
-            currentDiscount = lastSpinDiscount;
-        } else {
-            currentDiscount = 0;
+    });
+}
+
+// Автоматическая проверка неоплаченных заказов
+function autoCheckPendingPayments() {
+    console.log('🔄 Автоматическая проверка неоплаченных заказов...');
+    
+    var user = window.currentUser;
+    if (!user) {
+        console.log('Пользователь не определен');
+        return;
+    }
+    
+    var userIdentifier = user.username || user.first_name || user.id.toString();
+    
+    supabase.from('orders')
+        .select('*')
+        .eq('status', 'pending_payment')
+        .not('payment_id', 'is', null)
+        .or('user_username.eq.' + userIdentifier + ',user_name.eq.' + userIdentifier)
+        .then(function(res) {
+            if (res.error) {
+                console.error('Ошибка загрузки pending заказов:', res.error);
+                return;
+            }
+            
+            if (!res.data || res.data.length === 0) {
+                return;
+            }
+            
+            res.data.forEach(function(order) {
+                if (order.payment_id) {
+                    checkPaymentStatusSilent(order.payment_id, order.id);
+                }
+            });
+        });
+}
+
+// Тихая проверка статуса платежа
+function checkPaymentStatusSilent(paymentId, orderId) {
+    var functionUrl = 'https://lcgbpwowppwwpjjlphod.supabase.co/functions/v1/check-payment';
+    var supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZ2Jwd293cHB3d3BqamxwaG9kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NDAwNTMsImV4cCI6MjEwNDIxNjA1M30.95VPot7saWmlgv1IzBop3E4x-ZxSc8HepqKdDLJa7JI';
+    
+    fetch(functionUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + supabaseKey,
+            'apikey': supabaseKey
+        },
+        body: JSON.stringify({
+            paymentId: paymentId,
+            orderId: orderId
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'succeeded') {
+            supabase.from('orders')
+                .update({ status: 'paid_card' })
+                .eq('id', orderId)
+                .then(function() {
+                    showPaymentSuccessNotification(orderId);
+                    if (window.isAdmin) {
+                        loadAdminOrders();
+                    } else {
+                        loadUserOrders();
+                    }
+                    renderOrdersSection();
+                });
         }
-        
-        // Загружаем активные посты
-        loadActivePosts();
-        
-        // АВТОМАТИЧЕСКАЯ ПРОВЕРКА ПЛАТЕЖЕЙ
-        setTimeout(function() {
-            autoCheckPendingPayments();
-        }, 2000); // Проверяем через 2 секунды после загрузки
-        
-        console.log('✅ Инициализация завершена');
-    } catch (err) {
-        console.error('❌ Ошибка в init():', err);
-        var loadingScreen = document.getElementById('loadingScreen');
-        if (loadingScreen) {
-            loadingScreen.classList.add('hidden');
-            loadingScreen.style.display = 'none';
-        }
-        alert('Ошибка при загрузке: ' + err.message);
+    })
+    .catch(function(err) {
+        console.error('Ошибка тихой проверки:', err);
+    });
+}
+
+// Уведомление об успешной оплате
+function showPaymentSuccessNotification(orderId) {
+    var shownPayments = JSON.parse(localStorage.getItem('shownPaymentNotifications') || '[]');
+    if (shownPayments.indexOf(orderId.toString()) !== -1) return;
+    
+    var modal = document.getElementById('modalOverlay');
+    var content = document.getElementById('modalContent');
+    
+    content.innerHTML = `
+        <div style="text-align:center;padding:40px 20px;">
+            <div style="font-size:64px;margin-bottom:20px;">🎉</div>
+            <h2 style="font-size:24px;margin-bottom:15px;">Оплата подтверждена!</h2>
+            <p style="color:var(--text-muted);margin-bottom:25px;">
+                Заказ #${orderId} успешно оплачен.<br>
+                Дизайнер скоро приступит к работе.
+            </p>
+            <button class="btn" onclick="markPaymentShown(${orderId}); closeModal();" style="width:100%;">
+                Отлично!
+            </button>
+        </div>
+    `;
+    modal.style.display = 'flex';
+}
+
+function markPaymentShown(orderId) {
+    var shownPayments = JSON.parse(localStorage.getItem('shownPaymentNotifications') || '[]');
+    if (shownPayments.indexOf(orderId.toString()) === -1) {
+        shownPayments.push(orderId.toString());
+        localStorage.setItem('shownPaymentNotifications', JSON.stringify(shownPayments));
     }
 }
+
+        // ================================================================
+        // ЗАПУСК
+        // ================================================================
+        function init() {
+            console.log('🚀 Начало инициализации...');
+            
+            try {
+                // Создаем фоновые элементы
+                console.log('✨ Создание фоновых элементов...');
+                createStars();
+                createAsteroids();
+                createLoadingStars();
+                console.log('✅ Фон создан');
+                
+                // Настраиваем интерфейс
+                console.log('🔧 Настройка интерфейса...');
+                setupTabs();
+                setupModalHandlers();
+                preventModalCloseOnInput();
+                console.log('✅ Интерфейс настроен');
+                
+                // Инициализируем Telegram
+                console.log('📱 Инициализация Telegram...');
+                initTelegram();
+                console.log('✅ Telegram инициализирован');
+                
+                // Скрываем загрузочный экран
+                console.log('🙈 Скрытие загрузочного экрана...');
+                var loadingScreen = document.getElementById('loadingScreen');
+                if (loadingScreen) {
+                    loadingScreen.classList.add('hidden');
+                    loadingScreen.style.display = 'none';
+                }
+                console.log('✅ Загрузочный экран скрыт');
+                
+                // Загружаем данные
+                console.log('📦 Загрузка данных...');
+                initDefaultServices();
+                initDefaultServiceOptions();
+                setupRealTimeListeners();
+                renderOrdersSection();
+                console.log('✅ Данные загружены');
+                
+                // Восстанавливаем скидку
+                var discountUsed = localStorage.getItem('discountUsed');
+                if (discountUsed === 'true') {
+                    currentDiscount = 0;
+                    localStorage.removeItem('lastSpinDiscount');
+                    lastSpinDiscount = 0;
+                } else if (lastSpinDiscount > 0 && lastSpinDiscount <= 100) {
+                    currentDiscount = lastSpinDiscount;
+                } else {
+                    currentDiscount = 0;
+                }
+                
+                // Загружаем активные посты
+                loadActivePosts();
+                
+                // ================================================================
+                // АВТОМАТИЧЕСКИЕ ПРОВЕРКИ
+                // ================================================================
+                
+                // Автоматическая проверка просроченных заказов (сразу при запуске)
+                console.log('🔄 Проверка просроченных заказов...');
+                autoCancelExpiredOrders();
+                
+                // Автоматическая проверка платежей (через 2 секунды)
+                console.log('💳 Запуск автоматической проверки платежей...');
+                setTimeout(function() {
+                    autoCheckPendingPayments();
+                }, 2000);
+                
+                // Обновление таймеров каждую секунду
+                console.log('⏱ Запуск обновления таймеров...');
+                setInterval(function() {
+                    updateOrderTimers();
+                }, 1000);
+                
+                // Проверка просроченных заказов каждые 30 секунд
+                setInterval(function() {
+                    autoCancelExpiredOrders();
+                }, 30000);
+                
+                // Периодическая проверка платежей каждые 30 секунд
+                setInterval(function() {
+                    autoCheckPendingPayments();
+                }, 30000);
+                
+                console.log('✅ Инициализация завершена успешно');
+                
+            } catch (err) {
+                console.error('❌ Ошибка в init():', err);
+                console.error('Стек ошибки:', err.stack);
+                
+                // Скрываем загрузочный экран даже при ошибке
+                var loadingScreen = document.getElementById('loadingScreen');
+                if (loadingScreen) {
+                    loadingScreen.classList.add('hidden');
+                    loadingScreen.style.display = 'none';
+                }
+                
+                alert('Ошибка при загрузке: ' + err.message);
+            }
+        }
+
+        // ================================================================
+        // ФУНКЦИИ ДЛЯ РАБОТЫ С ЗАКАЗАМИ
+        // ================================================================
+        
+        // Оплата pending заказа
+        function payPendingOrder(orderId, total) {
+            console.log('💳 Оплата заказа:', orderId, total);
+            payByKassa(orderId, total);
+        }
+
+        // Отмена заказа
+        function cancelOrder(orderId) {
+            if (!confirm('Вы уверены, что хотите отменить заказ?')) return;
+            
+            supabase.from('orders')
+                .update({ status: 'cancelled' })
+                .eq('id', orderId)
+                .then(function(res) {
+                    if (res.error) {
+                        alert('Ошибка: ' + res.error.message);
+                        return;
+                    }
+                    
+                    alert('✅ Заказ отменен');
+                    loadUserOrders();
+                    renderOrdersSection();
+                })
+                .catch(function(err) {
+                    alert('Ошибка: ' + err.message);
+                });
+        }
+
+        // Автоматическая отмена просроченных заказов
+        function autoCancelExpiredOrders() {
+            console.log('🔄 Проверка просроченных заказов...');
+            
+            var tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+            
+            supabase.from('orders')
+                .select('*')
+                .eq('status', 'pending_payment')
+                .lt('timestamp', tenMinutesAgo)
+                .then(function(res) {
+                    if (res.error) {
+                        console.error('Ошибка проверки просроченных:', res.error);
+                        return;
+                    }
+                    
+                    if (res.data && res.data.length > 0) {
+                        console.log('Найдено просроченных заказов:', res.data.length);
+                        
+                        res.data.forEach(function(order) {
+                            supabase.from('orders')
+                                .update({ status: 'cancelled' })
+                                .eq('id', order.id)
+                                .then(function(updateRes) {
+                                    if (!updateRes.error) {
+                                        console.log('✅ Заказ #' + order.id + ' отменен автоматически');
+                                    }
+                                });
+                        });
+                    } else {
+                        console.log('Нет просроченных заказов');
+                    }
+                })
+                .catch(function(err) {
+                    console.error('Ошибка:', err);
+                });
+        }
+
+        // Обновление таймеров в заказах
+        function updateOrderTimers() {
+            var orderCards = document.querySelectorAll('[data-order-id]');
+            
+            orderCards.forEach(function(card) {
+                var orderId = card.dataset.orderId;
+                var timestamp = card.dataset.timestamp;
+                
+                if (timestamp && orderId) {
+                    var orderTime = new Date(timestamp).getTime();
+                    var now = Date.now();
+                    var remaining = 10 * 60 * 1000 - (now - orderTime);
+                    
+                    var timerEl = card.querySelector('.order-timer');
+                    
+                    if (remaining <= 0) {
+                        if (timerEl) {
+                            timerEl.textContent = '⏰ Заказ просрочен';
+                            timerEl.style.color = '#ff6b6b';
+                        }
+                        
+                        var cancelBtn = card.querySelector('.cancel-order-btn');
+                        if (cancelBtn) cancelBtn.style.display = 'inline-block';
+                    } else {
+                        var minutes = Math.floor(remaining / 60000);
+                        var seconds = Math.floor((remaining % 60000) / 1000);
+                        
+                        if (timerEl) {
+                            timerEl.textContent = '⏰ Осталось: ' + minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+                            timerEl.style.color = '#ffc107';
+                        }
+                    }
+                }
+            });
+        }
+
+        // Автоматическая проверка неоплаченных заказов
+        function autoCheckPendingPayments() {
+            console.log('🔄 Автоматическая проверка неоплаченных заказов...');
+            
+            var user = window.currentUser;
+            if (!user) {
+                console.log('Пользователь не определен');
+                return;
+            }
+            
+            var userIdentifier = user.username || user.first_name || user.id.toString();
+            
+            supabase.from('orders')
+                .select('*')
+                .eq('status', 'pending_payment')
+                .not('payment_id', 'is', null)
+                .or('user_username.eq.' + userIdentifier + ',user_name.eq.' + userIdentifier)
+                .then(function(res) {
+                    if (res.error) {
+                        console.error('Ошибка загрузки pending заказов:', res.error);
+                        return;
+                    }
+                    
+                    if (!res.data || res.data.length === 0) {
+                        return;
+                    }
+                    
+                    res.data.forEach(function(order) {
+                        if (order.payment_id) {
+                            checkPaymentStatusSilent(order.payment_id, order.id);
+                        }
+                    });
+                });
+        }
+
+        // Тихая проверка статуса платежа
+        function checkPaymentStatusSilent(paymentId, orderId) {
+            var functionUrl = 'https://lcgbpwowppwwpjjlphod.supabase.co/functions/v1/check-payment';
+            var supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZ2Jwd293cHB3d3BqamxwaG9kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NDAwNTMsImV4cCI6MjEwNDIxNjA1M30.95VPot7saWmlgv1IzBop3E4x-ZxSc8HepqKdDLJa7JI';
+            
+            fetch(functionUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + supabaseKey,
+                    'apikey': supabaseKey
+                },
+                body: JSON.stringify({
+                    paymentId: paymentId,
+                    orderId: orderId
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'succeeded') {
+                    supabase.from('orders')
+                        .update({ status: 'paid_card' })
+                        .eq('id', orderId)
+                        .then(function() {
+                            showPaymentSuccessNotification(orderId);
+                            if (window.isAdmin) {
+                                loadAdminOrders();
+                            } else {
+                                loadUserOrders();
+                            }
+                            renderOrdersSection();
+                        });
+                }
+            })
+            .catch(function(err) {
+                console.error('Ошибка тихой проверки:', err);
+            });
+        }
+
+        // Уведомление об успешной оплате
+        function showPaymentSuccessNotification(orderId) {
+            var shownPayments = JSON.parse(localStorage.getItem('shownPaymentNotifications') || '[]');
+            if (shownPayments.indexOf(orderId.toString()) !== -1) return;
+            
+            var modal = document.getElementById('modalOverlay');
+            var content = document.getElementById('modalContent');
+            
+            content.innerHTML = `
+                <div style="text-align:center;padding:40px 20px;">
+                    <div style="font-size:64px;margin-bottom:20px;">🎉</div>
+                    <h2 style="font-size:24px;margin-bottom:15px;">Оплата подтверждена!</h2>
+                    <p style="color:var(--text-muted);margin-bottom:25px;">
+                        Заказ #${orderId} успешно оплачен.<br>
+                        Дизайнер скоро приступит к работе.
+                    </p>
+                    <button class="btn" onclick="markPaymentShown(${orderId}); closeModal();" style="width:100%;">
+                        Отлично!
+                    </button>
+                </div>
+            `;
+            modal.style.display = 'flex';
+        }
+
+        function markPaymentShown(orderId) {
+            var shownPayments = JSON.parse(localStorage.getItem('shownPaymentNotifications') || '[]');
+            if (shownPayments.indexOf(orderId.toString()) === -1) {
+                shownPayments.push(orderId.toString());
+                localStorage.setItem('shownPaymentNotifications', JSON.stringify(shownPayments));
+            }
+        }
+
+        // ================================================================
+        // ЗАПУСК ПРИЛОЖЕНИЯ
+        // ================================================================
+        console.log('⏳ Ожидание загрузки DOM...');
+        
+        if (document.readyState === 'loading') {
+            console.log('📄 DOM еще загружается, добавляем listener');
+            document.addEventListener('DOMContentLoaded', function() {
+                console.log('📄 DOM загружен, запускаем init');
+                init();
+            });
+        } else {
+            console.log('📄 DOM уже загружен, запускаем init сразу');
+            init();
+        }
+        
+        console.log('📜 Скрипт полностью загружен');
     </script>
 </body>
 </html>
