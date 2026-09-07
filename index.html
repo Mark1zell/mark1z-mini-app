@@ -4109,63 +4109,80 @@ function updateReviewButton(canReview) {
         // ================================================================
         // ЗАПУСК
         // ================================================================
-function init() {
-    try {
-        console.log('🚀 Начало инициализации...');
-        
-        // Создаем фоновые элементы
-        createStars();
-        createAsteroids();
-        createLoadingStars();
-        
-        // Настраиваем интерфейс
-        setupTabs();
-        setupModalHandlers();
-        preventModalCloseOnInput();
-        
-        // Инициализируем Telegram
-        initTelegram();
-        
-        // Скрываем загрузочный экран
-        var loadingScreen = document.getElementById('loadingScreen');
-        if (loadingScreen) {
-            loadingScreen.classList.add('hidden');
+        // ================================================================
+        // ЗАПУСК
+        // ================================================================
+        function init() {
+            console.log('🚀 Начало init()');
+            
+            try {
+                // Создаем фоновые элементы
+                console.log('✨ Создание фоновых элементов...');
+                createStars();
+                createAsteroids();
+                createLoadingStars();
+                console.log('✅ Фон создан');
+                
+                // Настраиваем интерфейс
+                console.log('🔧 Настройка интерфейса...');
+                setupTabs();
+                setupModalHandlers();
+                preventModalCloseOnInput();
+                console.log('✅ Интерфейс настроен');
+                
+                // Инициализируем Telegram
+                console.log('📱 Инициализация Telegram...');
+                initTelegram();
+                console.log('✅ Telegram инициализирован');
+                
+                // Скрываем загрузочный экран
+                console.log('🙈 Скрытие загрузочного экрана...');
+                var loadingScreen = document.getElementById('loadingScreen');
+                if (loadingScreen) {
+                    loadingScreen.classList.add('hidden');
+                    // Добавляем style.display = 'none' для надежности
+                    loadingScreen.style.display = 'none';
+                }
+                console.log('✅ Загрузочный экран скрыт');
+                
+                // Загружаем данные
+                console.log('📦 Загрузка данных...');
+                initDefaultServices();
+                initDefaultServiceOptions();
+                setupRealTimeListeners();
+                renderOrdersSection();
+                console.log('✅ Данные загружены');
+                
+                // Восстанавливаем скидку
+                var discountUsed = localStorage.getItem('discountUsed');
+                if (discountUsed === 'true') {
+                    currentDiscount = 0;
+                    localStorage.removeItem('lastSpinDiscount');
+                    lastSpinDiscount = 0;
+                } else if (lastSpinDiscount > 0 && lastSpinDiscount <= 100) {
+                    currentDiscount = lastSpinDiscount;
+                } else {
+                    currentDiscount = 0;
+                }
+                
+                // Загружаем активные посты
+                loadActivePosts();
+                
+                console.log('✅ Инициализация завершена успешно');
+            } catch (err) {
+                console.error('❌ Ошибка в init():', err);
+                console.error('Стек ошибки:', err.stack);
+                
+                // Скрываем загрузочный экран даже при ошибке
+                var loadingScreen = document.getElementById('loadingScreen');
+                if (loadingScreen) {
+                    loadingScreen.classList.add('hidden');
+                    loadingScreen.style.display = 'none';
+                }
+                
+                alert('Ошибка при загрузке: ' + err.message);
+            }
         }
-        
-        console.log('📦 Загрузка данных...');
-        
-        // Загружаем данные
-        initDefaultServices();
-        initDefaultServiceOptions();
-        setupRealTimeListeners();
-        renderOrdersSection();
-        
-        // Восстанавливаем скидку
-        var discountUsed = localStorage.getItem('discountUsed');
-        if (discountUsed === 'true') {
-            currentDiscount = 0;
-            localStorage.removeItem('lastSpinDiscount');
-            lastSpinDiscount = 0;
-        } else if (lastSpinDiscount > 0 && lastSpinDiscount <= 100) {
-            currentDiscount = lastSpinDiscount;
-        } else {
-            currentDiscount = 0;
-        }
-        
-        // Загружаем активные посты
-        loadActivePosts();
-        
-        console.log('✅ Инициализация завершена');
-    } catch (err) {
-        console.error('❌ Ошибка инициализации:', err);
-        // Скрываем загрузочный экран даже при ошибке
-        var loadingScreen = document.getElementById('loadingScreen');
-        if (loadingScreen) {
-            loadingScreen.classList.add('hidden');
-        }
-        alert('Произошла ошибка при загрузке: ' + err.message);
-    }
-}
     </script>
 </body>
 </html>
