@@ -2370,95 +2370,106 @@ function updateOrderTotal() {
             });
         }
 
-        function submitOrderWithOptions() {
-            var selectedOptions = [];
-            var missingRequired = [];
-            
-            currentOrderOptions.forEach(function(opt) {
-                var qty = currentOrderQuantities[opt.id] || 0;
-                if (qty > 0) {
-                    var price = opt.price;
-                    if (opt.discount_min_quantity && qty >= opt.discount_min_quantity && opt.discount_price) {
-                        price = opt.discount_price;
-                    }
-                    selectedOptions.push({
-                        name: opt.name,
-                        price: price,
-                        quantity: qty,
-                        total: price * qty,
-                        option_type: opt.option_type || 'checkbox'
-                    });
-                } else if (opt.is_required) {
-                    missingRequired.push(opt.name);
-                }
-            });
-
-            if (missingRequired.length > 0) {
-                alert('Выберите обязательные опции:\n' + missingRequired.join('\n'));
-                return;
+function submitOrderWithOptions() {
+    var selectedOptions = [];
+    var missingRequired = [];
+    
+    currentOrderOptions.forEach(function(opt) {
+        var qty = currentOrderQuantities[opt.id] || 0;
+        if (qty > 0) {
+            var price = opt.price;
+            if (opt.discount_min_quantity && qty >= opt.discount_min_quantity && opt.discount_price) {
+                price = opt.discount_price;
             }
-
-            if (selectedOptions.length === 0) {
-                alert('Выберите хотя бы одну опцию');
-                return;
-            }
-
-            var description = document.getElementById('orderDescription').value.trim();
-            var total = selectedOptions.reduce(function(sum, opt) { return sum + opt.total; }, 0);
-
-            var user = window.currentUser;
-            var userName = user?.first_name || user?.username || 'Пользователь';
-            var userUsername = user?.username || null;
-
-            var uploadPromises = currentOrderFiles.map(function(file) {
-                return uploadFileToSupabase(file, 'references/' + (user?.id || 'anonymous'));
+            selectedOptions.push({
+                name: opt.name,
+                price: price,
+                quantity: qty,
+                total: price * qty,
+                option_type: opt.option_type || 'checkbox'
             });
-            
-            Promise.all(uploadPromises)
-                .then(function(referenceUrls) {
-                    var order = {
-                        service: currentOrderService.name,
-                        user_name: userName,
-                        user_username: userUsername,
-                        time: new Date().toLocaleString('ru-RU'),
-                        timestamp: new Date().toISOString(),
-                        options: JSON.stringify(selectedOptions),
-                        total: total,
-                        description: description,
-                        reference_urls: referenceUrls,
-                        status: 'pending'
-                    };
-                    
-                    return supabase.from('orders').insert([order]);
-                })
-                .then(function(res) {
-                    if (res.error) {
-                        alert('❌ Ошибка при сохранении заказа: ' + res.error.message);
-                        return;
-                    }
-                    
-                    var orderText = '📋 **Заказ:** ' + currentOrderService.name + '\n\n';
-                    selectedOptions.forEach(function(opt) {
-                        orderText += '• ' + opt.name + ' — ' + opt.quantity + ' шт. × ' + opt.price + ' ₽ = ' + opt.total + ' ₽\n';
-                    });
-                    orderText += '\n**Итого:** ' + total + ' ₽\n\n';
-                    if (description) orderText += '**ТЗ:**\n' + description + '\n\n';
-                    orderText += 'Жду счёт для оплаты.';
-                    
-                    var chatText = encodeURIComponent(orderText);
-                    if (window.telegramAvailable && window.tg) {
-                        window.tg.openTelegramLink('https://t.me/Mark1zDesign_bot?text=' + chatText);
-                    } else {
-                        window.open('https://t.me/Mark1zDesign_bot?text=' + chatText, '_blank');
-                    }
-                    
-                    closeModal();
-                    alert('✅ Заявка отправлена! Я свяжусь с вами для уточнения деталей.');
-                })
-                .catch(function(err) {
-                    alert('❌ Ошибка: ' + err.message);
-                });
+        } else if (opt.is_required) {
+            missingRequired.push(opt.name);
         }
+    });
+
+    if (missingRequired.length > 0) {
+        alert('Выберите обязательные опции:\n' + missingRequired.join('\n'));
+        return;
+    }
+
+    if (selectedOptions.length === 0) {
+        alert('Выберите хотя бы одну опцию');
+        return;
+    }
+
+    var description = document.getElementById('orderDescription').value.trim();
+    var total = window.currentOrderFinalTotal || selectedOptions.reduce(function(sum, opt) { return sum + opt.total; }, 0);
+
+    var user = window.currentUser;
+    var userName = user?.first_name || user?.username || 'Пользователь';
+    var userUsername = user?.username || null;
+
+    var uploadPromises = currentOrderFiles.map(function(file) {
+        return uploadFileToSupabase(file, 'references/' + (user?.id || 'anonymous'));
+    });
+    
+    Promise.all(uploadPromises)
+        .then(function(referenceUrls) {
+            var order = {
+                service: currentOrderService.name,
+                user_name: userName,
+                user_username: userUsername,
+                time: new Date().toLocaleString('ru-RU'),
+                timestamp: new Date().toISOString(),
+                options: JSON.stringify(selectedOptions),
+                total: total,
+                description: description,
+                reference_urls: referenceUrls,
+                status: 'pending'
+            };
+            
+            return supabase.from('orders').insert([order]);
+        })
+        .then(function(res) {
+            if (res.error) {
+                alert('❌ Ошибка при сохранении заказа: ' + res.error.message);
+                return;
+            }
+            
+            // ===== СБРАСЫВАЕМ СКИДКУ ПОСЛЕ ИСПОЛЬЗОВАНИЯ =====
+            if (currentDiscount > 0 && currentDiscount < 100) {
+                currentDiscount = 0;
+                localStorage.removeItem('lastSpinDiscount');
+                localStorage.removeItem('lastSpinTime');
+                lastSpinDiscount = 0;
+                lastSpinTime = 0;
+                window.currentOrderFinalTotal = 0;
+            }
+            
+            var orderText = '📋 **Заказ:** ' + currentOrderService.name + '\n\n';
+            selectedOptions.forEach(function(opt) {
+                orderText += '• ' + opt.name + ' — ' + opt.quantity + ' шт. × ' + opt.price + ' ₽ = ' + opt.total + ' ₽\n';
+            });
+            orderText += '\n**Итого:** ' + total + ' ₽\n\n';
+            if (description) orderText += '**ТЗ:**\n' + description + '\n\n';
+            orderText += 'Жду счёт для оплаты.';
+            
+            var chatText = encodeURIComponent(orderText);
+            if (window.telegramAvailable && window.tg) {
+                window.tg.openTelegramLink('https://t.me/Mark1zDesign_bot?text=' + chatText);
+            } else {
+                window.open('https://t.me/Mark1zDesign_bot?text=' + chatText, '_blank');
+            }
+            
+            closeModal();
+            renderOrdersSection();
+            alert('✅ Заявка отправлена! Скидка была применена и теперь аннулирована.');
+        })
+        .catch(function(err) {
+            alert('❌ Ошибка: ' + err.message);
+        });
+}
 
                 // ================================================================
         // РАЗДЕЛ ЗАКАЗЫ
@@ -2933,6 +2944,11 @@ function completeOrder(orderId) {
 
         function clearOrders() {
             if (!confirm('Очистить все заказы? Все референсы будут удалены!')) return;
+                currentDiscount = 0;
+                localStorage.removeItem('lastSpinDiscount');
+                localStorage.removeItem('lastSpinTime');
+                lastSpinDiscount = 0;
+                lastSpinTime = 0;
             supabase.from('orders').select('*')
                 .then(function(res) {
                     var orders = res.data || [];
@@ -3770,6 +3786,9 @@ function updateReviewButton(canReview) {
         // ================================================================
         // ЗАПУСК
         // ================================================================
+// ================================================================
+// ЗАПУСК
+// ================================================================
 function init() {
     createStars();
     createAsteroids();
@@ -3777,21 +3796,34 @@ function init() {
     setupTabs();
     setupModalHandlers();
     preventModalCloseOnInput();
-    initDefaultServices();      // ДОЛЖНО БЫТЬ
-    initDefaultServiceOptions(); // ДОЛЖНО БЫТЬ
+    initImageViewerZoom();
+    initDefaultServices();
+    initDefaultServiceOptions();
     setupRealTimeListeners();
     initTelegram();
     renderOrdersSection();
-    if (lastSpinDiscount > 0) applyDiscount(lastSpinDiscount);
+    
+    // Применяем скидку из кейса, если она есть
+    if (lastSpinDiscount > 0 && lastSpinDiscount < 100) {
+        currentDiscount = lastSpinDiscount;
+        applyDiscount(lastSpinDiscount);
+    } else {
+        currentDiscount = 0;
+    }
+    
     loadActivePosts();
-    setTimeout(function() { document.getElementById('loadingScreen').classList.add('hidden'); }, 800);
+    
+    setTimeout(function() { 
+        document.getElementById('loadingScreen').classList.add('hidden'); 
+    }, 800);
 }
 
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', init);
-        } else {
-            init();
-        }
+// Запуск при загрузке страницы
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
     </script>
 </body>
 </html>
