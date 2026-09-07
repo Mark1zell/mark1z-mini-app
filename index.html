@@ -3007,16 +3007,6 @@ function completeOrder(orderId) {
         }
 
         // ================================================================
-        // РЕДАКТИРОВАНИЕ ОТЗЫВА (АДМИН)
-        // ================================================================
-        function editReview(id) {
-            var newText = prompt('Новый текст отзыва:');
-            if (newText !== null) {
-                supabase.from('reviews').update({ text: newText }).eq('id', id);
-            }
-        }
-
-        // ================================================================
         // СКАЧИВАНИЕ РАБОТЫ
         // ================================================================
         function downloadWork(imageData, title) {
@@ -3166,10 +3156,6 @@ function saveEditedReview(id) {
         // ================================================================
         // ЗАКРЫТИЕ МОДАЛКИ
         // ================================================================
-        function closeModal() {
-            document.getElementById('modalOverlay').style.display = 'none';
-        }
-
         function closeModal() {
             document.getElementById('modalOverlay').style.display = 'none';
         }
@@ -3674,21 +3660,6 @@ function updateReviewButton(canReview) {
         btn.id = 'addReviewBtn';
         btn.style.cssText = 'margin-top:10px;text-align:center;';
         btn.innerHTML = '<button class="btn" onclick="openReviewModal()">Добавить отзыв</button>';
-        container.appendChild(btn);
-    }
-}
-
-function updateReviewButton(canReview) {
-    var container = document.getElementById('reviewsContainer');
-    var existingBtn = document.getElementById('addReviewBtn');
-    if (existingBtn) existingBtn.remove();
-    
-    if (canReview) {
-        var btn = document.createElement('button');
-        btn.id = 'addReviewBtn';
-        btn.className = 'btn';
-        btn.textContent = 'Добавить отзыв';
-        btn.onclick = function() { openReviewModal(); };
         container.appendChild(btn);
     }
 }
