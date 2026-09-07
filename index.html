@@ -2594,42 +2594,24 @@ function showPaymentOptions(orderId, total, selectedOptions) {
 function payByStars(orderId, total, starsAmount) {
     closeModal();
     
-    // Пробуем вызвать showInvoice напрямую
+    // Пробуем вызвать напрямую без проверок
     try {
-        // Вариант 1: через window.Telegram
-        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.showInvoice) {
-            window.Telegram.WebApp.showInvoice({
-                title: 'Mark1z Design',
-                description: 'Оплата заказа #' + orderId,
-                payload: 'order_' + orderId,
-                currency: 'XTR',
-                prices: [{ label: 'Дизайн услуга', amount: starsAmount }]
-            }, function(success) {
-                handleStarsResult(success, orderId);
-            });
-            return;
-        }
-        
-        // Вариант 2: через window.tg
-        if (window.tg && window.tg.showInvoice) {
-            window.tg.showInvoice({
-                title: 'Mark1z Design',
-                description: 'Оплата заказа #' + orderId,
-                payload: 'order_' + orderId,
-                currency: 'XTR',
-                prices: [{ label: 'Дизайн услуга', amount: starsAmount }]
-            }, function(success) {
-                handleStarsResult(success, orderId);
-            });
-            return;
-        }
-        
-        // Вариант 3: показать ошибку
-        alert('⭐ Оплата звёздами доступна только через официального бота.\n\nОткройте: @Mark1zDesign_bot\nНажмите кнопку "Открыть приложение"');
-        
+        Telegram.WebApp.showInvoice(
+            'Mark1z Design',
+            'Оплата заказа',
+            'order_' + orderId,
+            'XTR',
+            [{ label: 'Дизайн услуга', amount: starsAmount }],
+            function(success) {
+                if (success) {
+                    alert('✅ Оплата прошла!');
+                } else {
+                    alert('❌ Оплата отменена');
+                }
+            }
+        );
     } catch(e) {
-        console.error('Stars error:', e);
-        alert('Ошибка оплаты звёздами. Попробуйте картой.');
+        alert('Ошибка: ' + e.message);
     }
 }
 
