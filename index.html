@@ -396,7 +396,9 @@
         // TELEGRAM INIT
         // ================================================================
 function initTelegram() {
+    // Пытаемся получить Telegram WebApp
     var tg = window.Telegram?.WebApp;
+    
     if (tg) {
         window.telegramAvailable = true;
         window.tg = tg;
@@ -411,11 +413,35 @@ function initTelegram() {
             window.isAdmin = true;
             document.body.classList.add('admin-mode');
         }
-        console.log('Telegram WebApp инициализирован, showInvoice:', typeof tg.showInvoice);
+        console.log('✅ Telegram WebApp инициализирован');
+        console.log('showInvoice доступен:', typeof tg.showInvoice);
     } else {
-        console.log('Telegram WebApp НЕ найден');
-        window.telegramAvailable = false;
-        window.tg = null;
+        console.log('Telegram WebApp не найден, пробуем снова...');
+        // Пробуем ещё раз через 1 секунду
+        setTimeout(function() {
+            var tgRetry = window.Telegram?.WebApp;
+            if (tgRetry) {
+                window.telegramAvailable = true;
+                window.tg = tgRetry;
+                tgRetry.ready();
+                tgRetry.expand();
+                tgRetry.setHeaderColor('#0a050d');
+                tgRetry.setBackgroundColor('#0a0012');
+                tgRetry.MainButton.hide();
+                var user = tgRetry.initDataUnsafe?.user;
+                window.currentUser = user;
+                if (user?.username?.toLowerCase() === 'mark1zell') {
+                    window.isAdmin = true;
+                    document.body.classList.add('admin-mode');
+                }
+                console.log('✅ Telegram WebApp инициализирован (со 2 попытки)');
+                console.log('showInvoice доступен:', typeof tgRetry.showInvoice);
+            } else {
+                console.log('❌ Telegram WebApp недоступен');
+                window.telegramAvailable = false;
+                window.tg = null;
+            }
+        }, 1000);
     }
 }
 
@@ -2566,25 +2592,31 @@ function showPaymentOptions(orderId, total, selectedOptions) {
 }
 
 function payByStars(orderId, total, starsAmount) {
-    console.log('payByStars called');
-    console.log('window.tg:', window.tg);
-    console.log('window.Telegram:', window.Telegram);
-    
-    var tg = window.Telegram?.WebApp;
+    // Пытаемся получить tg разными способами
+    var tg = window.tg || window.Telegram?.WebApp;
     
     if (!tg) {
-        console.log('Telegram WebApp не найден!');
-        alert('Ошибка: Telegram WebApp не инициализирован.');
+        // Пробуем ещё раз
+        setTimeout(function() {
+            var tgRetry = window.tg || window.Telegram?.WebApp;
+            if (tgRetry && typeof tgRetry.showInvoice === 'function') {
+                processStarsPayment(tgRetry, orderId, total, starsAmount);
+            } else {
+                alert('⭐ Для оплаты звёздами откройте приложение через Telegram бота:\n@Mark1zDesign_bot');
+            }
+        }, 500);
         return;
     }
-    
-    console.log('showInvoice exists:', typeof tg.showInvoice);
     
     if (typeof tg.showInvoice !== 'function') {
-        alert('Ваша версия Telegram не поддерживает оплату звёздами.\nОбновите Telegram до последней версии.');
+        alert('Ваша версия Telegram не поддерживает оплату звёздами.\nОбновите Telegram или оплатите картой.');
         return;
     }
     
+    processStarsPayment(tg, orderId, total, starsAmount);
+}
+
+function processStarsPayment(tg, orderId, total, starsAmount) {
     closeModal();
     
     try {
@@ -2595,16 +2627,18 @@ function payByStars(orderId, total, starsAmount) {
             currency: 'XTR',
             prices: [{ label: 'Дизайн услуга', amount: starsAmount }]
         }, function(success) {
-            console.log('Invoice callback:', success);
             if (success) {
                 supabase.from('orders').update({ status: 'paid_stars' }).eq('id', orderId)
                     .then(function() {
                         resetDiscount();
                         renderOrdersSection();
-                        alert('✅ Оплата прошла!');
+                        alert('✅ Оплата звёздами прошла успешно!');
                     });
             } else {
-                alert('❌ Оплата отменена');
+                supabase.from('orders').update({ status: 'cancelled' }).eq('id', orderId)
+                    .then(function() {
+                        alert('❌ Оплата отменена');
+                    });
             }
         });
     } catch(e) {
@@ -3956,6 +3990,9 @@ function updateReviewButton(canReview) {
         // ЗАПУСК
         // ================================================================
 function init() {
+    // Сначала инициализируем Telegram
+    initTelegram();
+    
     createStars();
     createAsteroids();
     createLoadingStars();
@@ -3966,7 +4003,6 @@ function init() {
     initDefaultServices();
     initDefaultServiceOptions();
     setupRealTimeListeners();
-    initTelegram();
     renderOrdersSection();
     
     var discountUsed = localStorage.getItem('discountUsed');
