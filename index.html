@@ -2721,22 +2721,15 @@ function payByKassa(orderId, total) {
     })
     .then(function(res) {
         console.log('📡 Статус ответа:', res.status);
-        console.log('📡 Заголовки:', res.headers);
-        
-        if (!res.ok) {
-            return res.text().then(function(text) {
-                console.error('❌ Ошибка ответа:', text);
-                throw new Error('Ошибка сервера: ' + res.status + ' ' + text);
-            });
-        }
-        
         return res.json();
     })
     .then(function(data) {
         console.log('✅ Ответ от ЮKassa:', data);
         
         if (data.error) {
-            throw new Error(data.error);
+            alert('Ошибка: ' + data.error);
+            closeModal();
+            return;
         }
         
         if (data.confirmation && data.confirmation.confirmation_url) {
@@ -2752,6 +2745,8 @@ function payByKassa(orderId, total) {
                 window.open(paymentUrl, '_blank');
             }
             
+            // Показываем сообщение
+            alert('Ссылка на оплату открыта. После оплаты заказ будет обработан.');
             closeModal();
         } else {
             console.error('❌ Нет confirmation_url в ответе:', data);
@@ -2761,9 +2756,7 @@ function payByKassa(orderId, total) {
     })
     .catch(function(err) {
         console.error('❌ Ошибка оплаты:', err);
-        console.error('Стек ошибки:', err.stack);
-        
-        alert('Ошибка создания платежа: ' + err.message + '\n\nПопробуйте оплатить звёздами или свяжитесь с дизайнером.');
+        alert('Ошибка создания платежа: ' + err.message);
         closeModal();
     });
 }
