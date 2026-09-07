@@ -647,26 +647,26 @@ function openPrivacyPolicy() {
         var caseProbabilities = [60, 25, 12, 3];
 
         function openCaseModal() {
-            var modal = document.getElementById('modalOverlay');
-            var content = document.getElementById('modalContent');
-            content.innerHTML = `
-                <div class="case-modal">
-                    <button class="close-btn" onclick="closeModal()">×</button>
-                    <h3>Кейс скидок</h3>
-                    <p>Испытайте удачу!</p>
-                    <div class="case-container" id="caseContainer">
-                        <div class="case-strip" id="caseStrip"></div>
-                        <div class="case-arrow">➤</div>
-                    </div>
-                    <button class="btn case-spin-btn" id="caseSpinBtn" onclick="spinCase()" ${(!window.isAdmin && !canSpinNow && !canSpin()) ? 'disabled' : ''}>Крутить</button>
-                    <button class="btn promo-in-case" onclick="openPromoInCase()">Ввести промокод</button>
-                    <div class="case-timer" id="caseTimer"></div>
-                </div>
-            `;
-            modal.style.display = 'flex';
-            initCaseStrip();
-            updateCaseTimer();
-        }
+    var modal = document.getElementById('modalOverlay');
+    var content = document.getElementById('modalContent');
+    content.innerHTML = `
+        <div class="case-modal">
+            <button class="close-btn" onclick="closeModal()">×</button>
+            <h3>Кейс скидок</h3>
+            <p>Испытайте удачу!</p>
+            <div class="case-container" id="caseContainer">
+                <div class="case-strip" id="caseStrip"></div>
+                <div class="case-arrow">➤</div>
+            </div>
+            <button class="btn case-spin-btn" id="caseSpinBtn" onclick="spinCase()" ${(!window.isAdmin && !canSpinNow && !canSpin()) ? 'disabled' : ''}>Крутить</button>
+            <button class="btn promo-in-case" onclick="openPromoInCase()">Ввести промокод</button>
+            <div class="case-timer" id="caseTimer"></div>
+        </div>
+    `;
+    modal.style.display = 'flex';
+    initCaseStrip();
+    updateCaseTimer();
+}
 
         function updateCaseTimer() {
             var timerEl = document.getElementById('caseTimer');
@@ -749,7 +749,7 @@ function spinCase() {
                 // Применяем скидку
                 applyDiscount(discount);
                 
-                // Сохраняем в localStorage
+                // Сохраняем время и скидку
                 localStorage.setItem('lastSpinTime', Date.now());
                 localStorage.setItem('lastSpinDiscount', discount);
                 localStorage.removeItem('discountUsed'); // Сбрасываем флаг использования
@@ -772,59 +772,64 @@ function spinCase() {
     requestAnimationFrame(animate);
 }
 
-        function canSpin() {
-            var oneWeek = 7 * 24 * 60 * 60 * 1000;
-            if (!lastSpinTime) return true;
-            return (Date.now() - lastSpinTime) >= oneWeek;
-        }
+function canSpin() {
+    var oneWeek = 7 * 24 * 60 * 60 * 1000;
+    if (!lastSpinTime) return true; // Если никогда не крутил — можно
+    return (Date.now() - lastSpinTime) >= oneWeek; // Можно только через неделю
+}
 
         function applyDiscount(percent) {
-            currentDiscount = percent;
-        }
-
-        function openPromoInCase() {
-            var code = prompt('Введите промокод:');
-            if (code) applyPromo(code);
-        }
+    currentDiscount = percent;
+    // Сохраняем в localStorage
+    localStorage.setItem('lastSpinDiscount', percent);
+    localStorage.removeItem('discountUsed');
+    lastSpinDiscount = percent;
+    console.log('Скидка применена:', percent + '%');
+}
 
         // ================================================================
         // ПРОМОКОДЫ
         // ================================================================
-        function applyPromo(code) {
-            supabase.from('promocodes').select('*').eq('code', code).single()
-                .then(function(res) {
-                    if (res.error || !res.data) {
-                        alert('Промокод не найден');
-                        return;
-                    }
-                    var data = res.data;
-                    if (data.used) {
-                        alert('Промокод уже использован');
-                        return;
-                    }
-                    if (data.type === 'wheel') {
-                        canSpinNow = true;
-                        alert('Промокод активирован! Теперь вы можете крутить кейс.');
-                        openCaseModal();
-                    } else if (data.type === 'discount') {
-                        if (data.discount_percent !== undefined && data.discount_percent !== null) {
-                            applyDiscount(data.discount_percent);
-                            alert('Скидка ' + data.discount_percent + '% применена!');
-                        } else if (data.free) {
-                            applyDiscount(100);
-                            alert('Промокод даёт бесплатную услугу!');
-                        }
-                        supabase.from('promocodes').update({ used: true }).eq('code', code).then(function() {
-                            closeModal();
-                            renderOrdersSection();
-                        });
-                    }
-                })
-                .catch(function(err) {
-                    alert('Ошибка проверки промокода');
-                    console.error(err);
+function applyPromo(code) {
+    supabase.from('promocodes').select('*').eq('code', code).single()
+        .then(function(res) {
+            if (res.error || !res.data) {
+                alert('Промокод не найден');
+                return;
+            }
+            var data = res.data;
+            if (data.used) {
+                alert('Промокод уже использован');
+                return;
+            }
+            if (data.type === 'wheel') {
+                canSpinNow = true;
+                alert('Промокод активирован! Теперь вы можете крутить кейс.');
+                openCaseModal();
+            } else if (data.type === 'discount') {
+                if (data.discount_percent !== undefined && data.discount_percent !== null && data.discount_percent > 0) {
+                    applyDiscount(data.discount_percent);
+                    localStorage.removeItem('discountUsed');
+                    alert('Скидка ' + data.discount_percent + '% применена!');
+                } else if (data.free) {
+                    applyDiscount(100);
+                    localStorage.removeItem('discountUsed');
+                    alert('Промокод даёт бесплатную услугу!');
+                } else {
+                    alert('Ошибка: у промокода нет скидки');
+                    return;
+                }
+                supabase.from('promocodes').update({ used: true }).eq('code', code).then(function() {
+                    closeModal();
+                    renderOrdersSection();
                 });
-        }
+            }
+        })
+        .catch(function(err) {
+            alert('Ошибка проверки промокода');
+            console.error(err);
+        });
+}
 
         function openPromoModal() {
             var code = prompt('Введите промокод:');
@@ -849,31 +854,32 @@ function spinCase() {
         }
 
         function createPromo(type) {
-            var code = prompt('Введите промокод:');
-            if (!code) return;
-            if (type === 'wheel') {
-                supabase.from('promocodes').insert([{ code: code, type: 'wheel', used: false }])
-                    .then(function(res) {
-                        if (res.error) { alert('Ошибка: ' + res.error.message); return; }
-                        alert('Промокод на кейс создан!');
-                    });
-            } else if (type === 'discount') {
-                var discount = prompt('Введите процент скидки (или "free" для бесплатно):');
-                if (!discount) return;
-                var data = { code: code, type: 'discount', used: false };
-                if (discount.toLowerCase() === 'free') {
-                    data.free = true;
-                } else {
-                    data.discount_percent = parseInt(discount);
-                }
-                supabase.from('promocodes').insert([data])
-                    .then(function(res) {
-                        if (res.error) { alert('Ошибка: ' + res.error.message); return; }
-                        alert('Промокод на скидку создан!');
-                    });
-            }
-            closeModal();
+    var code = prompt('Введите промокод:');
+    if (!code) return;
+    
+    if (type === 'wheel') {
+        supabase.from('promocodes').insert([{ code: code, type: 'wheel', used: false }])
+            .then(function(res) {
+                if (res.error) { alert('Ошибка: ' + res.error.message); return; }
+                alert('Промокод на кейс создан!');
+            });
+    } else if (type === 'discount') {
+        var discount = prompt('Введите процент скидки (или "free" для бесплатно):');
+        if (!discount) return;
+        var data = { code: code, type: 'discount', used: false };
+        if (discount.toLowerCase() === 'free') {
+            data.free = true;
+        } else {
+            data.discount_percent = parseInt(discount);
         }
+        supabase.from('promocodes').insert([data])
+            .then(function(res) {
+                if (res.error) { alert('Ошибка: ' + res.error.message); return; }
+                alert('Промокод на скидку создан!');
+            });
+    }
+    closeModal();
+}
 
                 // ================================================================
         // УПРАВЛЕНИЕ ОПЦИЯМИ УСЛУГ
@@ -2293,10 +2299,9 @@ function updateOrderTotal() {
         }
     });
     
-    // Применяем скидку из кейса
+    // Применяем скидку из кейса или промокода
     var discountAmount = 0;
     if (currentDiscount > 0 && currentDiscount < 100) {
-        // Проверяем, есть ли услуги, на которые скидка НЕ распространяется
         var excludedServices = ['Telegram Mini Apps', 'Дизайн сайтов', 'Дизайн мобильных приложений'];
         var isExcluded = excludedServices.indexOf(currentOrderService.name) !== -1;
         
@@ -2314,7 +2319,6 @@ function updateOrderTotal() {
         }
     }
     
-    // Сохраняем итоговую сумму с учетом скидки
     window.currentOrderFinalTotal = total - discountAmount;
 }
 
@@ -2446,7 +2450,7 @@ function submitOrderWithOptions() {
                 return;
             }
             
-            // ===== НЕМЕДЛЕННО СБРАСЫВАЕМ СКИДКУ =====
+            // ===== СБРАСЫВАЕМ СКИДКУ ПОСЛЕ ИСПОЛЬЗОВАНИЯ =====
             resetDiscount();
             
             var orderText = '📋 **Заказ:** ' + currentOrderService.name + '\n\n';
@@ -2477,11 +2481,10 @@ function submitOrderWithOptions() {
 function resetDiscount() {
     currentDiscount = 0;
     localStorage.removeItem('lastSpinDiscount');
-    localStorage.removeItem('lastSpinTime');
     localStorage.setItem('discountUsed', 'true'); // Помечаем, что скидка использована
     lastSpinDiscount = 0;
-    lastSpinTime = 0;
     window.currentOrderFinalTotal = 0;
+    // НЕ удаляем lastSpinTime! Пользователь должен ждать неделю до следующего кейса
 }
 
                 // ================================================================
@@ -3816,12 +3819,11 @@ function init() {
     // Проверяем, не использована ли скидка
     var discountUsed = localStorage.getItem('discountUsed');
     if (discountUsed === 'true') {
-        // Скидка уже использована — сбрасываем
+        // Скидка уже использована — сбрасываем только скидку, но НЕ время
         currentDiscount = 0;
         localStorage.removeItem('lastSpinDiscount');
-        localStorage.removeItem('lastSpinTime');
         lastSpinDiscount = 0;
-        lastSpinTime = 0;
+        // lastSpinTime остаётся! Пользователь должен ждать неделю
     } else if (lastSpinDiscount > 0 && lastSpinDiscount < 100) {
         // Скидка есть и не использована — применяем
         currentDiscount = lastSpinDiscount;
