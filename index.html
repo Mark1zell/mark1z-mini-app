@@ -2482,19 +2482,26 @@ function submitOrderWithOptions() {
         .then(function(res) {
             if (res.error) {
                 alert('❌ Ошибка при сохранении заказа: ' + res.error.message);
+                console.error('Supabase error:', res.error);
+                return;
+            }
+            
+            // ПРОВЕРЯЕМ, ЧТО res.data СУЩЕСТВУЕТ
+            if (!res.data || !res.data[0]) {
+                alert('❌ Ошибка: не удалось получить ID заказа');
                 return;
             }
             
             var orderId = res.data[0].id;
             
-            // Закрываем окно конструктора
             closeModal();
             
-            // Показываем окно выбора оплаты (НЕ открываем ЮKassa!)
+            // Показываем окно выбора оплаты
             showPaymentOptions(orderId, total, selectedOptions);
         })
         .catch(function(err) {
             alert('❌ Ошибка: ' + err.message);
+            console.error('Error:', err);
         });
 }
 
