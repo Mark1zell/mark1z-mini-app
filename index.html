@@ -2679,65 +2679,46 @@ function processStarsPayment(tg, orderId, total, starsAmount) {
     }
 }
 
-var SHOP_ID = '1454329';
-var SECRET_KEY = 'live_DxS3JaTYF2Uid_22sWWn0_2c0nNu-5AyaUtmyxxLmIk';
-
 function payByKassa(orderId, total) {
     closeModal();
     
-    // Создаём платёж через API ЮKassa
-    fetch('https://yookassa.ru/api/v3/payments', {
+    var functionUrl = 'https://lcgbpwowppwwpjjlphod.supabase.co/functions/v1/create-payment';
+    var supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZ2Jwd293cHB3d3BqamxwaG9kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NDAwNTMsImV4cCI6MjEwNDIxNjA1M30.95VPot7saWmlgv1IzBop3E4x-ZxSc8HepqKdDLJa7JI';
+    
+    fetch(functionUrl, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Idempotence-Key': 'order_' + orderId + '_' + Date.now(),
-            'Authorization': 'Basic ' + btoa(SHOP_ID + ':' + SECRET_KEY)
+            'Authorization': 'Bearer ' + supabaseKey
         },
         body: JSON.stringify({
-            amount: {
-                value: total.toFixed(2),
-                currency: 'RUB'
-            },
-            capture: true,
-            confirmation: {
-                type: 'redirect',
-                return_url: 'https://t.me/Mark1zDesign_bot'
-            },
-            description: 'Оплата заказа #' + orderId,
-            metadata: {
-                order_id: orderId
-            }
+            orderId: orderId,
+            amount: total
         })
     })
-    .then(function(res) {
-        if (!res.ok) {
-            return res.json().then(function(err) {
-                throw new Error('Ошибка API: ' + JSON.stringify(err));
-            });
-        }
-        return res.json();
+    .then(function(res) { 
+        return res.json(); 
     })
     .then(function(data) {
-        console.log('Платёж создан:', data);
+        console.log('Ответ ЮKassa:', data);
         
         if (data.confirmation && data.confirmation.confirmation_url) {
-            // Открываем ссылку на оплату
-            if (window.Telegram?.WebApp?.openTelegramLink) {
-                window.Telegram.WebApp.openTelegramLink(data.confirmation.confirmation_url);
-            } else if (window.Telegram?.WebApp?.openLink) {
-                window.Telegram.WebApp.openLink(data.confirmation.confirmation_url);
-            } else {
-                window.open(data.confirmation.confirmation_url, '_blank');
-            }
+            var paymentUrl = data.confirmation.confirmation_url;
             
-            alert('💳 Открываю страницу оплаты...');
+            if (window.Telegram?.WebApp?.openTelegramLink) {
+                window.Telegram.WebApp.openTelegramLink(paymentUrl);
+            } else if (window.Telegram?.WebApp?.openLink) {
+                window.Telegram.WebApp.openLink(paymentUrl);
+            } else {
+                window.open(paymentUrl, '_blank');
+            }
         } else {
             alert('Ошибка создания платежа: ' + JSON.stringify(data));
         }
     })
     .catch(function(err) {
-        console.error('Ошибка оплаты:', err);
-        alert('❌ Ошибка оплаты: ' + err.message);
+        alert('Ошибка: ' + err.message);
+        console.error('Ошибка:', err);
     });
 }
         
