@@ -2605,53 +2605,47 @@ function showPaymentOptions(orderId, total, selectedOptions) {
 function payByStars(orderId, total, starsAmount) {
     closeModal();
     
-    // Получаем Telegram WebApp
-    var tg = window.Telegram?.WebApp || window.tg;
+    // Получаем tg всеми возможными способами
+    var tg = null;
+    
+    if (window.Telegram && window.Telegram.WebApp) {
+        tg = window.Telegram.WebApp;
+    } else if (window.TG) {
+        tg = window.TG;
+    } else if (window.tg) {
+        tg = window.tg;
+    }
     
     if (!tg) {
-        alert('❌ Telegram WebApp не найден');
+        alert('Telegram WebApp не найден.\n\nОткройте приложение через бота @Mark1zDesign_bot');
         return;
     }
     
-    console.log('Telegram WebApp версия:', tg.version);
-    console.log('showInvoice доступен:', typeof tg.showInvoice);
-    
-    // Проверяем поддержку showInvoice
-    if (typeof tg.showInvoice !== 'function') {
-        alert('❌ Ваша версия Telegram не поддерживает оплату звёздами.\nОбновите Telegram.');
+    // Проверяем showInvoice
+    if (!tg.showInvoice) {
+        alert('Оплата звёздами не поддерживается.\n\nВерсия: ' + (tg.version || 'неизвестно'));
         return;
     }
     
-    // Вызываем showInvoice
-    tg.showInvoice({
-        title: 'Mark1z Design',
-        description: 'Оплата заказа #' + orderId + ' на сумму ' + total + ' ₽',
-        payload: 'order_' + orderId + '_' + Date.now(),
-        currency: 'XTR',
-        prices: [{ label: 'Дизайн услуга', amount: starsAmount }]
-    }, function(success) {
-        console.log('Результат оплаты:', success);
-        
-        if (success) {
-            // Оплата прошла успешно
-            supabase.from('orders').update({ status: 'paid_stars' }).eq('id', orderId)
-                .then(function() {
-                    resetDiscount();
-                    renderOrdersSection();
-                    alert('✅ Оплата звёздами прошла успешно! Заказ принят в работу.');
-                })
-                .catch(function(err) {
-                    console.error('Ошибка обновления заказа:', err);
-                    alert('✅ Оплата прошла! Но не удалось обновить статус заказа.');
-                });
-        } else {
-            // Оплата отменена
-            supabase.from('orders').update({ status: 'cancelled' }).eq('id', orderId)
-                .then(function() {
-                    alert('❌ Оплата отменена.');
-                });
-        }
-    });
+    try {
+        // Пробуем разные форматы вызова
+        tg.showInvoice(
+            'Mark1z Design',
+            'Оплата заказа #' + orderId,
+            'order_' + orderId,
+            'XTR',
+            [{ label: 'Дизайн услуга', amount: starsAmount }],
+            function(success) {
+                if (success) {
+                    alert('✅ Оплата прошла!');
+                } else {
+                    alert('❌ Оплата отменена');
+                }
+            }
+        );
+    } catch(e) {
+        alert('Ошибка showInvoice: ' + e.message);
+    }
 }
 
 function processStarsPayment(tg, orderId, total, starsAmount) {
