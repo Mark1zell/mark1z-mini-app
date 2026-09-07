@@ -801,10 +801,10 @@ function applyPromo(code) {
                 openCaseModal();
             } else if (data.type === 'discount') {
                 if (data.free) {
-                    // Бесплатный промокод
+                    // Бесплатный промокод — только на одну опцию
                     applyDiscount(100);
                     localStorage.removeItem('discountUsed');
-                    alert('🎁 Промокод активирован! Ваш заказ будет БЕСПЛАТНЫМ!');
+                    alert('🎁 Промокод активирован! Одна опция будет БЕСПЛАТНОЙ!');
                     supabase.from('promocodes').update({ used: true }).eq('code', code).then(function() {
                         closeModal();
                         renderOrdersSection();
@@ -2291,6 +2291,8 @@ function changeQuantity(optId, delta) {
 
 function updateOrderTotal() {
     var total = 0;
+    var optionsWithQty = [];
+    
     currentOrderOptions.forEach(function(opt) {
         var qty = currentOrderQuantities[opt.id] || 0;
         if (qty > 0) {
@@ -2298,30 +2300,50 @@ function updateOrderTotal() {
             if (opt.discount_min_quantity && qty >= opt.discount_min_quantity && opt.discount_price) {
                 price = opt.discount_price;
             }
-            total += price * qty;
+            var optTotal = price * qty;
+            total += optTotal;
+            optionsWithQty.push({ id: opt.id, name: opt.name, price: price, qty: qty, total: optTotal });
         }
     });
     
     var finalTotal = total;
+    var discountApplied = false;
     
-    if (currentDiscount === 100) {
-        // Бесплатно
-        finalTotal = 0;
-    } else if (currentDiscount > 0 && currentDiscount < 100) {
-        var excludedServices = ['Telegram Mini Apps', 'Дизайн сайтов', 'Дизайн мобильных приложений'];
-        var isExcluded = excludedServices.indexOf(currentOrderService.name) !== -1;
-        
-        if (!isExcluded && total > 0) {
+    // Проверяем, исключена ли услуга из скидок
+    var excludedServices = ['Telegram Mini Apps', 'Дизайн сайтов', 'Дизайн мобильных приложений'];
+    var isExcluded = excludedServices.indexOf(currentOrderService.name) !== -1;
+    
+    if (!isExcluded && currentDiscount > 0 && currentDiscount <= 100 && optionsWithQty.length > 0) {
+        if (currentDiscount === 100) {
+            // БЕСПЛАТНО — только на ОДНУ опцию (самую дешёвую)
+            var cheapestOption = optionsWithQty[0];
+            optionsWithQty.forEach(function(opt) {
+                if (opt.total < cheapestOption.total) {
+                    cheapestOption = opt;
+                }
+            });
+            
+            // Вычитаем стоимость самой дешёвой опции
+            finalTotal = total - cheapestOption.total;
+            if (finalTotal < 0) finalTotal = 0;
+            discountApplied = true;
+            
+            // Сохраняем информацию о бесплатной опции
+            window.freeOptionName = cheapestOption.name;
+        } else {
+            // Обычная скидка в процентах
             var discountAmount = Math.round(total * currentDiscount / 100);
             finalTotal = total - discountAmount;
+            discountApplied = true;
+            window.freeOptionName = null;
         }
     }
     
     var totalEl = document.getElementById('orderTotalPrice');
     if (totalEl) {
-        if (currentDiscount === 100) {
-            totalEl.innerHTML = '<span style="text-decoration:line-through;color:var(--text-muted);">' + total + ' ₽</span> <span style="color:#10b981;font-weight:700;">0 ₽ (Бесплатно!)</span>';
-        } else if (finalTotal !== total && currentDiscount > 0) {
+        if (currentDiscount === 100 && !isExcluded && optionsWithQty.length > 0) {
+            totalEl.innerHTML = '<span style="text-decoration:line-through;color:var(--text-muted);font-size:14px;">' + total + ' ₽</span> <span style="color:#10b981;font-weight:700;">' + finalTotal + ' ₽</span> <span style="color:#10b981;font-size:12px;">(Бесплатно: ' + window.freeOptionName + ')</span>';
+        } else if (discountApplied && finalTotal !== total) {
             totalEl.innerHTML = '<span style="text-decoration:line-through;color:var(--text-muted);font-size:14px;">' + total + ' ₽</span> <span style="color:#c084fc;font-weight:700;">' + finalTotal + ' ₽</span> <span style="color:#fbbf24;font-size:14px;">(-' + currentDiscount + '%)</span>';
         } else {
             totalEl.textContent = total + ' ₽';
@@ -2329,6 +2351,7 @@ function updateOrderTotal() {
     }
     
     window.currentOrderFinalTotal = finalTotal;
+    window.currentOrderOriginalTotal = total;
 }
 
         function handleRefFiles(event) {
@@ -2449,6 +2472,9 @@ function submitOrderWithOptions() {
                 timestamp: new Date().toISOString(),
                 options: JSON.stringify(selectedOptions),
                 total: total,
+                original_total: window.currentOrderOriginalTotal || total,
+                discount_applied: currentDiscount > 0 ? currentDiscount : 0,
+                free_option: window.freeOptionName || null,
                 description: description,
                 reference_urls: referenceUrls,
                 status: 'pending'
@@ -2464,27 +2490,22 @@ function submitOrderWithOptions() {
             
             resetDiscount();
             
-            var orderText = '📋 **Заказ:** ' + currentOrderService.name + '\n\n';
-            selectedOptions.forEach(function(opt) {
-                orderText += '• ' + opt.name + ' — ' + opt.quantity + ' шт. × ' + opt.price + ' ₽ = ' + opt.total + ' ₽\n';
-            });
-            if (total === 0) {
-                orderText += '\n**Итого: БЕСПЛАТНО!**\n\n';
-            } else {
-                orderText += '\n**Итого:** ' + total + ' ₽\n\n';
-            }
-            if (description) orderText += '**ТЗ:**\n' + description + '\n\n';
-            
-            var chatText = encodeURIComponent(orderText);
-            if (window.telegramAvailable && window.tg) {
-                window.tg.openTelegramLink('https://t.me/Mark1zDesign_bot?text=' + chatText);
-            } else {
-                window.open('https://t.me/Mark1zDesign_bot?text=' + chatText, '_blank');
-            }
-            
             closeModal();
             renderOrdersSection();
-            alert('✅ Заявка отправлена!');
+            
+            // Открываем ссылку на оплату
+            if (total > 0) {
+                // Если сумма больше 0 — открываем оплату
+                var paymentUrl = 'https://yookassa.ru/'; // ЗАМЕНИТЕ НА ВАШУ ССЫЛКУ
+                if (window.telegramAvailable && window.tg) {
+                    window.tg.openTelegramLink(paymentUrl);
+                } else {
+                    window.open(paymentUrl, '_blank');
+                }
+                alert('✅ Заказ оформлен! Сейчас вы будете перенаправлены на оплату.');
+            } else {
+                alert('✅ Заказ оформлен! Он БЕСПЛАТНЫЙ!');
+            }
         })
         .catch(function(err) {
             alert('❌ Ошибка: ' + err.message);
@@ -2497,7 +2518,8 @@ function resetDiscount() {
     localStorage.setItem('discountUsed', 'true');
     lastSpinDiscount = 0;
     window.currentOrderFinalTotal = 0;
-    // НЕ удаляем lastSpinTime! Пользователь должен ждать неделю до следующего кейса
+    window.currentOrderOriginalTotal = 0;
+    window.freeOptionName = null;
 }
 
                 // ================================================================
