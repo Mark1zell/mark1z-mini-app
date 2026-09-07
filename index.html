@@ -4016,6 +4016,7 @@ function updateReviewButton(canReview) {
         // ЗАПУСК
         // ================================================================
 function init() {
+    // Базовая инициализация без Supabase
     createStars();
     createAsteroids();
     createLoadingStars();
@@ -4025,44 +4026,33 @@ function init() {
     initImageViewerZoom();
     initTelegram();
     
-    // Скрываем загрузку ЧЕРЕЗ 1 СЕКУНДУ (гарантированно)
+    // Принудительно скрываем загрузку через 1 секунду
     setTimeout(function() { 
         document.getElementById('loadingScreen').classList.add('hidden'); 
     }, 1000);
     
-    // Загружаем данные с обработкой ошибок
-    try {
-        initDefaultServices();
-    } catch(e) {
-        console.error('initDefaultServices error:', e);
-    }
+    setTimeout(function() {
+        document.getElementById('loadingScreen').style.display = 'none';
+    }, 2000);
     
-    try {
-        initDefaultServiceOptions();
-    } catch(e) {
-        console.error('initDefaultServiceOptions error:', e);
-    }
-    
-    try {
-        setupRealTimeListeners();
-    } catch(e) {
-        console.error('setupRealTimeListeners error:', e);
-    }
-    
-    try {
-        renderOrdersSection();
-    } catch(e) {
-        console.error('renderOrdersSection error:', e);
-    }
+    // Supabase загружаем отдельно с задержкой
+    setTimeout(function() {
+        try {
+            initDefaultServices();
+            initDefaultServiceOptions();
+            setupRealTimeListeners();
+            renderOrdersSection();
+        } catch(e) {
+            console.error('Ошибка загрузки данных:', e);
+        }
+    }, 500);
     
     var discountUsed = localStorage.getItem('discountUsed');
     if (discountUsed === 'true') {
         currentDiscount = 0;
-        localStorage.removeItem('lastSpinDiscount');
         lastSpinDiscount = 0;
     } else if (lastSpinDiscount > 0 && lastSpinDiscount <= 100) {
         currentDiscount = lastSpinDiscount;
-        applyDiscount(lastSpinDiscount);
     } else {
         currentDiscount = 0;
     }
