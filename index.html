@@ -2592,28 +2592,61 @@ function showPaymentOptions(orderId, total, selectedOptions) {
 }
 
 function payByStars(orderId, total, starsAmount) {
-    // Пытаемся получить tg разными способами
-    var tg = window.tg || window.Telegram?.WebApp;
+    closeModal();
     
-    if (!tg) {
-        // Пробуем ещё раз
-        setTimeout(function() {
-            var tgRetry = window.tg || window.Telegram?.WebApp;
-            if (tgRetry && typeof tgRetry.showInvoice === 'function') {
-                processStarsPayment(tgRetry, orderId, total, starsAmount);
-            } else {
-                alert('⭐ Для оплаты звёздами откройте приложение через Telegram бота:\n@Mark1zDesign_bot');
-            }
-        }, 500);
-        return;
+    // Пробуем вызвать showInvoice напрямую
+    try {
+        // Вариант 1: через window.Telegram
+        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.showInvoice) {
+            window.Telegram.WebApp.showInvoice({
+                title: 'Mark1z Design',
+                description: 'Оплата заказа #' + orderId,
+                payload: 'order_' + orderId,
+                currency: 'XTR',
+                prices: [{ label: 'Дизайн услуга', amount: starsAmount }]
+            }, function(success) {
+                handleStarsResult(success, orderId);
+            });
+            return;
+        }
+        
+        // Вариант 2: через window.tg
+        if (window.tg && window.tg.showInvoice) {
+            window.tg.showInvoice({
+                title: 'Mark1z Design',
+                description: 'Оплата заказа #' + orderId,
+                payload: 'order_' + orderId,
+                currency: 'XTR',
+                prices: [{ label: 'Дизайн услуга', amount: starsAmount }]
+            }, function(success) {
+                handleStarsResult(success, orderId);
+            });
+            return;
+        }
+        
+        // Вариант 3: показать ошибку
+        alert('⭐ Оплата звёздами доступна только через официального бота.\n\nОткройте: @Mark1zDesign_bot\nНажмите кнопку "Открыть приложение"');
+        
+    } catch(e) {
+        console.error('Stars error:', e);
+        alert('Ошибка оплаты звёздами. Попробуйте картой.');
     }
-    
-    if (typeof tg.showInvoice !== 'function') {
-        alert('Ваша версия Telegram не поддерживает оплату звёздами.\nОбновите Telegram или оплатите картой.');
-        return;
+}
+
+function handleStarsResult(success, orderId) {
+    if (success) {
+        supabase.from('orders').update({ status: 'paid_stars' }).eq('id', orderId)
+            .then(function() {
+                resetDiscount();
+                renderOrdersSection();
+                alert('✅ Оплата звёздами прошла успешно!');
+            });
+    } else {
+        supabase.from('orders').update({ status: 'cancelled' }).eq('id', orderId)
+            .then(function() {
+                alert('❌ Оплата отменена');
+            });
     }
-    
-    processStarsPayment(tg, orderId, total, starsAmount);
 }
 
 function processStarsPayment(tg, orderId, total, starsAmount) {
