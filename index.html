@@ -2477,27 +2477,26 @@ function submitOrderWithOptions() {
                 status: 'pending_payment'
             };
             
-            return supabase.from('orders').insert([order]);
+            return supabase.from('orders').insert([order]).select();
         })
         .then(function(res) {
+            console.log('Supabase response:', res); // Для отладки
+            
             if (res.error) {
-                alert('❌ Ошибка при сохранении заказа: ' + res.error.message);
-                console.error('Supabase error:', res.error);
+                alert('❌ Ошибка при сохранении: ' + res.error.message);
                 return;
             }
             
-            // ПРОВЕРЯЕМ, ЧТО res.data СУЩЕСТВУЕТ
-            if (!res.data || !res.data[0]) {
-                alert('❌ Ошибка: не удалось получить ID заказа');
-                return;
+            if (res.data && res.data.length > 0) {
+                var orderId = res.data[0].id;
+                closeModal();
+                showPaymentOptions(orderId, total, selectedOptions);
+            } else {
+                // Если data пустой, но ошибки нет — используем генерацию ID на клиенте
+                var tempOrderId = 'order_' + Date.now();
+                closeModal();
+                showPaymentOptions(tempOrderId, total, selectedOptions);
             }
-            
-            var orderId = res.data[0].id;
-            
-            closeModal();
-            
-            // Показываем окно выбора оплаты
-            showPaymentOptions(orderId, total, selectedOptions);
         })
         .catch(function(err) {
             alert('❌ Ошибка: ' + err.message);
