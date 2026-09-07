@@ -2626,49 +2626,63 @@ function changeQuantity(optId, delta) {
                 });
         }
 
-        function completeOrder(orderId) {
-            if (!confirm('Отметить заказ как выполненный? Заказ будет удален.')) return;
+function completeOrder(orderId) {
+    if (!confirm('Отметить заказ как выполненный? Пользователь сможет оставить отзыв.')) return;
+    
+    supabase.from('orders').select('*').eq('id', orderId).single()
+        .then(function(res) {
+            if (res.error || !res.data) {
+                alert('Заказ не найден');
+                return;
+            }
             
-            supabase.from('orders').select('*').eq('id', orderId).single()
-                .then(function(res) {
-                    if (res.error || !res.data) {
-                        alert('Заказ не найден');
-                        return;
-                    }
-                    
-                    var order = res.data;
-                    var deletePromises = [];
-                    if (order.reference_urls && order.reference_urls.length > 0) {
-                        order.reference_urls.forEach(function(url) {
-                            var path = url.split('/public/')[1];
-                            if (path) {
-                                deletePromises.push(supabase.storage.from('public').remove([path]));
-                            }
-                        });
-                    }
-                    
-                    return Promise.all(deletePromises)
-                        .catch(function(err) {
-                            console.error('Ошибка при удалении файлов:', err);
-                        })
-                        .then(function() {
-                            return supabase.from('orders').delete().eq('id', orderId);
-                        });
-                })
-                .then(function() {
-                    closeModal();
-                    alert('✅ Заказ выполнен и удален!');
-                    if (adminOrdersMode === 'orders') {
-                        supabase.from('orders').select('*').order('timestamp', { ascending: false })
-                            .then(function(res) {
-                                if (!res.error && res.data) renderOrdersList(res.data);
-                            });
-                    }
-                })
-                .catch(function(err) {
-                    alert('Ошибка: ' + err.message);
+            var order = res.data;
+            
+            // Сохраняем информацию о заказе для пользователя
+            var orderInfo = {
+                service: order.service,
+                total: order.total,
+                options: JSON.parse(order.options || '[]'),
+                time: order.time
+            };
+            
+            // Находим user_id пользователя
+            var userIdentifier = order.user_username || order.user_name;
+            
+            // Удаляем референсы
+            var deletePromises = [];
+            if (order.reference_urls && order.reference_urls.length > 0) {
+                order.reference_urls.forEach(function(url) {
+                    var path = url.split('/public/')[1];
+                    if (path) deletePromises.push(supabase.storage.from('public').remove([path]));
                 });
-        }
+            }
+            
+            return Promise.all(deletePromises).catch(function() {}).then(function() {
+                // Удаляем заказ
+                return supabase.from('orders').delete().eq('id', orderId);
+            }).then(function() {
+                // Разрешаем пользователю оставить отзыв
+                return supabase.from('user_last_review').upsert({
+                    user_id: userIdentifier,
+                    can_review: true,
+                    order_info: orderInfo,
+                    timestamp: new Date().toISOString()
+                });
+            });
+        })
+        .then(function() {
+            closeModal();
+            alert('✅ Заказ выполнен! Пользователь может оставить отзыв.');
+            if (adminOrdersMode === 'orders') {
+                supabase.from('orders').select('*').order('timestamp', { ascending: false })
+                    .then(function(res) { if (!res.error) renderOrdersList(res.data); });
+            }
+        })
+        .catch(function(err) {
+            alert('Ошибка: ' + err.message);
+        });
+}
 
         // ================================================================
         // УПРАВЛЕНИЕ УСЛУГАМИ
@@ -3166,13 +3180,41 @@ function closeImageViewer() {
             });
         }
 
-        function submitReview() {
-            var text = document.getElementById('reviewText').value.trim();
-            if (!text) { alert('Введите текст'); return; }
-            if (!selectedRating) { alert('Поставьте оценку'); return; }
-            var user = window.currentUser;
-            if (!user || !user.id) { alert('Не удалось определить пользователя'); return; }
+function submitReview() {
+    var text = document.getElementById('reviewText').value.trim();
+    if (!text) { alert('Введите текст'); return; }
+    if (!selectedRating) { alert('Поставьте оценку'); return; }
+    var user = window.currentUser;
+    if (!user || !user.id) { alert('Не удалось определить пользователя'); return; }
+    
+    var userIdentifier = user.username || user.first_name || user.id.toString();
+    
+    // Проверяем, может ли пользователь оставить отзыв
+    supabase.from('user_last_review').select('*').eq('user_id', userIdentifier).single()
+        .then(function(res) {
+            if (res.error || !res.data) {
+                alert('Вы ещё не совершали заказ. Отзыв можно оставить только после выполнения заказа.');
+                return Promise.reject('no_order');
+            }
             
+            var userData = res.data;
+            
+            if (!userData.can_review) {
+                alert('Вы можете оставить отзыв только после выполнения вашего заказа.');
+                return Promise.reject('no_permission');
+            }
+            
+            // Проверяем, не оставлял ли уже отзыв
+            if (userData.timestamp) {
+                var lastTimestamp = new Date(userData.timestamp).getTime();
+                var now = Date.now();
+                if (now - lastTimestamp < 3600000) {
+                    alert('Вы сможете оставить новый отзыв через 1 час.');
+                    return Promise.reject('timeout');
+                }
+            }
+            
+            // Загружаем изображения
             var uploadPromises = tempReviewFiles.map(function(file) {
                 return compressImage(file, 600, 0.6).then(function(dataUrl) {
                     var blob = dataURLToBlob(dataUrl);
@@ -3181,28 +3223,47 @@ function closeImageViewer() {
                 });
             });
             
-            Promise.all(uploadPromises)
-                .then(function(urls) {
-                    return supabase.from('reviews').insert([{
-                        author_name: user.first_name || user.username || 'Пользователь',
-                        author_username: user.username || null,
-                        author_id: user.id.toString(),
-                        photo_url: user.photo_url || null,
-                        stars: selectedRating,
-                        text: text,
-                        images: urls,
-                        likes_heart: 0, likes_fire: 0, likes_plus: 0,
-                        admin_reply: '',
-                        timestamp: new Date().toISOString()
-                    }]);
-                })
-                .then(function() {
-                    closeModal();
-                    tempReviewFiles = [];
-                    loadReviews();
-                })
-                .catch(function(err) { alert('Ошибка: ' + err.message); });
-        }
+            return Promise.all(uploadPromises).then(function(urls) {
+                return {
+                    urls: urls,
+                    orderInfo: userData.order_info
+                };
+            });
+        })
+        .then(function(data) {
+            return supabase.from('reviews').insert([{
+                author_name: user.first_name || user.username || 'Пользователь',
+                author_username: user.username || null,
+                author_id: user.id.toString(),
+                photo_url: user.photo_url || null,
+                stars: selectedRating,
+                text: text,
+                images: data.urls,
+                order_info: data.orderInfo,
+                likes_heart: 0, likes_fire: 0, likes_plus: 0,
+                admin_reply: '',
+                timestamp: new Date().toISOString()
+            }]);
+        })
+        .then(function() {
+            // Обновляем user_last_review — запрещаем повторный отзыв
+            return supabase.from('user_last_review').update({
+                can_review: false,
+                timestamp: new Date().toISOString()
+            }).eq('user_id', userIdentifier);
+        })
+        .then(function() {
+            closeModal();
+            tempReviewFiles = [];
+            loadReviews();
+            alert('✅ Отзыв опубликован!');
+        })
+        .catch(function(err) {
+            if (err !== 'no_order' && err !== 'no_permission' && err !== 'timeout') {
+                alert('Ошибка: ' + err.message);
+            }
+        });
+}
 
         function reactReview(id, type) {
             var fieldMap = { 'heart': 'likes_heart', 'fire': 'likes_fire', 'plus': 'likes_plus' };
@@ -3214,25 +3275,43 @@ function closeImageViewer() {
                 .then(function() { loadReviews(); });
         }
 
-        function renderReviews(reviews) {
-            var container = document.getElementById('reviewsContainer');
-            if (!container) return;
-            var html = '<h3>Отзывы (' + reviews.length + ')</h3>';
-            reviews.forEach(function(review) {
-                var isAuthor = window.currentUser && String(window.currentUser.id) === String(review.author_id);
-                var avatar = review.photo_url ? '<img src="' + review.photo_url + '">' : (review.author_name || '👤').charAt(0);
-                var imagesHtml = '';
-                if (review.images && review.images.length > 0) {
-                    imagesHtml = '<div class="review-images">' + review.images.map(function(img) {
-                        return '<img src="' + img + '" onclick="viewImage(\'' + img + '\', \'Отзыв\', false)">';
-                    }).join('') + '</div>';
-                }
-                var actionsHtml = '';
-                if (window.isAdmin || isAuthor) actionsHtml = '<button class="btn btn-sm" onclick="deleteReview(' + review.id + ')">🗑️</button>';
-                html += '<div class="card review-card"><div class="review-author"><div class="review-avatar">' + avatar + '</div><div><strong>' + (review.author_name || 'Пользователь') + '</strong>' + (review.author_username ? '<div style="font-size:12px;">@' + review.author_username + '</div>' : '') + '<div class="stars">' + '★'.repeat(review.stars) + '☆'.repeat(5 - review.stars) + '</div></div></div><p class="review-text">' + review.text + '</p>' + imagesHtml + '<div class="review-footer"><button class="like-btn" onclick="reactReview(' + review.id + ', \'heart\')">❤️ ' + (review.likes_heart || 0) + '</button><button class="like-btn" onclick="reactReview(' + review.id + ', \'fire\')">🔥 ' + (review.likes_fire || 0) + '</button><button class="like-btn" onclick="reactReview(' + review.id + ', \'plus\')">👍 ' + (review.likes_plus || 0) + '</button>' + actionsHtml + '</div>' + (review.admin_reply ? '<div class="admin-reply"><strong>👑 Ответ:</strong> ' + review.admin_reply + '</div>' : (window.isAdmin ? '<div class="admin-reply-input"><textarea id="adminReply_' + review.id + '" placeholder="Ответить..."></textarea><button class="btn btn-sm" onclick="saveAdminReply(' + review.id + ')">📤</button></div>' : '')) + '</div>';
-            });
-            container.innerHTML = html;
+function renderReviews(reviews) {
+    var container = document.getElementById('reviewsContainer');
+    if (!container) return;
+    var html = '<h3>Отзывы (' + reviews.length + ')</h3>';
+    reviews.forEach(function(review) {
+        var isAuthor = window.currentUser && String(window.currentUser.id) === String(review.author_id);
+        var avatar = review.photo_url ? '<img src="' + review.photo_url + '">' : (review.author_name || '👤').charAt(0);
+        
+        var imagesHtml = '';
+        if (review.images && review.images.length > 0) {
+            imagesHtml = '<div class="review-images">' + review.images.map(function(img) {
+                return '<img src="' + img + '" onclick="viewImage(\'' + img + '\', \'Отзыв\', false)">';
+            }).join('') + '</div>';
         }
+        
+        // Формируем информацию о заказе
+        var orderInfoHtml = '';
+        if (review.order_info) {
+            var orderInfo = review.order_info;
+            var optionsNames = '';
+            if (orderInfo.options && orderInfo.options.length > 0) {
+                optionsNames = orderInfo.options.map(function(o) { return o.name + ' ×' + o.quantity; }).join(', ');
+            }
+            orderInfoHtml = `
+                <div style="margin-top:8px;padding:6px 10px;background:rgba(124,58,237,0.05);border-radius:6px;font-size:11px;color:var(--text-muted);">
+                    🛒 ${orderInfo.service || 'Заказ'}${optionsNames ? ' | ' + optionsNames : ''}${orderInfo.total ? ' | ' + orderInfo.total + ' ₽' : ''}
+                </div>
+            `;
+        }
+        
+        var actionsHtml = '';
+        if (window.isAdmin || isAuthor) actionsHtml = '<button class="btn btn-sm" onclick="deleteReview(' + review.id + ')">🗑️</button>';
+        
+        html += '<div class="card review-card"><div class="review-author"><div class="review-avatar">' + avatar + '</div><div><strong>' + (review.author_name || 'Пользователь') + '</strong>' + (review.author_username ? '<div style="font-size:12px;">@' + review.author_username + '</div>' : '') + '<div class="stars">' + '★'.repeat(review.stars) + '☆'.repeat(5 - review.stars) + '</div></div></div><p class="review-text">' + review.text + '</p>' + imagesHtml + orderInfoHtml + '<div class="review-footer"><button class="like-btn" onclick="reactReview(' + review.id + ', \'heart\')">❤️ ' + (review.likes_heart || 0) + '</button><button class="like-btn" onclick="reactReview(' + review.id + ', \'fire\')">🔥 ' + (review.likes_fire || 0) + '</button><button class="like-btn" onclick="reactReview(' + review.id + ', \'plus\')">👍 ' + (review.likes_plus || 0) + '</button>' + actionsHtml + '</div>' + (review.admin_reply ? '<div class="admin-reply"><strong>👑 Ответ:</strong> ' + review.admin_reply + '</div>' : (window.isAdmin ? '<div class="admin-reply-input"><textarea id="adminReply_' + review.id + '" placeholder="Ответить..."></textarea><button class="btn btn-sm" onclick="saveAdminReply(' + review.id + ')">📤</button></div>' : '')) + '</div>';
+    });
+    container.innerHTML = html;
+}
 
         function deleteReview(id) {
             if (!confirm('Удалить отзыв?')) return;
