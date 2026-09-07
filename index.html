@@ -410,8 +410,6 @@ function initTelegram() {
             window.isAdmin = true;
             document.body.classList.add('admin-mode');
         }
-    } else {
-        setTimeout(initTelegram, 500);
     }
 }
 
@@ -4016,7 +4014,6 @@ function updateReviewButton(canReview) {
         // ЗАПУСК
         // ================================================================
 function init() {
-    // Базовая инициализация без Supabase
     createStars();
     createAsteroids();
     createLoadingStars();
@@ -4026,30 +4023,19 @@ function init() {
     initImageViewerZoom();
     initTelegram();
     
-    // Принудительно скрываем загрузку через 1 секунду
-    setTimeout(function() { 
-        document.getElementById('loadingScreen').classList.add('hidden'); 
-    }, 1000);
+    // Просто скрываем загрузку
+    document.getElementById('loadingScreen').classList.add('hidden');
     
-    setTimeout(function() {
-        document.getElementById('loadingScreen').style.display = 'none';
-    }, 2000);
-    
-    // Supabase загружаем отдельно с задержкой
-    setTimeout(function() {
-        try {
-            initDefaultServices();
-            initDefaultServiceOptions();
-            setupRealTimeListeners();
-            renderOrdersSection();
-        } catch(e) {
-            console.error('Ошибка загрузки данных:', e);
-        }
-    }, 500);
+    // Загружаем данные
+    initDefaultServices();
+    initDefaultServiceOptions();
+    setupRealTimeListeners();
+    renderOrdersSection();
     
     var discountUsed = localStorage.getItem('discountUsed');
     if (discountUsed === 'true') {
         currentDiscount = 0;
+        localStorage.removeItem('lastSpinDiscount');
         lastSpinDiscount = 0;
     } else if (lastSpinDiscount > 0 && lastSpinDiscount <= 100) {
         currentDiscount = lastSpinDiscount;
