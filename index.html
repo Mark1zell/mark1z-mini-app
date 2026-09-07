@@ -2937,18 +2937,17 @@
         var viewerScale = 1;
         var viewerPanX = 0;
         var viewerPanY = 0;
-        var startPanX = 0;
-        var startPanY = 0;
-        var isPanning = false;
-        var startDistance = 0;
-        var startScale = 1;
+        var viewerStartPanX = 0;
+        var viewerStartPanY = 0;
+        var viewerIsPanning = false;
+        var viewerStartDistance = 0;
+        var viewerStartScale = 1;
 
         function viewImage(src, title, allowSave) {
             currentViewImageSrc = src;
             var viewer = document.getElementById('imageViewer');
             var img = document.getElementById('imageViewerImg');
             
-            // Сбрасываем зум
             viewerScale = 1;
             viewerPanX = 0;
             viewerPanY = 0;
@@ -2956,12 +2955,8 @@
             img.style.left = '0px';
             img.style.top = '0px';
             
-            img.onload = function() { 
-                viewer.style.display = 'flex'; 
-            };
-            img.onerror = function() { 
-                viewer.style.display = 'none'; 
-            };
+            img.onload = function() { viewer.style.display = 'flex'; };
+            img.onerror = function() { viewer.style.display = 'none'; };
             img.src = src;
             if (img.complete) img.onload();
         }
@@ -2972,99 +2967,24 @@
             viewerScale = 1;
             viewerPanX = 0;
             viewerPanY = 0;
+            var img = document.getElementById('imageViewerImg');
+            if (img) {
+                img.style.transform = 'scale(1)';
+                img.style.left = '0px';
+                img.style.top = '0px';
+            }
         }
 
         function saveCurrentImage() {
             if (currentViewImageSrc) downloadImage(currentViewImageSrc, 'image.jpg');
         }
 
-        // Инициализация обработчиков зума
-        function initImageViewerZoom() {
-            var imageViewer = document.getElementById('imageViewer');
-            var img = document.getElementById('imageViewerImg');
-            
-            // Сбрасываем переменные
-            viewerScale = 1;
-            viewerPanX = 0;
-            viewerPanY = 0;
-            
-            // Touch события для зума и панорамирования
-            imageViewer.addEventListener('touchstart', function(e) {
-                e.preventDefault();
-                if (e.touches.length === 2) {
-                    // Начинаем зум двумя пальцами
-                    startDistance = Math.hypot(
-                        e.touches[0].clientX - e.touches[1].clientX,
-                        e.touches[0].clientY - e.touches[1].clientY
-                    );
-                    startScale = viewerScale;
-                } else if (e.touches.length === 1 && viewerScale > 1) {
-                    // Начинаем панорамирование
-                    isPanning = true;
-                    startPanX = e.touches[0].clientX - viewerPanX;
-                    startPanY = e.touches[0].clientY - viewerPanY;
-                }
-            }, { passive: false });
-            
-            imageViewer.addEventListener('touchmove', function(e) {
-                e.preventDefault();
-                if (e.touches.length === 2) {
-                    // Зум
-                    var currentDistance = Math.hypot(
-                        e.touches[0].clientX - e.touches[1].clientX,
-                        e.touches[0].clientY - e.touches[1].clientY
-                    );
-                    viewerScale = Math.min(Math.max(startScale * currentDistance / startDistance, 1), 4);
-                    applyViewerTransform();
-                } else if (e.touches.length === 1 && isPanning) {
-                    // Панорамирование
-                    viewerPanX = e.touches[0].clientX - startPanX;
-                    viewerPanY = e.touches[0].clientY - startPanY;
-                    applyViewerTransform();
-                }
-            }, { passive: false });
-            
-            imageViewer.addEventListener('touchend', function(e) {
-                isPanning = false;
-                if (e.touches.length < 2) {
-                    startDistance = 0;
-                }
-            });
-            
-            // Двойной клик для зума
-            imageViewer.addEventListener('dblclick', function(e) {
-                e.preventDefault();
-                if (viewerScale > 1) {
-                    viewerScale = 1;
-                    viewerPanX = 0;
-                    viewerPanY = 0;
-                } else {
-                    viewerScale = 2;
-                }
-                applyViewerTransform();
-            });
-            
-            // Колесико мыши для зума (десктоп)
-            imageViewer.addEventListener('wheel', function(e) {
-                e.preventDefault();
-                if (e.deltaY < 0) {
-                    viewerScale = Math.min(viewerScale + 0.2, 4);
-                } else {
-                    viewerScale = Math.max(viewerScale - 0.2, 1);
-                }
-                if (viewerScale === 1) {
-                    viewerPanX = 0;
-                    viewerPanY = 0;
-                }
-                applyViewerTransform();
-            }, { passive: false });
-        }
-
         function applyViewerTransform() {
             var img = document.getElementById('imageViewerImg');
             if (!img) return;
             
-            if (viewerScale === 1) {
+            if (viewerScale <= 1) {
+                viewerScale = 1;
                 viewerPanX = 0;
                 viewerPanY = 0;
                 img.style.transform = 'scale(1)';
@@ -3073,7 +2993,6 @@
                 return;
             }
             
-            // Ограничиваем панорамирование
             var maxX = (img.offsetWidth * viewerScale - img.offsetWidth) / 2;
             var maxY = (img.offsetHeight * viewerScale - img.offsetHeight) / 2;
             
@@ -3085,25 +3004,73 @@
             img.style.top = viewerPanY + 'px';
         }
 
-        // Инициализация кнопок
+        function initImageViewerZoom() {
+            var imageViewer = document.getElementById('imageViewer');
+            var img = document.getElementById('imageViewerImg');
+            
+            imageViewer.addEventListener('touchstart', function(e) {
+                if (e.touches.length === 2) {
+                    viewerStartDistance = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                    viewerStartScale = viewerScale;
+                } else if (e.touches.length === 1 && viewerScale > 1) {
+                    viewerIsPanning = true;
+                    viewerStartPanX = e.touches[0].clientX - viewerPanX;
+                    viewerStartPanY = e.touches[0].clientY - viewerPanY;
+                }
+            }, { passive: true });
+            
+            imageViewer.addEventListener('touchmove', function(e) {
+                if (e.touches.length === 2 && viewerStartDistance > 0) {
+                    e.preventDefault();
+                    var currentDistance = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                    viewerScale = Math.min(Math.max(viewerStartScale * currentDistance / viewerStartDistance, 1), 4);
+                    applyViewerTransform();
+                } else if (e.touches.length === 1 && viewerIsPanning) {
+                    e.preventDefault();
+                    viewerPanX = e.touches[0].clientX - viewerStartPanX;
+                    viewerPanY = e.touches[0].clientY - viewerStartPanY;
+                    applyViewerTransform();
+                }
+            }, { passive: false });
+            
+            imageViewer.addEventListener('touchend', function() {
+                viewerIsPanning = false;
+                viewerStartDistance = 0;
+            });
+            
+            // Двойной тап для зума
+            var lastTap = 0;
+            imageViewer.addEventListener('click', function(e) {
+                var now = Date.now();
+                if (now - lastTap < 300) {
+                    // Двойной тап
+                    e.preventDefault();
+                    if (viewerScale > 1) {
+                        viewerScale = 1;
+                        viewerPanX = 0;
+                        viewerPanY = 0;
+                    } else {
+                        viewerScale = 2;
+                    }
+                    applyViewerTransform();
+                    lastTap = 0;
+                } else {
+                    lastTap = now;
+                }
+            });
+        }
+
+        // Инициализация кнопок (только один раз)
         document.getElementById('imageViewerSaveBtn').addEventListener('click', saveCurrentImage);
         document.getElementById('imageViewerClose').addEventListener('click', closeImageViewer);
-        
-        // Инициализация зума
         initImageViewerZoom();
 
-        function closeImageViewer() {
-            document.getElementById('imageViewer').style.display = 'none';
-            currentViewImageSrc = null;
-            scale = 1;
-        }
-
-        function saveCurrentImage() {
-            if (currentViewImageSrc) downloadImage(currentViewImageSrc, 'image.jpg');
-        }
-
-        document.getElementById('imageViewerSaveBtn').addEventListener('click', saveCurrentImage);
-        document.getElementById('imageViewerClose').addEventListener('click', closeImageViewer);
 
         // ================================================================
         // ОТЗЫВЫ
