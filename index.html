@@ -2654,6 +2654,69 @@ function payByStars(orderId, total, starsAmount) {
     }
 }
 
+        function checkPaymentStatus(paymentId, orderId) {
+    console.log('🔍 Проверка статуса платежа:', paymentId);
+    
+    var functionUrl = 'https://lcgbpwowppwwpjjlphod.supabase.co/functions/v1/check-payment';
+    var supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZ2Jwd293cHB3d3BqamxwaG9kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NDAwNTMsImV4cCI6MjEwNDIxNjA1M30.95VPot7saWmlgv1IzBop3E4x-ZxSc8HepqKdDLJa7JI';
+    
+    // Показываем загрузку
+    var modal = document.getElementById('modalOverlay');
+    var content = document.getElementById('modalContent');
+    content.innerHTML = `
+        <div style="text-align:center;padding:40px;">
+            <div class="loader" style="margin:0 auto 20px;"></div>
+            <p style="color:var(--text-muted);">Проверка оплаты...</p>
+        </div>
+    `;
+    modal.style.display = 'flex';
+    
+    fetch(functionUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + supabaseKey,
+            'apikey': supabaseKey
+        },
+        body: JSON.stringify({
+            paymentId: paymentId,
+            orderId: orderId
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        console.log('Ответ проверки:', data);
+        
+        if (data.status === 'succeeded') {
+            // Обновляем статус заказа
+            supabase.from('orders')
+                .update({ status: 'paid_card' })
+                .eq('id', orderId)
+                .then(function() {
+                    closeModal();
+                    alert('✅ Оплата подтверждена!');
+                    
+                    // Обновляем список заказов
+                    if (window.isAdmin) {
+                        loadAdminOrders();
+                    } else {
+                        loadUserOrders();
+                    }
+                    
+                    renderOrdersSection();
+                });
+        } else if (data.status === 'pending') {
+            alert('⏳ Платеж еще обрабатывается. Попробуйте через минуту.');
+        } else {
+            alert('❌ Платеж не найден или не выполнен.');
+        }
+    })
+    .catch(function(err) {
+        console.error('Ошибка проверки:', err);
+        alert('Ошибка проверки: ' + err.message);
+    });
+}
+
 function processStarsPayment(tg, orderId, total, starsAmount) {
     closeModal();
     
@@ -2734,7 +2797,26 @@ function payByKassa(orderId, total) {
         
         if (data.confirmation && data.confirmation.confirmation_url) {
             var paymentUrl = data.confirmation.confirmation_url;
+            var paymentId = data.id; // ID платежа в ЮKassa
+            
             console.log('🔗 URL оплаты:', paymentUrl);
+            console.log('💳 Payment ID:', paymentId);
+            
+            // СОХРАНЯЕМ payment_id в заказе
+            if (paymentId) {
+                supabase.from('orders')
+                    .update({ 
+                        payment_id: paymentId,
+                        status: 'pending_payment' // Статус до подтверждения оплаты
+                    })
+                    .eq('id', orderId)
+                    .then(function(updateRes) {
+                        console.log('✅ payment_id сохранен:', paymentId);
+                    })
+                    .catch(function(err) {
+                        console.error('Ошибка сохранения payment_id:', err);
+                    });
+            }
             
             // Показываем URL и кнопку для открытия
             content.innerHTML = `
@@ -2747,8 +2829,8 @@ function payByKassa(orderId, total) {
                     <button class="btn" onclick="window.open('${paymentUrl}', '_blank')" style="width:100%;margin-bottom:10px;">
                         💳 Перейти к оплате
                     </button>
-                    <button class="btn" onclick="copyPaymentUrl('${paymentUrl}')" style="width:100%;margin-bottom:10px;background:rgba(255,255,255,0.1);">
-                        📋 Скопировать ссылку
+                    <button class="btn" onclick="checkPaymentStatus('${paymentId}', ${orderId})" style="width:100%;margin-bottom:10px;background:rgba(16,185,129,0.2);">
+                        ✅ Я оплатил
                     </button>
                     <button class="btn" onclick="closeModal()" style="width:100%;background:rgba(255,255,255,0.1);">
                         Закрыть
@@ -2765,7 +2847,7 @@ function payByKassa(orderId, total) {
                     window.open(paymentUrl, '_blank');
                 }
             } catch(e) {
-                console.log('Автооткрытие не удалось, пользователь может открыть вручную');
+                console.log('Автооткрытие не удалось');
             }
             
         } else {
@@ -2856,32 +2938,19 @@ function loadAdminOrders() {
     
     container.innerHTML = '<p style="color:var(--text-muted);">Загрузка заказов...</p>';
     
+    // Загружаем ВСЕ заказы, кроме pending_payment
     supabase.from('orders')
         .select('*')
-        .in('status', ['paid_card', 'paid_stars', 'in_progress', 'ready'])
+        .not('status', 'eq', 'pending_payment') // Исключаем неоплаченные
         .order('timestamp', { ascending: false })
         .then(function(res) {
             if (res.error) {
-                console.error('Ошибка загрузки заказов:', res.error);
+                console.error('Ошибка загрузки:', res.error);
                 container.innerHTML = '<p style="color:var(--text-muted);">Ошибка загрузки</p>';
                 return;
             }
             
-            if (!res.data || res.data.length === 0) {
-                container.innerHTML = `
-                    <div style="text-align:center;padding:30px;background:rgba(255,255,255,0.03);border-radius:12px;">
-                        <p style="font-size:48px;margin-bottom:10px;">📭</p>
-                        <p style="color:var(--text-muted);">Нет оплаченных заказов</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            renderAdminOrdersList(res.data);
-        })
-        .catch(function(err) {
-            console.error('Ошибка:', err);
-            container.innerHTML = '<p style="color:var(--text-muted);">Ошибка загрузки</p>';
+            renderAdminOrdersList(res.data || []);
         });
 }
 
