@@ -4049,9 +4049,7 @@ function updateReviewButton(canReview) {
         // ЗАПУСК
         // ================================================================
 function init() {
-    // Сначала инициализируем Telegram
-    initTelegram();
-    
+    // Сначала показываем интерфейс
     createStars();
     createAsteroids();
     createLoadingStars();
@@ -4059,10 +4057,20 @@ function init() {
     setupModalHandlers();
     preventModalCloseOnInput();
     initImageViewerZoom();
-    initDefaultServices();
-    initDefaultServiceOptions();
-    setupRealTimeListeners();
-    renderOrdersSection();
+    initTelegram();
+    
+    // Скрываем загрузку БЫСТРО
+    setTimeout(function() { 
+        document.getElementById('loadingScreen').classList.add('hidden'); 
+    }, 300);
+    
+    // Загружаем данные в фоне
+    setTimeout(function() {
+        initDefaultServices();
+        initDefaultServiceOptions();
+        setupRealTimeListeners();
+        renderOrdersSection();
+    }, 100);
     
     var discountUsed = localStorage.getItem('discountUsed');
     if (discountUsed === 'true') {
@@ -4077,16 +4085,6 @@ function init() {
     }
     
     loadActivePosts();
-    
-    setTimeout(function() { 
-        document.getElementById('loadingScreen').classList.add('hidden'); 
-    }, 800);
-}
-
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-} else {
-    init();
 }
     </script>
 </body>
