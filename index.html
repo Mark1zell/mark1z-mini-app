@@ -2671,6 +2671,111 @@ function payByStars(orderId, total, starsAmount) {
     `;
     modal.style.display = 'flex';
     
+    // Устанавливаем таймаут для fetch
+    var timeout = setTimeout(function() {
+        alert('⏳ Превышено время ожидания. Попробуйте еще раз.');
+        closeModal();
+    }, 10000); // 10 секунд максимум
+    
+    fetch(functionUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + supabaseKey,
+            'apikey': supabaseKey
+        },
+        body: JSON.stringify({
+            paymentId: paymentId,
+            orderId: orderId
+        })
+    })
+    .then(res => {
+        clearTimeout(timeout);
+        return res.json();
+    })
+    .then(data => {
+        console.log('Ответ проверки:', data);
+        
+        if (data.status === 'succeeded') {
+            // Обновляем статус заказа
+            supabase.from('orders')
+                .update({ status: 'paid_card' })
+                .eq('id', orderId)
+                .then(function() {
+                    closeModal();
+                    alert('✅ Оплата подтверждена!');
+                    
+                    if (window.isAdmin) {
+                        loadAdminOrders();
+                    } else {
+                        loadUserOrders();
+                    }
+                    
+                    renderOrdersSection();
+                });
+        } else if (data.status === 'pending') {
+            alert('⏳ Платеж обрабатывается. Мы проверим автоматически.');
+            closeModal();
+        } else if (data.status === 'waiting_for_capture') {
+            alert('⏳ Платеж ожидает подтверждения.');
+            closeModal();
+        } else {
+            alert('❌ Платеж не выполнен. Статус: ' + (data.status || 'неизвестно'));
+            closeModal();
+        }
+    })
+    .catch(function(err) {
+        clearTimeout(timeout);
+        console.error('Ошибка проверки:', err);
+        alert('Ошибка проверки: ' + err.message);
+        closeModal();
+    });
+}
+
+        // Функция для автоматической проверки неоплаченных заказов
+function autoCheckPendingPayments() {
+    console.log('🔄 Автоматическая проверка неоплаченных заказов...');
+    
+    var user = window.currentUser;
+    if (!user) return;
+    
+    var userIdentifier = user.username || user.first_name || user.id.toString();
+    
+    // Находим заказы с pending_payment и payment_id
+    supabase.from('orders')
+        .select('*')
+        .eq('status', 'pending_payment')
+        .not('payment_id', 'is', null)
+        .or('user_username.eq.' + userIdentifier + ',user_name.eq.' + userIdentifier)
+        .then(function(res) {
+            if (res.error) {
+                console.error('Ошибка загрузки pending заказов:', res.error);
+                return;
+            }
+            
+            if (!res.data || res.data.length === 0) {
+                console.log('Нет неоплаченных заказов');
+                return;
+            }
+            
+            console.log('Найдено неоплаченных заказов:', res.data.length);
+            
+            // Проверяем каждый заказ
+            res.data.forEach(function(order) {
+                if (order.payment_id) {
+                    checkPaymentStatusSilent(order.payment_id, order.id);
+                }
+            });
+        });
+}
+
+// Тихая проверка статуса платежа (без модального окна)
+function checkPaymentStatusSilent(paymentId, orderId) {
+    console.log('🔍 Тихая проверка платежа:', paymentId);
+    
+    var functionUrl = 'https://lcgbpwowppwwpjjlphod.supabase.co/functions/v1/check-payment';
+    var supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZ2Jwd293cHB3d3BqamxwaG9kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NDAwNTMsImV4cCI6MjEwNDIxNjA1M30.95VPot7saWmlgv1IzBop3E4x-ZxSc8HepqKdDLJa7JI';
+    
     fetch(functionUrl, {
         method: 'POST',
         headers: {
@@ -2685,36 +2790,62 @@ function payByStars(orderId, total, starsAmount) {
     })
     .then(res => res.json())
     .then(data => {
-        console.log('Ответ проверки:', data);
+        console.log('Статус платежа:', data.status);
         
         if (data.status === 'succeeded') {
-            // Обновляем статус заказа
+            console.log('✅ Платеж выполнен, обновляем заказ');
             supabase.from('orders')
                 .update({ status: 'paid_card' })
                 .eq('id', orderId)
                 .then(function() {
-                    closeModal();
-                    alert('✅ Оплата подтверждена!');
-                    
+                    console.log('✅ Заказ обновлен');
+                    // Показываем уведомление
+                    showPaymentSuccessNotification(orderId);
                     // Обновляем список заказов
                     if (window.isAdmin) {
                         loadAdminOrders();
                     } else {
                         loadUserOrders();
                     }
-                    
-                    renderOrdersSection();
                 });
-        } else if (data.status === 'pending') {
-            alert('⏳ Платеж еще обрабатывается. Попробуйте через минуту.');
-        } else {
-            alert('❌ Платеж не найден или не выполнен.');
         }
     })
     .catch(function(err) {
-        console.error('Ошибка проверки:', err);
-        alert('Ошибка проверки: ' + err.message);
+        console.error('Ошибка тихой проверки:', err);
     });
+}
+
+// Уведомление об успешной оплате
+function showPaymentSuccessNotification(orderId) {
+    // Проверяем, не показывали ли уже
+    var shownPayments = JSON.parse(localStorage.getItem('shownPaymentNotifications') || '[]');
+    if (shownPayments.indexOf(orderId.toString()) !== -1) return;
+    
+    var modal = document.getElementById('modalOverlay');
+    var content = document.getElementById('modalContent');
+    
+    content.innerHTML = `
+        <div style="text-align:center;padding:40px 20px;">
+            <div style="font-size:64px;margin-bottom:20px;">🎉</div>
+            <h2 style="font-size:24px;margin-bottom:15px;">Оплата подтверждена!</h2>
+            <p style="color:var(--text-muted);margin-bottom:25px;">
+                Заказ #${orderId} успешно оплачен.<br>
+                Дизайнер скоро приступит к работе.
+            </p>
+            <button class="btn" onclick="markPaymentShown(${orderId}); closeModal();" style="width:100%;">
+                Отлично!
+            </button>
+        </div>
+    `;
+    modal.style.display = 'flex';
+}
+
+function markPaymentShown(orderId) {
+    var shownPayments = JSON.parse(localStorage.getItem('shownPaymentNotifications') || '[]');
+    if (shownPayments.indexOf(orderId.toString()) === -1) {
+        shownPayments.push(orderId.toString());
+        localStorage.setItem('shownPaymentNotifications', JSON.stringify(shownPayments));
+    }
 }
 
 function processStarsPayment(tg, orderId, total, starsAmount) {
@@ -4676,83 +4807,64 @@ function updateReviewButton(canReview) {
         // ================================================================
         // ЗАПУСК
         // ================================================================
-        // ================================================================
-        // ЗАПУСК
-        // ================================================================
-        // ================================================================
-        // ЗАПУСК
-        // ================================================================
-        function init() {
-            console.log('🚀 Начало init()');
-            
-            try {
-                // Создаем фоновые элементы
-                console.log('✨ Создание фоновых элементов...');
-                createStars();
-                createAsteroids();
-                createLoadingStars();
-                console.log('✅ Фон создан');
-                
-                // Настраиваем интерфейс
-                console.log('🔧 Настройка интерфейса...');
-                setupTabs();
-                setupModalHandlers();
-                preventModalCloseOnInput();
-                console.log('✅ Интерфейс настроен');
-                
-                // Инициализируем Telegram
-                console.log('📱 Инициализация Telegram...');
-                initTelegram();
-                console.log('✅ Telegram инициализирован');
-                
-                // Скрываем загрузочный экран
-                console.log('🙈 Скрытие загрузочного экрана...');
-                var loadingScreen = document.getElementById('loadingScreen');
-                if (loadingScreen) {
-                    loadingScreen.classList.add('hidden');
-                    // Добавляем style.display = 'none' для надежности
-                    loadingScreen.style.display = 'none';
-                }
-                console.log('✅ Загрузочный экран скрыт');
-                
-                // Загружаем данные
-                console.log('📦 Загрузка данных...');
-                initDefaultServices();
-                initDefaultServiceOptions();
-                setupRealTimeListeners();
-                renderOrdersSection();
-                console.log('✅ Данные загружены');
-                
-                // Восстанавливаем скидку
-                var discountUsed = localStorage.getItem('discountUsed');
-                if (discountUsed === 'true') {
-                    currentDiscount = 0;
-                    localStorage.removeItem('lastSpinDiscount');
-                    lastSpinDiscount = 0;
-                } else if (lastSpinDiscount > 0 && lastSpinDiscount <= 100) {
-                    currentDiscount = lastSpinDiscount;
-                } else {
-                    currentDiscount = 0;
-                }
-                
-                // Загружаем активные посты
-                loadActivePosts();
-                
-                console.log('✅ Инициализация завершена успешно');
-            } catch (err) {
-                console.error('❌ Ошибка в init():', err);
-                console.error('Стек ошибки:', err.stack);
-                
-                // Скрываем загрузочный экран даже при ошибке
-                var loadingScreen = document.getElementById('loadingScreen');
-                if (loadingScreen) {
-                    loadingScreen.classList.add('hidden');
-                    loadingScreen.style.display = 'none';
-                }
-                
-                alert('Ошибка при загрузке: ' + err.message);
-            }
+function init() {
+    try {
+        console.log('🚀 Начало инициализации...');
+        
+        createStars();
+        createAsteroids();
+        createLoadingStars();
+        
+        setupTabs();
+        setupModalHandlers();
+        preventModalCloseOnInput();
+        
+        initTelegram();
+        
+        var loadingScreen = document.getElementById('loadingScreen');
+        if (loadingScreen) {
+            loadingScreen.classList.add('hidden');
+            loadingScreen.style.display = 'none';
         }
+        
+        console.log('📦 Загрузка данных...');
+        
+        initDefaultServices();
+        initDefaultServiceOptions();
+        setupRealTimeListeners();
+        renderOrdersSection();
+        
+        // Восстанавливаем скидку
+        var discountUsed = localStorage.getItem('discountUsed');
+        if (discountUsed === 'true') {
+            currentDiscount = 0;
+            localStorage.removeItem('lastSpinDiscount');
+            lastSpinDiscount = 0;
+        } else if (lastSpinDiscount > 0 && lastSpinDiscount <= 100) {
+            currentDiscount = lastSpinDiscount;
+        } else {
+            currentDiscount = 0;
+        }
+        
+        // Загружаем активные посты
+        loadActivePosts();
+        
+        // АВТОМАТИЧЕСКАЯ ПРОВЕРКА ПЛАТЕЖЕЙ
+        setTimeout(function() {
+            autoCheckPendingPayments();
+        }, 2000); // Проверяем через 2 секунды после загрузки
+        
+        console.log('✅ Инициализация завершена');
+    } catch (err) {
+        console.error('❌ Ошибка в init():', err);
+        var loadingScreen = document.getElementById('loadingScreen');
+        if (loadingScreen) {
+            loadingScreen.classList.add('hidden');
+            loadingScreen.style.display = 'none';
+        }
+        alert('Ошибка при загрузке: ' + err.message);
+    }
+}
     </script>
 </body>
 </html>
