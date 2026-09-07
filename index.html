@@ -3087,11 +3087,10 @@ function payByKassa(orderId, total) {
         })
     })
     .then(function(res) {
-        console.log('📡 Статус ответа:', res.status);
         return res.json();
     })
     .then(function(data) {
-        console.log('✅ Ответ от ЮKassa:', data);
+        console.log('✅ Ответ от ЮKassa:', JSON.stringify(data, null, 2));
         
         if (data.error) {
             alert('Ошибка: ' + data.error);
@@ -3102,23 +3101,11 @@ function payByKassa(orderId, total) {
         if (data.confirmation && data.confirmation.confirmation_url) {
             var paymentUrl = data.confirmation.confirmation_url;
             var paymentId = data.id;
-
-                if (paymentId) {
-        supabase.from('orders')
-            .update({ 
-                payment_id: paymentId,
-                status: 'pending_payment'
-            })
-            .eq('id', orderId)
-            .then(function() {
-                console.log('✅ payment_id сохранен:', paymentId);
-            });
-    }
             
             console.log('🔗 URL оплаты:', paymentUrl);
             console.log('💳 Payment ID:', paymentId);
             
-            // Сохраняем payment_id в заказе
+            // СОХРАНЯЕМ payment_id В БАЗУ ДАННЫХ
             if (paymentId) {
                 supabase.from('orders')
                     .update({ 
@@ -3126,19 +3113,22 @@ function payByKassa(orderId, total) {
                         status: 'pending_payment'
                     })
                     .eq('id', orderId)
-                    .then(function() {
-                        console.log('✅ payment_id сохранен:', paymentId);
+                    .then(function(updateRes) {
+                        if (updateRes.error) {
+                            console.error('❌ Ошибка сохранения payment_id:', updateRes.error);
+                        } else {
+                            console.log('✅ payment_id сохранен:', paymentId);
+                        }
                     });
             }
             
-            // Показываем URL и инструкцию
+            // Показываем ссылку на оплату
             content.innerHTML = `
                 <div style="text-align:center;padding:20px;">
                     <h3 style="margin-bottom:15px;">💳 Оплата заказа #${orderId}</h3>
                     <p style="margin-bottom:20px;">Сумма: <strong style="color:#c084fc;">${total} ₽</strong></p>
                     <p style="color:var(--text-muted);font-size:14px;margin-bottom:20px;">
-                        Нажмите кнопку ниже, чтобы перейти к оплате.<br>
-                        После оплаты вернитесь в приложение - статус обновится автоматически.
+                        Нажмите кнопку ниже, чтобы перейти к оплате
                     </p>
                     <button class="btn" onclick="window.open('${paymentUrl}', '_blank')" style="width:100%;margin-bottom:10px;">
                         💳 Перейти к оплате
@@ -3150,31 +3140,21 @@ function payByKassa(orderId, total) {
             `;
             modal.style.display = 'flex';
             
-            // Пытаемся открыть автоматически
+            // Открываем оплату
             try {
-                if (window.Telegram?.WebApp?.openLink) {
-                    window.Telegram.WebApp.openLink(paymentUrl);
-                } else {
-                    window.open(paymentUrl, '_blank');
-                }
+                window.open(paymentUrl, '_blank');
             } catch(e) {
-                console.log('Автооткрытие не удалось');
+                console.log('Не удалось открыть автоматически');
             }
             
-            // Запускаем автоматическую проверку через 5 секунд
-            setTimeout(function() {
-                autoCheckPendingPayments();
-            }, 5000);
-            
         } else {
-            console.error('❌ Нет confirmation_url в ответе:', data);
             alert('Ошибка: не получен URL для оплаты');
             closeModal();
         }
     })
     .catch(function(err) {
-        console.error('❌ Ошибка оплаты:', err);
-        alert('Ошибка создания платежа: ' + err.message);
+        console.error('❌ Ошибка:', err);
+        alert('Ошибка: ' + err.message);
         closeModal();
     });
 }
