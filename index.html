@@ -2144,14 +2144,16 @@ function openOrderConstructor(serviceId) {
     content.innerHTML = html;
     modal.style.display = 'flex';
     updateOrderTotal();
+    
     // Показываем информацию о скидке
-if (currentDiscount > 0 && currentDiscount < 100) {
-    var discountInfo = document.createElement('div');
-    discountInfo.id = 'discountInfo';
-    discountInfo.style.cssText = 'margin-top:10px;padding:10px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);border-radius:8px;font-size:12px;color:#fbbf24;';
-    discountInfo.innerHTML = '🎁 У вас есть скидка ' + currentDiscount + '% из кейса! Она применится к общей сумме заказа.';
-    var totalEl = document.querySelector('.order-total');
-    if (totalEl) totalEl.parentNode.insertBefore(discountInfo, totalEl);
+    if (currentDiscount > 0 && currentDiscount < 100) {
+        var discountInfo = document.createElement('div');
+        discountInfo.id = 'discountInfo';
+        discountInfo.style.cssText = 'margin-top:10px;padding:10px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);border-radius:8px;font-size:12px;color:#fbbf24;';
+        discountInfo.innerHTML = '🎁 У вас есть скидка ' + currentDiscount + '% из кейса! Она применится к общей сумме заказа.';
+        var totalEl = document.querySelector('.order-total');
+        if (totalEl) totalEl.parentNode.insertBefore(discountInfo, totalEl);
+    }
 }
 
 function toggleOptionUI(optId) {
