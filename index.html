@@ -128,59 +128,56 @@
             align-items:center; 
             gap:6px; 
             transition:all 0.3s ease; 
-            position:relative;
-            overflow:hidden;
         }
         .like-btn:hover {
             background:rgba(124,58,237,0.15);
             border-color:rgba(124,58,237,0.3);
         }
-        .like-btn:active { transform:scale(0.9); }
-        .like-btn .emoji { font-size:16px; display:inline-block; transition:transform 0.2s ease; }
-        .like-btn .count { font-size:13px; font-weight:600; min-width:12px; transition:all 0.3s ease; }
+        .like-btn:active { transform:scale(0.95); }
+        .like-btn .emoji { font-size:16px; transition:transform 0.3s ease; }
+        .like-btn .count { font-size:13px; font-weight:600; min-width:12px; }
         
-        /* АКТИВНАЯ КНОПКА ЛАЙКА */
+        /* АКТИВНАЯ КНОПКА ЛАЙКА - ПЛАВНАЯ */
         .like-btn.active {
             background: linear-gradient(135deg, #7c3aed, #be185d) !important;
             border-color: #7c3aed !important;
             color: #fff !important;
-            box-shadow: 0 0 20px rgba(124,58,237,0.6), 0 0 40px rgba(190,24,93,0.3);
-            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(124,58,237,0.4);
         }
         .like-btn.active .emoji {
-            animation: likePop 0.4s ease;
+            transform: scale(1.2);
         }
         .like-btn.active .count {
             color: #fff;
-        }
-        @keyframes likePop {
-            0% { transform: scale(1); }
-            40% { transform: scale(1.5); }
-            70% { transform: scale(0.9); }
-            100% { transform: scale(1); }
         }
         
         .review-actions { display:flex; gap:5px; margin-left:auto; }
         .review-actions button { background:rgba(255,255,255,0.05); border:none; color:var(--text-muted); padding:6px 10px; border-radius:12px; font-size:12px; cursor:pointer; transition:background 0.2s; }
         .review-actions button:hover { background:rgba(255,255,255,0.1); }
         
-        /* Информация о заказе в отзыве */
-        .review-order-info {
-            margin-top:10px;
-            padding:8px 12px;
-            background:rgba(124,58,237,0.08);
-            border:1px solid rgba(124,58,237,0.2);
+        /* Кнопка деталей заказа в отзыве */
+        .order-details-toggle {
+            background:rgba(124,58,237,0.15);
+            border:1px solid rgba(124,58,237,0.25);
+            color:#c084fc;
+            padding:6px 12px;
+            border-radius:20px;
+            font-size:11px;
+            cursor:pointer;
+            transition:all 0.3s;
+        }
+        .order-details-toggle:hover {
+            background:rgba(124,58,237,0.25);
+        }
+        .order-details-content {
+            margin-top:8px;
+            padding:10px 12px;
+            background:rgba(124,58,237,0.05);
+            border:1px solid rgba(124,58,237,0.15);
             border-radius:8px;
             font-size:11px;
             color:var(--text-muted);
-            display:flex;
-            align-items:center;
-            gap:6px;
-            flex-wrap:wrap;
-        }
-        .review-order-info .order-total {
-            color:#c084fc;
-            font-weight:600;
+            line-height:1.5;
         }
         
         .admin-reply { margin-top:10px; padding:10px 14px; background:rgba(124,58,237,0.08); border-left:2px solid var(--primary); border-radius:8px; font-size:13px; color:var(--text-muted); }
@@ -269,6 +266,10 @@
         .post-checkbox input { width:auto; }
         .admin-post-item { display:flex; align-items:center; justify-content:space-between; padding:10px; border:1px solid var(--card-border); border-radius:10px; margin-bottom:10px; }
         .admin-post-item button { background:none; border:none; color:#f87171; cursor:pointer; font-size:18px; }
+        .admin-reply-edit { display:flex; gap:8px; width:100%; margin-top:8px; }
+        .admin-reply-edit textarea { flex:1; padding:8px; border:1px solid var(--card-border); border-radius:8px; background:rgba(0,0,0,0.3); color:var(--text); font-size:13px; resize:vertical; min-height:50px; }
+        .admin-reply-edit button { padding:8px 16px; font-size:12px; }
+        .admin-reply .edit-reply-btn { background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-size:14px; padding:2px 6px; }
     </style>
 </head>
 <body oncontextmenu="return false;">
@@ -328,7 +329,7 @@
         <div class="footer">
             <div>© Mark1z Design · <a href="https://t.me/mark1zell" target="_blank" class="designer-link">Дмитрий Маркизов</a></div>
             <a href="#" onclick="openPrivacyPolicy()">Политика конфиденциальности</a>
-            <span class="version">V.1.0.5</span>
+            <span class="version">V.1.0.6</span>
         </div>
     </div>
     <div class="modal-overlay" id="modalOverlay">
@@ -577,25 +578,67 @@ function compressImage(file, maxSize, quality) {
             modal.style.display = 'flex';
         }
 
-        function openPrivacyPolicy() {
-            var modal = document.getElementById('modalOverlay');
-            var content = document.getElementById('modalContent');
-            content.innerHTML = `
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
-                    <h3>Политика конфиденциальности</h3>
-                    <button class="btn" onclick="closeModal()" style="margin:0;">×</button>
-                </div>
-                <div style="line-height:1.6;max-height:60vh;overflow-y:auto;">
-                    <p>Настоящая Политика конфиденциальности определяет порядок обработки и защиты персональных данных пользователей при использовании сервиса Mark1z Design.</p>
-                    <p><strong>1. Сбор данных:</strong> имя пользователя Telegram, username, ID Telegram, а также изображения и тексты, добровольно загруженные пользователем.</p>
-                    <p><strong>2. Цели:</strong> предоставление услуг, связь с клиентом, оформление заказов, отображение отзывов и портфолио.</p>
-                    <p><strong>3. Хранение:</strong> данные хранятся в облачной базе данных Supabase.</p>
-                    <p><strong>4. Передача третьим лицам:</strong> данные не передаются, кроме случаев, предусмотренных законодательством РФ.</p>
-                    <p><strong>5. Права пользователя:</strong> пользователь вправе запросить удаление своих данных, обратившись к <a href="https://t.me/mark1zell" target="_blank" style="color:#ec4899;">@Mark1zell</a>.</p>
-                </div>
-            `;
-            modal.style.display = 'flex';
-        }
+function openPrivacyPolicy() {
+    var modal = document.getElementById('modalOverlay');
+    var content = document.getElementById('modalContent');
+    content.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+            <h3>Политика конфиденциальности</h3>
+            <button class="btn" onclick="closeModal()" style="margin:0;">×</button>
+        </div>
+        <div style="line-height:1.6;max-height:60vh;overflow-y:auto;font-size:13px;">
+            <p><strong>1. Общие положения</strong></p>
+            <p>Настоящая Политика конфиденциальности определяет порядок обработки и защиты информации о пользователях сервиса Mark1z Design (далее — «Сервис»). Используя Сервис, вы соглашаетесь с условиями настоящей Политики.</p>
+            
+            <p style="margin-top:10px;"><strong>2. Собираемая информация</strong></p>
+            <p>2.1. При использовании Сервиса автоматически собираются: имя пользователя Telegram, username, идентификатор Telegram, а также технические данные (время доступа, тип устройства).</p>
+            <p>2.2. Пользователь добровольно предоставляет: изображения, тексты, описания заказов, референсы и иные материалы, загружаемые через интерфейс Сервиса.</p>
+            
+            <p style="margin-top:10px;"><strong>3. Цели обработки данных</strong></p>
+            <p>3.1. Предоставление услуг графического дизайна.</p>
+            <p>3.2. Связь с клиентом для уточнения деталей заказа.</p>
+            <p>3.3. Отображение отзывов и портфолио.</p>
+            <p>3.4. Улучшение качества обслуживания.</p>
+            
+            <p style="margin-top:10px;"><strong>4. Хранение и защита данных</strong></p>
+            <p>4.1. Данные хранятся в облачной базе данных Supabase с использованием стандартных мер защиты.</p>
+            <p>4.2. Сервис принимает разумные меры для защиты информации от несанкционированного доступа, изменения или уничтожения.</p>
+            <p>4.3. Однако ни один метод передачи данных через интернет не может быть гарантированно безопасным на 100%.</p>
+            
+            <p style="margin-top:10px;"><strong>5. Передача данных третьим лицам</strong></p>
+            <p>5.1. Данные не передаются третьим лицам, за исключением случаев, предусмотренных законодательством РФ.</p>
+            <p>5.2. Сервис может использовать сторонние сервисы для хранения файлов (Supabase Storage).</p>
+            
+            <p style="margin-top:10px;"><strong>6. Сроки и условия</strong></p>
+            <p>6.1. Сроки выполнения работ оговариваются индивидуально и могут быть изменены по техническим причинам.</p>
+            <p>6.2. Исполнитель не несет ответственности за задержки, вызванные обстоятельствами непреодолимой силы.</p>
+            
+            <p style="margin-top:10px;"><strong>7. Материалы и исходники</strong></p>
+            <p>7.1. Все исходные файлы передаются клиенту после полной оплаты.</p>
+            <p>7.2. Исполнитель может хранить копии материалов в течение 30 дней после завершения работы, после чего они могут быть удалены.</p>
+            <p>7.3. В случае технического сбоя возможна потеря материалов, хранящихся на стороне Исполнителя.</p>
+            <p>7.4. Клиент несет ответственность за сохранность переданных ему исходников после их получения.</p>
+            
+            <p style="margin-top:10px;"><strong>8. Отзывы</strong></p>
+            <p>8.1. Пользователь может оставить отзыв только после выполнения заказа.</p>
+            <p>8.2. Отзывы могут содержать информацию о заказанных услугах и их стоимости.</p>
+            <p>8.3. Администрация Сервиса оставляет за собой право редактировать или удалять отзывы, нарушающие правила.</p>
+            
+            <p style="margin-top:10px;"><strong>9. Права пользователя</strong></p>
+            <p>9.1. Пользователь вправе запросить удаление своих персональных данных, обратившись к <a href="https://t.me/mark1zell" target="_blank" style="color:#ec4899;">@Mark1zell</a>.</p>
+            <p>9.2. Пользователь вправе редактировать или удалять свои отзывы.</p>
+            <p>9.3. Пользователь вправе отказаться от получения уведомлений.</p>
+            
+            <p style="margin-top:10px;"><strong>10. Изменения политики</strong></p>
+            <p>10.1. Сервис оставляет за собой право вносить изменения в настоящую Политику без предварительного уведомления.</p>
+            <p>10.2. Актуальная версия Политики всегда доступна в Сервисе.</p>
+            
+            <p style="margin-top:10px;"><strong>11. Контакты</strong></p>
+            <p>По всем вопросам обращайтесь: <a href="https://t.me/mark1zell" target="_blank" style="color:#ec4899;">@Mark1zell</a></p>
+        </div>
+    `;
+    modal.style.display = 'flex';
+}
 
         // ================================================================
         // КЕЙС
@@ -2101,6 +2144,14 @@ function openOrderConstructor(serviceId) {
     content.innerHTML = html;
     modal.style.display = 'flex';
     updateOrderTotal();
+    // Показываем информацию о скидке
+if (currentDiscount > 0 && currentDiscount < 100) {
+    var discountInfo = document.createElement('div');
+    discountInfo.id = 'discountInfo';
+    discountInfo.style.cssText = 'margin-top:10px;padding:10px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);border-radius:8px;font-size:12px;color:#fbbf24;';
+    discountInfo.innerHTML = '🎁 У вас есть скидка ' + currentDiscount + '% из кейса! Она применится к общей сумме заказа.';
+    var totalEl = document.querySelector('.order-total');
+    if (totalEl) totalEl.parentNode.insertBefore(discountInfo, totalEl);
 }
 
 function toggleOptionUI(optId) {
@@ -2218,23 +2269,43 @@ function changeQuantity(optId, delta) {
             }
         }
 
-        function updateOrderTotal() {
-            var total = 0;
-            currentOrderOptions.forEach(function(opt) {
-                var qty = currentOrderQuantities[opt.id] || 0;
-                if (qty > 0) {
-                    var price = opt.price;
-                    if (opt.discount_min_quantity && qty >= opt.discount_min_quantity && opt.discount_price) {
-                        price = opt.discount_price;
-                    }
-                    total += price * qty;
-                }
-            });
-            var totalEl = document.getElementById('orderTotalPrice');
-            if (totalEl) {
-                totalEl.textContent = total;
+function updateOrderTotal() {
+    var total = 0;
+    currentOrderOptions.forEach(function(opt) {
+        var qty = currentOrderQuantities[opt.id] || 0;
+        if (qty > 0) {
+            var price = opt.price;
+            if (opt.discount_min_quantity && qty >= opt.discount_min_quantity && opt.discount_price) {
+                price = opt.discount_price;
             }
+            total += price * qty;
         }
+    });
+    
+    // Применяем скидку из кейса
+    var discountAmount = 0;
+    if (currentDiscount > 0 && currentDiscount < 100) {
+        // Проверяем, есть ли услуги, на которые скидка НЕ распространяется
+        var excludedServices = ['Telegram Mini Apps', 'Дизайн сайтов', 'Дизайн мобильных приложений'];
+        var isExcluded = excludedServices.indexOf(currentOrderService.name) !== -1;
+        
+        if (!isExcluded && total > 0) {
+            discountAmount = Math.round(total * currentDiscount / 100);
+        }
+    }
+    
+    var totalEl = document.getElementById('orderTotalPrice');
+    if (totalEl) {
+        if (discountAmount > 0) {
+            totalEl.innerHTML = total + ' ₽ <span style="text-decoration:line-through;font-size:14px;color:var(--text-muted);">' + (total + discountAmount) + ' ₽</span> <span style="color:#fbbf24;font-size:14px;">(-' + currentDiscount + '%)</span>';
+        } else {
+            totalEl.textContent = total + ' ₽';
+        }
+    }
+    
+    // Сохраняем итоговую сумму с учетом скидки
+    window.currentOrderFinalTotal = total - discountAmount;
+}
 
         function handleRefFiles(event) {
             var files = event.target.files;
@@ -3489,7 +3560,6 @@ function renderReviews(reviews) {
     var user = window.currentUser;
     var userIdentifier = user ? (user.username || user.first_name || user.id.toString()) : null;
     
-    // Проверяем, может ли пользователь оставить отзыв
     if (userIdentifier) {
         supabase.from('user_last_review').select('can_review').eq('user_id', userIdentifier).single()
             .then(function(res) {
@@ -3508,6 +3578,7 @@ function renderReviews(reviews) {
         var isAuthor = user && String(user.id) === String(review.author_id);
         var avatar = review.photo_url ? '<img src="' + review.photo_url + '">' : (review.author_name || '👤').charAt(0);
         
+        // Изображения отзыва — СРАЗУ ПОСЛЕ ТЕКСТА
         var imagesHtml = '';
         if (review.images && review.images.length > 0) {
             imagesHtml = '<div class="review-images">' + review.images.map(function(img) {
@@ -3515,7 +3586,7 @@ function renderReviews(reviews) {
             }).join('') + '</div>';
         }
         
-        // Информация о заказе
+        // Детали заказа — скрыты, показываются по кнопке
         var orderInfoHtml = '';
         if (review.order_info) {
             var oi = review.order_info;
@@ -3523,10 +3594,18 @@ function renderReviews(reviews) {
             if (oi.options && oi.options.length > 0) {
                 opts = oi.options.map(function(o) { return o.name + ' ×' + o.quantity; }).join(' • ');
             }
-            orderInfoHtml = '<div class="review-order-info"><span>🛒</span><span>' + (oi.service || 'Заказ') + '</span>';
-            if (opts) orderInfoHtml += '<span>|</span><span>' + opts + '</span>';
-            if (oi.total) orderInfoHtml += '<span>|</span><span class="order-total">' + oi.total + ' ₽</span>';
-            orderInfoHtml += '</div>';
+            orderInfoHtml = `
+                <div style="margin-top:8px;">
+                    <button class="btn btn-sm" onclick="toggleOrderDetails(${review.id})" style="background:rgba(124,58,237,0.15);font-size:11px;padding:6px 12px;">
+                        🛒 Показать детали заказа
+                    </button>
+                    <div id="orderDetails_${review.id}" style="display:none;margin-top:8px;padding:10px 12px;background:rgba(124,58,237,0.05);border:1px solid rgba(124,58,237,0.15);border-radius:8px;font-size:11px;color:var(--text-muted);">
+                        <div><strong>${oi.service || 'Заказ'}</strong></div>
+                        ${opts ? '<div style="margin-top:4px;">' + opts + '</div>' : ''}
+                        ${oi.total ? '<div style="margin-top:4px;color:#c084fc;font-weight:600;">' + oi.total + ' ₽</div>' : ''}
+                    </div>
+                </div>
+            `;
         }
         
         var actionsHtml = '';
@@ -3541,8 +3620,8 @@ function renderReviews(reviews) {
         if (review.author_username) html += '<div style="font-size:12px;color:var(--text-muted);">@' + review.author_username + '</div>';
         html += '<div class="stars">' + '★'.repeat(review.stars) + '☆'.repeat(5 - review.stars) + '</div></div></div>';
         html += '<p class="review-text">' + review.text + '</p>';
-        html += imagesHtml;
-        html += orderInfoHtml;
+        html += imagesHtml; // Изображения сразу после текста
+        html += orderInfoHtml; // Кнопка "Показать детали"
         html += '<div class="review-footer">';
         html += '<button class="like-btn" data-review="' + review.id + '" data-type="heart" onclick="toggleReaction(' + review.id + ', \'heart\')">❤️ <span class="count">' + (review.likes_heart || 0) + '</span></button>';
         html += '<button class="like-btn" data-review="' + review.id + '" data-type="fire" onclick="toggleReaction(' + review.id + ', \'fire\')">🔥 <span class="count">' + (review.likes_fire || 0) + '</span></button>';
@@ -3551,7 +3630,7 @@ function renderReviews(reviews) {
         html += '</div>';
         
         if (review.admin_reply) {
-            html += '<div class="admin-reply"><strong>👑 Ответ:</strong> ' + review.admin_reply + '</div>';
+            html += '<div class="admin-reply"><strong>👑 Дизайнер:</strong> ' + review.admin_reply + '</div>';
         } else if (window.isAdmin) {
             html += '<div class="admin-reply-input"><textarea id="adminReply_' + review.id + '" placeholder="Ответить..."></textarea><button class="btn btn-sm" onclick="saveAdminReply(' + review.id + ')">📤</button></div>';
         }
@@ -3560,7 +3639,6 @@ function renderReviews(reviews) {
     html += '</div>';
     container.innerHTML = html;
     
-    // Проверяем, какие реакции уже поставил пользователь
     if (userIdentifier) {
         supabase.from('review_likes').select('review_id, reaction_type').eq('user_id', userIdentifier)
             .then(function(res) {
@@ -3571,6 +3649,18 @@ function renderReviews(reviews) {
                     });
                 }
             });
+    }
+}
+
+// Новая функция для переключения деталей заказа
+function toggleOrderDetails(reviewId) {
+    var details = document.getElementById('orderDetails_' + reviewId);
+    if (details) {
+        if (details.style.display === 'none') {
+            details.style.display = 'block';
+        } else {
+            details.style.display = 'none';
+        }
     }
 }
 
