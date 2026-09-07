@@ -351,6 +351,14 @@
         }
         var supabase = window._supabaseClient;
 
+        // Проверка Supabase
+        if (!window.supabase) {
+            console.error('❌ Supabase не загружен!');
+            alert('Ошибка загрузки библиотеки Supabase');
+        } else {
+            console.log('✅ Supabase загружен');
+        }
+
         // ================================================================
         // ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
         // ================================================================
@@ -1589,79 +1597,101 @@ function applyPromo(code) {
         // ================================================================
         // ЗАГРУЗКА ДАННЫХ И REALTIME
         // ================================================================
-        function setupRealTimeListeners() {
-            supabase.channel('portfolio_categories_changes')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'portfolio_categories' }, function(payload) {
-                    loadPortfolioCategories();
-                    if (currentCategoryId) openCategory(currentCategoryId);
-                })
-                .subscribe();
+function setupRealTimeListeners() {
+    try {
+        console.log('📡 Настройка realtime listeners...');
+        
+        supabase.channel('portfolio_categories_changes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'portfolio_categories' }, function(payload) {
+                loadPortfolioCategories();
+                if (currentCategoryId) openCategory(currentCategoryId);
+            })
+            .subscribe();
 
-            supabase.channel('services_changes')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'services' }, function(payload) {
-                    loadServices();
-                })
-                .subscribe();
+        supabase.channel('services_changes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'services' }, function(payload) {
+                loadServices();
+            })
+            .subscribe();
 
-            supabase.channel('service_options_changes')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'service_options' }, function(payload) {
-                    loadServiceOptions();
-                })
-                .subscribe();
+        supabase.channel('service_options_changes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'service_options' }, function(payload) {
+                loadServiceOptions();
+            })
+            .subscribe();
 
-            supabase.channel('reviews_changes')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews' }, function(payload) {
-                    loadReviews();
-                })
-                .subscribe();
+        supabase.channel('reviews_changes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews' }, function(payload) {
+                loadReviews();
+            })
+            .subscribe();
 
-            supabase.channel('posts_changes')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, function(payload) {
-                    var postsList = document.getElementById('postsList');
-                    if (postsList && postsList.innerHTML !== '') loadPostsList();
-                })
-                .subscribe();
+        supabase.channel('posts_changes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, function(payload) {
+                var postsList = document.getElementById('postsList');
+                if (postsList && postsList.innerHTML !== '') loadPostsList();
+            })
+            .subscribe();
 
-            supabase.channel('orders_changes')
-                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, function(payload) {
-                    if (adminOrdersMode === 'orders') {
-                        supabase.from('orders').select('*').order('timestamp', { ascending: false })
-                            .then(function(res) {
-                                if (!res.error && res.data) renderOrdersList(res.data);
-                            });
-                    }
-                })
-                .subscribe();
+        supabase.channel('orders_changes')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, function(payload) {
+                if (adminOrdersMode === 'orders') {
+                    supabase.from('orders').select('*').order('timestamp', { ascending: false })
+                        .then(function(res) {
+                            if (!res.error && res.data) renderOrdersList(res.data);
+                        })
+                        .catch(function(err) {
+                            console.error('Ошибка загрузки заказов:', err);
+                        });
+                }
+            })
+            .subscribe();
 
-            loadAbout();
-            loadPortfolioCategories();
-            loadServices();
-            loadServiceOptions();
-            loadReviews();
-            loadLogo();
-        }
+        // Загружаем начальные данные
+        loadAbout();
+        loadPortfolioCategories();
+        loadServices();
+        loadServiceOptions();
+        loadReviews();
+        loadLogo();
+        
+        console.log('✅ Realtime listeners настроены');
+    } catch (err) {
+        console.error('❌ Ошибка настройки realtime:', err);
+    }
+}
 
-        function loadAbout() {
-            supabase.from('about').select('*').eq('id', 'main').single()
-                .then(function(res) {
-                    if (res.error && res.error.code === 'PGRST116') {
-                        supabase.from('about').insert([{
-                            id: 'main',
-                            highlight: '«Создаю дизайн, который выделяет вас среди конкурентов»',
-                            text1: 'Специализируюсь на графическом, веб- и игровом дизайне. Оформляю сообщества, создаю карточки для маркетплейсов, разрабатываю интерфейсы приложений и сайтов, а также Telegram Mini Apps.',
-                            text2: 'Также делаю постеры, обложки, превью, презентации и документы. Работаю быстро и качественно, учитывая все пожелания.',
-                            skills: ['Графический дизайн', 'Веб-дизайн', 'UI/UX', 'Киберспортивный дизайн', 'Типографика', 'Презентации', 'Моушн (изучаю)']
-                        }]).then(function() { loadAbout(); });
-                        return;
-                    }
-                    if (res.data) {
-                        document.getElementById('aboutHighlight').textContent = res.data.highlight || '';
-                        document.getElementById('aboutText1').textContent = res.data.text1 || '';
-                        document.getElementById('aboutText2').textContent = res.data.text2 || '';
-                        document.getElementById('skillsList').innerHTML = (res.data.skills || []).map(function(s) { return '<span class="skill-badge">' + s + '</span>'; }).join('');
-                    }
+function loadAbout() {
+    supabase.from('about').select('*').eq('id', 'main').single()
+        .then(function(res) {
+            if (res.error && res.error.code === 'PGRST116') {
+                // Запись не найдена - создаем
+                return supabase.from('about').insert([{
+                    id: 'main',
+                    highlight: '«Создаю дизайн, который выделяет вас среди конкурентов»',
+                    text1: 'Специализируюсь на графическом, веб- и игровом дизайне. Оформляю сообщества, создаю карточки для маркетплейсов, разрабатываю интерфейсы приложений и сайтов, а также Telegram Mini Apps.',
+                    text2: 'Также делаю постеры, обложки, превью, презентации и документы. Работаю быстро и качественно, учитывая все пожелания.',
+                    skills: ['Графический дизайн', 'Веб-дизайн', 'UI/UX', 'Киберспортивный дизайн', 'Типографика', 'Презентации', 'Моушн (изучаю)']
+                }]).then(function() { 
+                    return supabase.from('about').select('*').eq('id', 'main').single();
                 });
-        }
+            }
+            return res;
+        })
+        .then(function(res) {
+            if (res.data) {
+                document.getElementById('aboutHighlight').textContent = res.data.highlight || '';
+                document.getElementById('aboutText1').textContent = res.data.text1 || '';
+                document.getElementById('aboutText2').textContent = res.data.text2 || '';
+                document.getElementById('skillsList').innerHTML = (res.data.skills || []).map(function(s) { 
+                    return '<span class="skill-badge">' + s + '</span>'; 
+                }).join('');
+            }
+        })
+        .catch(function(err) {
+            console.error('Ошибка загрузки "Обо мне":', err);
+        });
+}
 
         function loadPortfolioCategories() {
             supabase.from('portfolio_categories').select('*').order('order', { ascending: true })
@@ -2594,23 +2624,33 @@ function payByStars(orderId, total, starsAmount) {
     }
     
     try {
-        // Пробуем разные форматы вызова
-        tg.showInvoice(
-            'Mark1z Design',
-            'Оплата заказа #' + orderId,
-            'order_' + orderId,
-            'XTR',
-            [{ label: 'Дизайн услуга', amount: starsAmount }],
-            function(success) {
-                if (success) {
-                    alert('✅ Оплата прошла!');
-                } else {
-                    alert('❌ Оплата отменена');
-                }
+        // Правильный формат вызова showInvoice
+        tg.showInvoice({
+            title: 'Mark1z Design',
+            description: 'Оплата заказа #' + orderId,
+            payload: 'order_' + orderId,
+            currency: 'XTR',
+            prices: [{ label: 'Дизайн услуга', amount: starsAmount }]
+        }, function(success) {
+            if (success) {
+                // Обновляем статус заказа
+                supabase.from('orders').update({ status: 'paid_stars' }).eq('id', orderId)
+                    .then(function() {
+                        resetDiscount();
+                        renderOrdersSection();
+                        alert('✅ Оплата звёздами прошла успешно!');
+                    })
+                    .catch(function(err) {
+                        console.error('Ошибка обновления статуса:', err);
+                        alert('✅ Оплата прошла, но статус не обновлен');
+                    });
+            } else {
+                alert('❌ Оплата отменена');
             }
-        );
+        });
     } catch(e) {
-        alert('Ошибка showInvoice: ' + e.message);
+        console.error('Ошибка showInvoice:', e);
+        alert('Ошибка оплаты: ' + e.message);
     }
 }
 
@@ -3169,38 +3209,60 @@ function completeOrder(orderId) {
                 .catch(function(err) { alert('Ошибка: ' + err.message); });
         }
 
-        function clearOrders() {
-            if (!confirm('Очистить все заказы? Все референсы будут удалены!')) return;
-                currentDiscount = 0;
-                localStorage.removeItem('lastSpinDiscount');
-                localStorage.removeItem('lastSpinTime');
-                lastSpinDiscount = 0;
-                lastSpinTime = 0;
-            supabase.from('orders').select('*')
-                .then(function(res) {
-                    var orders = res.data || [];
-                    var allUrls = [];
-                    orders.forEach(function(order) {
-                        if (order.reference_urls && order.reference_urls.length > 0) {
-                            allUrls = allUrls.concat(order.reference_urls);
-                        }
+function clearOrders() {
+    if (!confirm('Очистить все заказы? Все референсы будут удалены!')) return;
+    
+    currentDiscount = 0;
+    localStorage.removeItem('lastSpinDiscount');
+    localStorage.removeItem('lastSpinTime');
+    lastSpinDiscount = 0;
+    lastSpinTime = 0;
+    
+    supabase.from('orders').select('*')
+        .then(function(res) {
+            if (res.error) {
+                console.error('Ошибка загрузки заказов:', res.error);
+                return Promise.reject(res.error);
+            }
+            
+            var orders = res.data || [];
+            var allUrls = [];
+            
+            orders.forEach(function(order) {
+                if (order.reference_urls && order.reference_urls.length > 0) {
+                    allUrls = allUrls.concat(order.reference_urls);
+                }
+            });
+            
+            var deletePromises = [];
+            allUrls.forEach(function(url) {
+                var path = url.split('/public/')[1];
+                if (path) {
+                    deletePromises.push(supabase.storage.from('public').remove([path]));
+                }
+            });
+            
+            return Promise.all(deletePromises).catch(function() {}).then(function() {
+                return supabase.from('orders').delete().neq('id', 0);
+            });
+        })
+        .then(function() {
+            alert('✅ Все заказы удалены!');
+            if (adminOrdersMode === 'orders') {
+                supabase.from('orders').select('*')
+                    .then(function(res) { 
+                        if (!res.error && res.data) renderOrdersList(res.data); 
+                    })
+                    .catch(function(err) {
+                        console.error('Ошибка обновления списка:', err);
                     });
-                    var deletePromises = [];
-                    allUrls.forEach(function(url) {
-                        var path = url.split('/public/')[1];
-                        if (path) deletePromises.push(supabase.storage.from('public').remove([path]));
-                    });
-                    return Promise.all(deletePromises).catch(function() {}).then(function() {
-                        return supabase.from('orders').delete().neq('id', 0);
-                    });
-                })
-                .then(function() {
-                    alert('✅ Все заказы удалены!');
-                    if (adminOrdersMode === 'orders') {
-                        supabase.from('orders').select('*').then(function(res) { if (!res.error) renderOrdersList(res.data); });
-                    }
-                });
-        }
+            }
+        })
+        .catch(function(err) {
+            console.error('Ошибка очистки заказов:', err);
+            alert('Ошибка при очистке: ' + err.message);
+        });
+}
 
                 // ================================================================
         // ДОБАВЛЕНИЕ КАТЕГОРИИ
@@ -3401,9 +3463,26 @@ function saveEditedReview(id) {
         // ================================================================
         // ЗАКРЫТИЕ МОДАЛКИ
         // ================================================================
-        function closeModal() {
-            document.getElementById('modalOverlay').style.display = 'none';
-        }
+function closeModal() {
+    var modal = document.getElementById('modalOverlay');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    
+    // Очищаем содержимое модального окна
+    var content = document.getElementById('modalContent');
+    if (content) {
+        content.innerHTML = '';
+    }
+    
+    // Сбрасываем временные переменные
+    tempWorkFile = null;
+    tempReviewFiles = [];
+    window.tempCoverFile = null;
+    window.tempLogoFile = null;
+    window.tempEditWorkFile = null;
+    window.editTempFiles = [];
+}
 
         // ================================================================
         // СМЕНА ЛОГОТИПА
@@ -3593,9 +3672,23 @@ function closeImageViewer() {
         }
 
         // Инициализация кнопок (только один раз)
-        document.getElementById('imageViewerSaveBtn').addEventListener('click', saveCurrentImage);
-        document.getElementById('imageViewerClose').addEventListener('click', closeImageViewer);
-        initImageViewerZoom();
+        function initApp() {
+            // Вызываем основную инициализацию
+            init();
+            
+            // Привязываем обработчики кнопок
+            document.getElementById('imageViewerSaveBtn').addEventListener('click', saveCurrentImage);
+            document.getElementById('imageViewerClose').addEventListener('click', closeImageViewer);
+            
+            console.log('✅ Приложение инициализировано');
+        }
+
+        // Запускаем приложение когда DOM готов
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initApp);
+        } else {
+            initApp();
+        }
 
 
         // ================================================================
@@ -4013,37 +4106,65 @@ function updateReviewButton(canReview) {
         // ================================================================
         // ЗАПУСК
         // ================================================================
+        // ================================================================
+        // ЗАПУСК
+        // ================================================================
 function init() {
-    createStars();
-    createAsteroids();
-    createLoadingStars();
-    setupTabs();
-    setupModalHandlers();
-    preventModalCloseOnInput();
-    initImageViewerZoom();
-    initTelegram();
-    
-    // Просто скрываем загрузку
-    document.getElementById('loadingScreen').classList.add('hidden');
-    
-    // Загружаем данные
-    initDefaultServices();
-    initDefaultServiceOptions();
-    setupRealTimeListeners();
-    renderOrdersSection();
-    
-    var discountUsed = localStorage.getItem('discountUsed');
-    if (discountUsed === 'true') {
-        currentDiscount = 0;
-        localStorage.removeItem('lastSpinDiscount');
-        lastSpinDiscount = 0;
-    } else if (lastSpinDiscount > 0 && lastSpinDiscount <= 100) {
-        currentDiscount = lastSpinDiscount;
-    } else {
-        currentDiscount = 0;
+    try {
+        console.log('🚀 Начало инициализации...');
+        
+        // Создаем фоновые элементы
+        createStars();
+        createAsteroids();
+        createLoadingStars();
+        
+        // Настраиваем интерфейс
+        setupTabs();
+        setupModalHandlers();
+        preventModalCloseOnInput();
+        
+        // Инициализируем Telegram
+        initTelegram();
+        
+        // Скрываем загрузочный экран
+        var loadingScreen = document.getElementById('loadingScreen');
+        if (loadingScreen) {
+            loadingScreen.classList.add('hidden');
+        }
+        
+        console.log('📦 Загрузка данных...');
+        
+        // Загружаем данные
+        initDefaultServices();
+        initDefaultServiceOptions();
+        setupRealTimeListeners();
+        renderOrdersSection();
+        
+        // Восстанавливаем скидку
+        var discountUsed = localStorage.getItem('discountUsed');
+        if (discountUsed === 'true') {
+            currentDiscount = 0;
+            localStorage.removeItem('lastSpinDiscount');
+            lastSpinDiscount = 0;
+        } else if (lastSpinDiscount > 0 && lastSpinDiscount <= 100) {
+            currentDiscount = lastSpinDiscount;
+        } else {
+            currentDiscount = 0;
+        }
+        
+        // Загружаем активные посты
+        loadActivePosts();
+        
+        console.log('✅ Инициализация завершена');
+    } catch (err) {
+        console.error('❌ Ошибка инициализации:', err);
+        // Скрываем загрузочный экран даже при ошибке
+        var loadingScreen = document.getElementById('loadingScreen');
+        if (loadingScreen) {
+            loadingScreen.classList.add('hidden');
+        }
+        alert('Произошла ошибка при загрузке: ' + err.message);
     }
-    
-    loadActivePosts();
 }
     </script>
 </body>
