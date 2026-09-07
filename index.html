@@ -2539,14 +2539,18 @@ function showPaymentOptions(orderId, total, selectedOptions) {
     var modal = document.getElementById('modalOverlay');
     var content = document.getElementById('modalContent');
     
+    // Конвертация рублей в Stars
+    // 1 Star ≈ 1.3 рубля (примерный курс)
     var starsAmount = Math.ceil(total / 1.3);
     
     content.innerHTML = `
         <div style="text-align:center;">
-            <h3 style="margin-bottom:10px;">💳 Оплата заказа</h3>
+            <h3 style="margin-bottom:5px;">💳 Оплата заказа</h3>
+            <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Заказ #${orderId}</p>
             <p style="font-size:28px;font-weight:700;color:#c084fc;margin-bottom:25px;">${total} ₽</p>
             
             ${total > 0 ? `
+                <!-- Оплата звёздами -->
                 <div onclick="payByStars(${orderId}, ${total}, ${starsAmount})" style="
                     background:linear-gradient(135deg, rgba(124,58,237,0.3), rgba(190,24,93,0.3));
                     border:2px solid rgba(124,58,237,0.5);
@@ -2554,12 +2558,14 @@ function showPaymentOptions(orderId, total, selectedOptions) {
                     padding:18px;
                     cursor:pointer;
                     margin-bottom:12px;
+                    transition:transform 0.2s;
                 ">
                     <div style="font-size:32px;margin-bottom:8px;">⭐</div>
-                    <div style="font-size:17px;font-weight:700;">Telegram Stars</div>
-                    <div style="font-size:13px;color:var(--text-muted);">${starsAmount} Stars</div>
+                    <div style="font-size:17px;font-weight:700;margin-bottom:3px;">Оплатить звёздами</div>
+                    <div style="font-size:13px;color:var(--text-muted);">${starsAmount} Telegram Stars</div>
                 </div>
                 
+                <!-- Оплата картой -->
                 <div onclick="payByKassa(${orderId}, ${total})" style="
                     background:linear-gradient(135deg, rgba(16,185,129,0.2), rgba(5,150,105,0.2));
                     border:2px solid rgba(16,185,129,0.5);
@@ -2567,10 +2573,11 @@ function showPaymentOptions(orderId, total, selectedOptions) {
                     padding:18px;
                     cursor:pointer;
                     margin-bottom:12px;
+                    transition:transform 0.2s;
                 ">
                     <div style="font-size:32px;margin-bottom:8px;">💳</div>
-                    <div style="font-size:17px;font-weight:700;">Банковская карта</div>
-                    <div style="font-size:13px;color:var(--text-muted);">Оплатить ${total} ₽</div>
+                    <div style="font-size:17px;font-weight:700;margin-bottom:3px;">Оплатить картой</div>
+                    <div style="font-size:13px;color:var(--text-muted);">${total} ₽ через ЮKassa</div>
                 </div>
             ` : `
                 <div style="
@@ -2582,6 +2589,7 @@ function showPaymentOptions(orderId, total, selectedOptions) {
                 ">
                     <div style="font-size:36px;margin-bottom:10px;">🎉</div>
                     <div style="font-size:18px;font-weight:700;color:#10b981;">Заказ БЕСПЛАТНЫЙ!</div>
+                    <div style="font-size:13px;color:var(--text-muted);">Оплата не требуется</div>
                 </div>
             `}
             
@@ -2591,44 +2599,59 @@ function showPaymentOptions(orderId, total, selectedOptions) {
     modal.style.display = 'flex';
 }
 
+// ================================================================
+// ОПЛАТА TELEGRAM STARS
+// ================================================================
 function payByStars(orderId, total, starsAmount) {
     closeModal();
     
-    // Пробуем вызвать напрямую без проверок
-    try {
-        Telegram.WebApp.showInvoice(
-            'Mark1z Design',
-            'Оплата заказа',
-            'order_' + orderId,
-            'XTR',
-            [{ label: 'Дизайн услуга', amount: starsAmount }],
-            function(success) {
-                if (success) {
-                    alert('✅ Оплата прошла!');
-                } else {
-                    alert('❌ Оплата отменена');
-                }
-            }
-        );
-    } catch(e) {
-        alert('Ошибка: ' + e.message);
+    // Получаем Telegram WebApp
+    var tg = window.Telegram?.WebApp || window.tg;
+    
+    if (!tg) {
+        alert('❌ Telegram WebApp не найден');
+        return;
     }
-}
-
-function handleStarsResult(success, orderId) {
-    if (success) {
-        supabase.from('orders').update({ status: 'paid_stars' }).eq('id', orderId)
-            .then(function() {
-                resetDiscount();
-                renderOrdersSection();
-                alert('✅ Оплата звёздами прошла успешно!');
-            });
-    } else {
-        supabase.from('orders').update({ status: 'cancelled' }).eq('id', orderId)
-            .then(function() {
-                alert('❌ Оплата отменена');
-            });
+    
+    console.log('Telegram WebApp версия:', tg.version);
+    console.log('showInvoice доступен:', typeof tg.showInvoice);
+    
+    // Проверяем поддержку showInvoice
+    if (typeof tg.showInvoice !== 'function') {
+        alert('❌ Ваша версия Telegram не поддерживает оплату звёздами.\nОбновите Telegram.');
+        return;
     }
+    
+    // Вызываем showInvoice
+    tg.showInvoice({
+        title: 'Mark1z Design',
+        description: 'Оплата заказа #' + orderId + ' на сумму ' + total + ' ₽',
+        payload: 'order_' + orderId + '_' + Date.now(),
+        currency: 'XTR',
+        prices: [{ label: 'Дизайн услуга', amount: starsAmount }]
+    }, function(success) {
+        console.log('Результат оплаты:', success);
+        
+        if (success) {
+            // Оплата прошла успешно
+            supabase.from('orders').update({ status: 'paid_stars' }).eq('id', orderId)
+                .then(function() {
+                    resetDiscount();
+                    renderOrdersSection();
+                    alert('✅ Оплата звёздами прошла успешно! Заказ принят в работу.');
+                })
+                .catch(function(err) {
+                    console.error('Ошибка обновления заказа:', err);
+                    alert('✅ Оплата прошла! Но не удалось обновить статус заказа.');
+                });
+        } else {
+            // Оплата отменена
+            supabase.from('orders').update({ status: 'cancelled' }).eq('id', orderId)
+                .then(function() {
+                    alert('❌ Оплата отменена.');
+                });
+        }
+    });
 }
 
 function processStarsPayment(tg, orderId, total, starsAmount) {
@@ -2667,11 +2690,11 @@ function payByKassa(orderId, total) {
     
     supabase.from('orders').update({ status: 'pending_kassa' }).eq('id', orderId)
         .then(function() {
-            // ЗАМЕНИТЕ НА ВАШУ ССЫЛКУ:
-            var paymentUrl = 'https://yookassa.ru/payments?sum=' + total + '&order_id=' + orderId;
+            // ЗАМЕНИТЕ НА ВАШУ ССЫЛКУ
+            var paymentUrl = 'https://yoomoney.ru/quickpay/confirm.xml?receiver=НОМЕР&sum=' + total + '&label=order_' + orderId;
             
-            if (window.telegramAvailable && window.tg) {
-                window.tg.openTelegramLink(paymentUrl);
+            if (window.Telegram?.WebApp?.openTelegramLink) {
+                window.Telegram.WebApp.openTelegramLink(paymentUrl);
             } else {
                 window.open(paymentUrl, '_blank');
             }
