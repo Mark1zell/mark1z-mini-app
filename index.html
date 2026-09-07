@@ -4025,16 +4025,35 @@ function init() {
     initImageViewerZoom();
     initTelegram();
     
-    // Скрываем загрузку
+    // Скрываем загрузку ЧЕРЕЗ 1 СЕКУНДУ (гарантированно)
     setTimeout(function() { 
         document.getElementById('loadingScreen').classList.add('hidden'); 
-    }, 500);
+    }, 1000);
     
-    // Загружаем данные
-    initDefaultServices();
-    initDefaultServiceOptions();
-    setupRealTimeListeners();
-    renderOrdersSection();
+    // Загружаем данные с обработкой ошибок
+    try {
+        initDefaultServices();
+    } catch(e) {
+        console.error('initDefaultServices error:', e);
+    }
+    
+    try {
+        initDefaultServiceOptions();
+    } catch(e) {
+        console.error('initDefaultServiceOptions error:', e);
+    }
+    
+    try {
+        setupRealTimeListeners();
+    } catch(e) {
+        console.error('setupRealTimeListeners error:', e);
+    }
+    
+    try {
+        renderOrdersSection();
+    } catch(e) {
+        console.error('renderOrdersSection error:', e);
+    }
     
     var discountUsed = localStorage.getItem('discountUsed');
     if (discountUsed === 'true') {
