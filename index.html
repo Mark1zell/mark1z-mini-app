@@ -348,7 +348,6 @@
             const url = 'https://lcgbpwowppwwpjjlphod.supabase.co';
             const key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZ2Jwd293cHB3d3BqamxwaG9kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NDAwNTMsImV4cCI6MjEwNDIxNjA1M30.95VPot7saWmlgv1IzBop3E4x-ZxSc8HepqKdDLJa7JI';
             window._supabaseClient = window.supabase.createClient(url, key);
-            console.log('Supabase инициализирован');
         }
         var supabase = window._supabaseClient;
 
@@ -413,10 +412,6 @@ function initTelegram() {
             window.isAdmin = true;
             document.body.classList.add('admin-mode');
         }
-        console.log('✅ Telegram WebApp инициализирован');
-        console.log('showInvoice доступен:', typeof tg.showInvoice);
-    } else {
-        console.log('Telegram WebApp не найден, пробуем снова...');
         // Пробуем ещё раз через 1 секунду
         setTimeout(function() {
             var tgRetry = window.Telegram?.WebApp;
@@ -434,10 +429,6 @@ function initTelegram() {
                     window.isAdmin = true;
                     document.body.classList.add('admin-mode');
                 }
-                console.log('✅ Telegram WebApp инициализирован (со 2 попытки)');
-                console.log('showInvoice доступен:', typeof tgRetry.showInvoice);
-            } else {
-                console.log('❌ Telegram WebApp недоступен');
                 window.telegramAvailable = false;
                 window.tg = null;
             }
@@ -805,7 +796,6 @@ function canSpin() {
     localStorage.setItem('lastSpinDiscount', percent);
     localStorage.removeItem('discountUsed');
     lastSpinDiscount = percent;
-    console.log('Скидка применена:', percent + '%');
 }
 
         // ================================================================
@@ -2508,7 +2498,6 @@ function submitOrderWithOptions() {
             return supabase.from('orders').insert([order]).select();
         })
         .then(function(res) {
-            console.log('Supabase response:', res); // Для отладки
             
             if (res.error) {
                 alert('❌ Ошибка при сохранении: ' + res.error.message);
@@ -2700,7 +2689,6 @@ function payByKassa(orderId, total) {
         return res.json(); 
     })
     .then(function(data) {
-        console.log('Ответ ЮKassa:', data);
         
         if (data.confirmation && data.confirmation.confirmation_url) {
             var paymentUrl = data.confirmation.confirmation_url;
