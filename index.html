@@ -2686,22 +2686,7 @@ function processStarsPayment(tg, orderId, total, starsAmount) {
 }
 
 function payByKassa(orderId, total) {
-    console.log('💳 Начало оплаты картой...');
-    console.log('Order ID:', orderId);
-    console.log('Amount:', total);
-    
     closeModal();
-    
-    // Показываем сообщение о загрузке
-    var modal = document.getElementById('modalOverlay');
-    var content = document.getElementById('modalContent');
-    content.innerHTML = `
-        <div style="text-align:center;padding:40px;">
-            <div class="loader" style="margin:0 auto 20px;"></div>
-            <p style="color:var(--text-muted);">Создание платежа...</p>
-        </div>
-    `;
-    modal.style.display = 'flex';
     
     var functionUrl = 'https://lcgbpwowppwwpjjlphod.supabase.co/functions/v1/create-payment';
     var supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZ2Jwd293cHB3d3BqamxwaG9kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NDAwNTMsImV4cCI6MjEwNDIxNjA1M30.95VPot7saWmlgv1IzBop3E4x-ZxSc8HepqKdDLJa7JI';
@@ -2719,45 +2704,28 @@ function payByKassa(orderId, total) {
             description: 'Оплата заказа #' + orderId
         })
     })
-    .then(function(res) {
-        console.log('📡 Статус ответа:', res.status);
-        return res.json();
-    })
-    .then(function(data) {
-        console.log('✅ Ответ от ЮKassa:', data);
-        
-        if (data.error) {
-            alert('Ошибка: ' + data.error);
-            closeModal();
-            return;
-        }
-        
+    .then(res => res.json())
+    .then(data => {
         if (data.confirmation && data.confirmation.confirmation_url) {
-            var paymentUrl = data.confirmation.confirmation_url;
-            console.log('🔗 URL оплаты:', paymentUrl);
+            var modal = document.getElementById('modalOverlay');
+            var content = document.getElementById('modalContent');
             
-            // Открываем URL оплаты
-            if (window.Telegram?.WebApp?.openTelegramLink) {
-                window.Telegram.WebApp.openTelegramLink(paymentUrl);
-            } else if (window.Telegram?.WebApp?.openLink) {
-                window.Telegram.WebApp.openLink(paymentUrl);
-            } else {
-                window.open(paymentUrl, '_blank');
-            }
-            
-            // Показываем сообщение
-            alert('Ссылка на оплату открыта. После оплаты заказ будет обработан.');
-            closeModal();
-        } else {
-            console.error('❌ Нет confirmation_url в ответе:', data);
-            alert('Ошибка: не получен URL для оплаты');
-            closeModal();
+            content.innerHTML = `
+                <div style="text-align:center;">
+                    <h3 style="margin-bottom:15px;">💳 Оплата заказа</h3>
+                    <iframe src="${data.confirmation.confirmation_url}" 
+                            style="width:100%;height:500px;border:none;border-radius:12px;">
+                    </iframe>
+                    <button class="btn" onclick="closeModal()" style="width:100%;margin-top:10px;">
+                        Закрыть
+                    </button>
+                </div>
+            `;
+            modal.style.display = 'flex';
         }
     })
-    .catch(function(err) {
-        console.error('❌ Ошибка оплаты:', err);
-        alert('Ошибка создания платежа: ' + err.message);
-        closeModal();
+    .catch(err => {
+        alert('Ошибка: ' + err.message);
     });
 }
         
