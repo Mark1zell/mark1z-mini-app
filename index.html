@@ -329,7 +329,7 @@
         <div class="footer">
             <div>© Mark1z Design · <a href="https://t.me/mark1zell" target="_blank" class="designer-link">Дмитрий Маркизов</a></div>
             <a href="#" onclick="openPrivacyPolicy()">Политика конфиденциальности</a>
-            <span class="version">V.1.0.9</span>
+            <span class="version">V.1.1.0</span>
         </div>
     </div>
     <div class="modal-overlay" id="modalOverlay">
@@ -2853,15 +2853,17 @@ function autoCheckPendingPayments() {
     console.log('🔄 Автоматическая проверка неоплаченных заказов...');
     
     var user = window.currentUser;
-    if (!user) return;
+    if (!user) {
+        console.log('Пользователь не определен');
+        return;
+    }
     
     var userIdentifier = user.username || user.first_name || user.id.toString();
     
-    // Находим заказы с pending_payment и payment_id
+    // Находим ВСЕ заказы пользователя со статусом pending_payment
     supabase.from('orders')
         .select('*')
         .eq('status', 'pending_payment')
-        .not('payment_id', 'is', null)
         .or('user_username.eq.' + userIdentifier + ',user_name.eq.' + userIdentifier)
         .then(function(res) {
             if (res.error) {
@@ -2880,15 +2882,50 @@ function autoCheckPendingPayments() {
             res.data.forEach(function(order) {
                 if (order.payment_id) {
                     checkPaymentStatusSilent(order.payment_id, order.id);
+                } else {
+                    // Если нет payment_id, но заказ старый - отменяем
+                    var orderTime = new Date(order.timestamp).getTime();
+                    var now = Date.now();
+                    var tenMinutes = 10 * 60 * 1000;
+                    
+                    if (now - orderTime > tenMinutes) {
+                        cancelExpiredOrder(order.id);
+                    }
                 }
             });
+        })
+        .catch(function(err) {
+            console.error('Ошибка:', err);
+        });
+}
+
+// Функция для отмены просроченного заказа
+function cancelExpiredOrder(orderId) {
+    console.log('⏰ Отмена просроченного заказа:', orderId);
+    
+    supabase.from('orders')
+        .delete()
+        .eq('id', orderId)
+        .then(function(res) {
+            if (!res.error) {
+                console.log('✅ Заказ #' + orderId + ' удален как просроченный');
+                loadUserOrders();
+            }
         });
 }
 
 // Тихая проверка статуса платежа (без модального окна)
 function checkPaymentStatusSilent(paymentId, orderId) {
+    console.log('🔍 Автоматическая проверка платежа:', paymentId, 'для заказа:', orderId);
+    
     var functionUrl = 'https://lcgbpwowppwwpjjlphod.supabase.co/functions/v1/check-payment';
     var supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZ2Jwd293cHB3d3BqamxwaG9kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NDAwNTMsImV4cCI6MjEwNDIxNjA1M30.95VPot7saWmlgv1IzBop3E4x-ZxSc8HepqKdDLJa7JI';
+    
+    // Устанавливаем таймаут для fetch
+    var controller = new AbortController();
+    var timeoutId = setTimeout(function() {
+        controller.abort();
+    }, 8000); // 8 секунд максимум
     
     fetch(functionUrl, {
         method: 'POST',
@@ -2900,20 +2937,33 @@ function checkPaymentStatusSilent(paymentId, orderId) {
         body: JSON.stringify({
             paymentId: paymentId,
             orderId: orderId
-        })
+        }),
+        signal: controller.signal
     })
     .then(res => res.json())
     .then(data => {
+        clearTimeout(timeoutId);
+        console.log('Статус платежа:', data.status);
+        
         if (data.status === 'succeeded') {
+            console.log('✅ Платеж выполнен, обновляем заказ #' + orderId);
+            
             supabase.from('orders')
-                .update({ status: 'paid_card' })
+                .update({ 
+                    status: 'paid_card',
+                    paid_at: new Date().toISOString()
+                })
                 .eq('id', orderId)
                 .then(function() {
-                    // СБРАСЫВАЕМ СКИДКУ ПОСЛЕ ОПЛАТЫ
+                    console.log('✅ Заказ обновлен как оплаченный');
+                    
+                    // Сбрасываем скидку
                     resetDiscountAfterPayment();
                     
+                    // Показываем уведомление
                     showPaymentSuccessNotification(orderId);
                     
+                    // Обновляем интерфейс
                     if (window.isAdmin) {
                         loadAdminOrders();
                     } else {
@@ -2921,10 +2971,21 @@ function checkPaymentStatusSilent(paymentId, orderId) {
                     }
                     renderOrdersSection();
                 });
+        } else if (data.status === 'pending') {
+            console.log('⏳ Платеж еще обрабатывается, проверим позже');
+        } else if (data.status === 'canceled') {
+            console.log('❌ Платеж отменен');
+            // Можно отменить заказ
+            cancelExpiredOrder(orderId);
         }
     })
     .catch(function(err) {
-        console.error('Ошибка тихой проверки:', err);
+        clearTimeout(timeoutId);
+        if (err.name === 'AbortError') {
+            console.log('⏱ Проверка прервана по таймауту');
+        } else {
+            console.error('Ошибка тихой проверки:', err);
+        }
     });
 }
 
@@ -2999,7 +3060,6 @@ function payByKassa(orderId, total) {
     
     closeModal();
     
-    // Показываем сообщение о загрузке
     var modal = document.getElementById('modalOverlay');
     var content = document.getElementById('modalContent');
     content.innerHTML = `
@@ -3041,40 +3101,35 @@ function payByKassa(orderId, total) {
         
         if (data.confirmation && data.confirmation.confirmation_url) {
             var paymentUrl = data.confirmation.confirmation_url;
-            var paymentId = data.id; // ID платежа в ЮKassa
+            var paymentId = data.id;
             
             console.log('🔗 URL оплаты:', paymentUrl);
             console.log('💳 Payment ID:', paymentId);
             
-            // СОХРАНЯЕМ payment_id в заказе
+            // Сохраняем payment_id в заказе
             if (paymentId) {
                 supabase.from('orders')
                     .update({ 
                         payment_id: paymentId,
-                        status: 'pending_payment' // Статус до подтверждения оплаты
+                        status: 'pending_payment'
                     })
                     .eq('id', orderId)
-                    .then(function(updateRes) {
+                    .then(function() {
                         console.log('✅ payment_id сохранен:', paymentId);
-                    })
-                    .catch(function(err) {
-                        console.error('Ошибка сохранения payment_id:', err);
                     });
             }
             
-            // Показываем URL и кнопку для открытия
+            // Показываем URL и инструкцию
             content.innerHTML = `
                 <div style="text-align:center;padding:20px;">
                     <h3 style="margin-bottom:15px;">💳 Оплата заказа #${orderId}</h3>
                     <p style="margin-bottom:20px;">Сумма: <strong style="color:#c084fc;">${total} ₽</strong></p>
                     <p style="color:var(--text-muted);font-size:14px;margin-bottom:20px;">
-                        Нажмите кнопку ниже, чтобы перейти к оплате
+                        Нажмите кнопку ниже, чтобы перейти к оплате.<br>
+                        После оплаты вернитесь в приложение - статус обновится автоматически.
                     </p>
                     <button class="btn" onclick="window.open('${paymentUrl}', '_blank')" style="width:100%;margin-bottom:10px;">
                         💳 Перейти к оплате
-                    </button>
-                    <button class="btn" onclick="checkPaymentStatus('${paymentId}', ${orderId})" style="width:100%;margin-bottom:10px;background:rgba(16,185,129,0.2);">
-                        ✅ Я оплатил
                     </button>
                     <button class="btn" onclick="closeModal()" style="width:100%;background:rgba(255,255,255,0.1);">
                         Закрыть
@@ -3093,6 +3148,11 @@ function payByKassa(orderId, total) {
             } catch(e) {
                 console.log('Автооткрытие не удалось');
             }
+            
+            // Запускаем автоматическую проверку через 5 секунд
+            setTimeout(function() {
+                autoCheckPendingPayments();
+            }, 5000);
             
         } else {
             console.error('❌ Нет confirmation_url в ответе:', data);
@@ -5576,6 +5636,441 @@ function markPaymentShown(orderId) {
                 shownPayments.push(orderId.toString());
                 localStorage.setItem('shownPaymentNotifications', JSON.stringify(shownPayments));
             }
+        }
+
+        // ================================================================
+        // ЗАПУСК
+        // ================================================================
+        function init() {
+            console.log('🚀 Начало инициализации...');
+            
+            try {
+                // Создаем фоновые элементы
+                console.log('✨ Создание фоновых элементов...');
+                createStars();
+                createAsteroids();
+                createLoadingStars();
+                console.log('✅ Фон создан');
+                
+                // Настраиваем интерфейс
+                console.log('🔧 Настройка интерфейса...');
+                setupTabs();
+                setupModalHandlers();
+                preventModalCloseOnInput();
+                console.log('✅ Интерфейс настроен');
+                
+                // Инициализируем Telegram
+                console.log('📱 Инициализация Telegram...');
+                initTelegram();
+                console.log('✅ Telegram инициализирован');
+                
+                // Скрываем загрузочный экран
+                console.log('🙈 Скрытие загрузочного экрана...');
+                var loadingScreen = document.getElementById('loadingScreen');
+                if (loadingScreen) {
+                    loadingScreen.classList.add('hidden');
+                    loadingScreen.style.display = 'none';
+                }
+                console.log('✅ Загрузочный экран скрыт');
+                
+                // Загружаем данные
+                console.log('📦 Загрузка данных...');
+                initDefaultServices();
+                initDefaultServiceOptions();
+                setupRealTimeListeners();
+                renderOrdersSection();
+                console.log('✅ Данные загружены');
+                
+                // Восстанавливаем скидку
+                var discountUsed = localStorage.getItem('discountUsed');
+                if (discountUsed === 'true') {
+                    currentDiscount = 0;
+                    localStorage.removeItem('lastSpinDiscount');
+                    lastSpinDiscount = 0;
+                } else if (lastSpinDiscount > 0 && lastSpinDiscount <= 100) {
+                    currentDiscount = lastSpinDiscount;
+                } else {
+                    currentDiscount = 0;
+                }
+                
+                // Загружаем активные посты
+                loadActivePosts();
+                
+                // ================================================================
+                // АВТОМАТИЧЕСКИЕ ПРОВЕРКИ
+                // ================================================================
+                
+                // Автоматическая проверка просроченных заказов (сразу при запуске)
+                console.log('🔄 Проверка просроченных заказов...');
+                autoCancelExpiredOrders();
+                
+                // Автоматическая проверка платежей (через 2 секунды)
+                console.log('💳 Запуск автоматической проверки платежей...');
+                setTimeout(function() {
+                    autoCheckPendingPayments();
+                }, 2000);
+                
+                // Периодическая проверка платежей каждые 10 секунд
+                setInterval(function() {
+                    autoCheckPendingPayments();
+                }, 10000);
+                
+                // Проверка просроченных заказов каждые 30 секунд
+                setInterval(function() {
+                    autoCancelExpiredOrders();
+                }, 30000);
+                
+                // Обновление таймеров каждую секунду
+                setInterval(function() {
+                    updateOrderTimers();
+                }, 1000);
+                
+                // Проверка при возвращении в приложение
+                document.addEventListener('visibilitychange', function() {
+                    if (!document.hidden) {
+                        console.log('👁 Приложение снова активно, проверяем платежи...');
+                        autoCheckPendingPayments();
+                    }
+                });
+                
+                // Проверка при фокусе окна
+                window.addEventListener('focus', function() {
+                    console.log('🪟 Окно в фокусе, проверяем платежи...');
+                    autoCheckPendingPayments();
+                });
+                
+                console.log('✅ Инициализация завершена успешно');
+                
+            } catch (err) {
+                console.error('❌ Ошибка в init():', err);
+                console.error('Стек ошибки:', err.stack);
+                
+                // Скрываем загрузочный экран даже при ошибке
+                var loadingScreen = document.getElementById('loadingScreen');
+                if (loadingScreen) {
+                    loadingScreen.classList.add('hidden');
+                    loadingScreen.style.display = 'none';
+                }
+                
+                alert('Ошибка при загрузке: ' + err.message);
+            }
+        }
+
+        // ================================================================
+        // ФУНКЦИИ ДЛЯ РАБОТЫ С ЗАКАЗАМИ
+        // ================================================================
+        
+        // Оплата pending заказа
+        function payPendingOrder(orderId, total) {
+            console.log('💳 Оплата заказа:', orderId, total);
+            payByKassa(orderId, total);
+        }
+
+        // Отмена заказа
+        function cancelOrder(orderId) {
+            if (!confirm('Вы уверены, что хотите отменить заказ?')) return;
+            
+            supabase.from('orders').select('*').eq('id', orderId).single()
+                .then(function(res) {
+                    if (res.error || !res.data) {
+                        alert('Заказ не найден');
+                        return;
+                    }
+                    
+                    var order = res.data;
+                    var deletePromises = [];
+                    
+                    if (order.reference_urls && order.reference_urls.length > 0) {
+                        order.reference_urls.forEach(function(url) {
+                            var path = url.split('/public/')[1];
+                            if (path) {
+                                deletePromises.push(supabase.storage.from('public').remove([path]));
+                            }
+                        });
+                    }
+                    
+                    return Promise.all(deletePromises).catch(function() {}).then(function() {
+                        return supabase.from('orders').delete().eq('id', orderId);
+                    });
+                })
+                .then(function(deleteRes) {
+                    if (deleteRes && deleteRes.error) {
+                        alert('Ошибка при удалении: ' + deleteRes.error.message);
+                        return;
+                    }
+                    
+                    alert('✅ Заказ отменен и удален');
+                    
+                    if (window.isAdmin) {
+                        loadAdminOrders();
+                    } else {
+                        loadUserOrders();
+                    }
+                    
+                    renderOrdersSection();
+                })
+                .catch(function(err) {
+                    console.error('Ошибка:', err);
+                    alert('Ошибка: ' + err.message);
+                });
+        }
+
+        // Автоматическая отмена просроченных заказов
+        function autoCancelExpiredOrders() {
+            console.log('🔄 Проверка просроченных заказов...');
+            
+            var tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+            
+            supabase.from('orders')
+                .select('*')
+                .eq('status', 'pending_payment')
+                .lt('timestamp', tenMinutesAgo)
+                .then(function(res) {
+                    if (res.error) {
+                        console.error('Ошибка проверки просроченных:', res.error);
+                        return;
+                    }
+                    
+                    if (res.data && res.data.length > 0) {
+                        console.log('Найдено просроченных заказов:', res.data.length);
+                        
+                        res.data.forEach(function(order) {
+                            supabase.from('orders')
+                                .delete()
+                                .eq('id', order.id)
+                                .then(function(deleteRes) {
+                                    if (!deleteRes.error) {
+                                        console.log('✅ Заказ #' + order.id + ' удален автоматически');
+                                        
+                                        if (window.currentUser) {
+                                            loadUserOrders();
+                                        }
+                                    }
+                                });
+                        });
+                    } else {
+                        console.log('Нет просроченных заказов');
+                    }
+                })
+                .catch(function(err) {
+                    console.error('Ошибка:', err);
+                });
+        }
+
+        // Обновление таймеров в заказах
+        function updateOrderTimers() {
+            var orderCards = document.querySelectorAll('[data-order-id]');
+            
+            orderCards.forEach(function(card) {
+                var orderId = card.dataset.orderId;
+                var timestamp = card.dataset.timestamp;
+                
+                if (timestamp && orderId) {
+                    var orderTime = new Date(timestamp).getTime();
+                    var now = Date.now();
+                    var remaining = 10 * 60 * 1000 - (now - orderTime);
+                    
+                    var timerEl = card.querySelector('.order-timer');
+                    
+                    if (remaining <= 0) {
+                        if (timerEl) {
+                            timerEl.textContent = '⏰ Заказ просрочен';
+                            timerEl.style.color = '#ff6b6b';
+                        }
+                        
+                        var cancelBtn = card.querySelector('.cancel-order-btn');
+                        if (cancelBtn) cancelBtn.style.display = 'inline-block';
+                    } else {
+                        var minutes = Math.floor(remaining / 60000);
+                        var seconds = Math.floor((remaining % 60000) / 1000);
+                        
+                        if (timerEl) {
+                            timerEl.textContent = '⏰ Осталось: ' + minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+                            timerEl.style.color = '#ffc107';
+                        }
+                    }
+                }
+            });
+        }
+
+        // Автоматическая проверка неоплаченных заказов
+        function autoCheckPendingPayments() {
+            console.log('🔄 Автоматическая проверка неоплаченных заказов...');
+            
+            var user = window.currentUser;
+            if (!user) {
+                console.log('Пользователь не определен');
+                return;
+            }
+            
+            var userIdentifier = user.username || user.first_name || user.id.toString();
+            
+            supabase.from('orders')
+                .select('*')
+                .eq('status', 'pending_payment')
+                .or('user_username.eq.' + userIdentifier + ',user_name.eq.' + userIdentifier)
+                .then(function(res) {
+                    if (res.error) {
+                        console.error('Ошибка загрузки pending заказов:', res.error);
+                        return;
+                    }
+                    
+                    if (!res.data || res.data.length === 0) {
+                        console.log('Нет неоплаченных заказов');
+                        return;
+                    }
+                    
+                    console.log('Найдено неоплаченных заказов:', res.data.length);
+                    
+                    res.data.forEach(function(order) {
+                        if (order.payment_id) {
+                            checkPaymentStatusSilent(order.payment_id, order.id);
+                        } else {
+                            var orderTime = new Date(order.timestamp).getTime();
+                            var now = Date.now();
+                            var tenMinutes = 10 * 60 * 1000;
+                            
+                            if (now - orderTime > tenMinutes) {
+                                cancelExpiredOrder(order.id);
+                            }
+                        }
+                    });
+                })
+                .catch(function(err) {
+                    console.error('Ошибка:', err);
+                });
+        }
+
+        // Функция для отмены просроченного заказа
+        function cancelExpiredOrder(orderId) {
+            console.log('⏰ Отмена просроченного заказа:', orderId);
+            
+            supabase.from('orders')
+                .delete()
+                .eq('id', orderId)
+                .then(function(res) {
+                    if (!res.error) {
+                        console.log('✅ Заказ #' + orderId + ' удален как просроченный');
+                        loadUserOrders();
+                    }
+                });
+        }
+
+        // Тихая проверка статуса платежа
+        function checkPaymentStatusSilent(paymentId, orderId) {
+            console.log('🔍 Автоматическая проверка платежа:', paymentId, 'для заказа:', orderId);
+            
+            var functionUrl = 'https://lcgbpwowppwwpjjlphod.supabase.co/functions/v1/check-payment';
+            var supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZ2Jwd293cHB3d3BqamxwaG9kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NDAwNTMsImV4cCI6MjEwNDIxNjA1M30.95VPot7saWmlgv1IzBop3E4x-ZxSc8HepqKdDLJa7JI';
+            
+            var controller = new AbortController();
+            var timeoutId = setTimeout(function() {
+                controller.abort();
+            }, 8000);
+            
+            fetch(functionUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + supabaseKey,
+                    'apikey': supabaseKey
+                },
+                body: JSON.stringify({
+                    paymentId: paymentId,
+                    orderId: orderId
+                }),
+                signal: controller.signal
+            })
+            .then(res => res.json())
+            .then(data => {
+                clearTimeout(timeoutId);
+                console.log('Статус платежа:', data.status);
+                
+                if (data.status === 'succeeded') {
+                    console.log('✅ Платеж выполнен, обновляем заказ #' + orderId);
+                    
+                    supabase.from('orders')
+                        .update({ 
+                            status: 'paid_card',
+                            paid_at: new Date().toISOString()
+                        })
+                        .eq('id', orderId)
+                        .then(function() {
+                            console.log('✅ Заказ обновлен как оплаченный');
+                            
+                            resetDiscountAfterPayment();
+                            showPaymentSuccessNotification(orderId);
+                            
+                            if (window.isAdmin) {
+                                loadAdminOrders();
+                            } else {
+                                loadUserOrders();
+                            }
+                            renderOrdersSection();
+                        });
+                } else if (data.status === 'pending') {
+                    console.log('⏳ Платеж еще обрабатывается, проверим позже');
+                } else if (data.status === 'canceled') {
+                    console.log('❌ Платеж отменен');
+                    cancelExpiredOrder(orderId);
+                }
+            })
+            .catch(function(err) {
+                clearTimeout(timeoutId);
+                if (err.name === 'AbortError') {
+                    console.log('⏱ Проверка прервана по таймауту');
+                } else {
+                    console.error('Ошибка тихой проверки:', err);
+                }
+            });
+        }
+
+        // Уведомление об успешной оплате
+        function showPaymentSuccessNotification(orderId) {
+            var shownPayments = JSON.parse(localStorage.getItem('shownPaymentNotifications') || '[]');
+            if (shownPayments.indexOf(orderId.toString()) !== -1) return;
+            
+            var modal = document.getElementById('modalOverlay');
+            var content = document.getElementById('modalContent');
+            
+            content.innerHTML = `
+                <div style="text-align:center;padding:40px 20px;">
+                    <div style="font-size:64px;margin-bottom:20px;">🎉</div>
+                    <h2 style="font-size:24px;margin-bottom:15px;">Оплата подтверждена!</h2>
+                    <p style="color:var(--text-muted);margin-bottom:25px;">
+                        Заказ #${orderId} успешно оплачен.<br>
+                        Дизайнер скоро приступит к работе.
+                    </p>
+                    <button class="btn" onclick="markPaymentShown(${orderId}); closeModal();" style="width:100%;">
+                        Отлично!
+                    </button>
+                </div>
+            `;
+            modal.style.display = 'flex';
+        }
+
+        function markPaymentShown(orderId) {
+            var shownPayments = JSON.parse(localStorage.getItem('shownPaymentNotifications') || '[]');
+            if (shownPayments.indexOf(orderId.toString()) === -1) {
+                shownPayments.push(orderId.toString());
+                localStorage.setItem('shownPaymentNotifications', JSON.stringify(shownPayments));
+            }
+        }
+
+        // Сброс скидки после оплаты
+        function resetDiscountAfterPayment() {
+            console.log('🔄 Сброс скидки после оплаты...');
+            
+            currentDiscount = 0;
+            localStorage.removeItem('lastSpinDiscount');
+            localStorage.setItem('discountUsed', 'true');
+            lastSpinDiscount = 0;
+            window.currentOrderFinalTotal = 0;
+            window.currentOrderOriginalTotal = 0;
+            window.freeOptionName = null;
+            
+            console.log('✅ Скидка сброшена');
+            renderOrdersSection();
         }
 
         // ================================================================
