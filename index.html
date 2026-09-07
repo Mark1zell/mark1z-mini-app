@@ -1380,6 +1380,84 @@
             if (nextPost) showPost(nextPost);
         }
 
+                // ================================================================
+        // ИНИЦИАЛИЗАЦИЯ УСЛУГ И ОПЦИЙ ПО УМОЛЧАНИЮ
+        // ================================================================
+        function initDefaultServices() {
+            supabase.from('services').select('*')
+                .then(function(res) {
+                    if (res.error) {
+                        console.error('Ошибка проверки услуг:', res.error);
+                        return;
+                    }
+                    if (!res.data || res.data.length === 0) {
+                        var defaultServices = [
+                            { emoji: '🎨', name: 'Оформление соцсетей', description: 'Шапка + аватарка + обложка для VK/YouTube/Telegram', price: 0 },
+                            { emoji: '🎮', name: 'Дизайн игровых кланов', description: 'Логотип + аватарка + шапка для клана', price: 0 },
+                            { emoji: '🏆', name: 'Дизайн турниров', description: 'Сетка + баннер за призовые места', price: 0 },
+                            { emoji: '🛒', name: 'Карточки товаров', description: 'Инфографика для Wildberries/Ozon/Avito', price: 0 },
+                            { emoji: '🔤', name: 'Типографика', description: 'Шрифтовая композиция, айдентика', price: 0 },
+                            { emoji: '📱', name: 'Дизайн мобильных приложений', description: 'UI/UX интерфейс для iOS/Android', price: 0 },
+                            { emoji: '🌐', name: 'Дизайн сайтов', description: 'Лендинг или многостраничный сайт', price: 0 },
+                            { emoji: '🤖', name: 'Telegram Mini Apps', description: 'Дизайн + адаптивная верстка интерфейса бота', price: 0 },
+                            { emoji: '🖼️', name: 'Постеры и баннеры', description: 'Рекламный постер или баннер', price: 0 },
+                            { emoji: '🎵', name: 'Обложки треков', description: 'Обложка для музыкального релиза', price: 0 },
+                            { emoji: '▶️', name: 'Превью для YouTube', description: 'Кликабельное превью для видео', price: 0 },
+                            { emoji: '📊', name: 'Презентации', description: 'Оформление презентации (до 10 слайдов)', price: 0 },
+                            { emoji: '📄', name: 'Документы Word', description: 'Оформление и структурирование документа', price: 0 }
+                        ];
+                        defaultServices.forEach(function(s) {
+                            supabase.from('services').insert([s]);
+                        });
+                    }
+                });
+        }
+
+        function initDefaultServiceOptions() {
+            supabase.from('service_options').select('*')
+                .then(function(res) {
+                    if (res.error) return;
+                    if (!res.data || res.data.length === 0) {
+                        supabase.from('services').select('id, name')
+                            .then(function(servicesRes) {
+                                if (servicesRes.error) return;
+                                var servicesMap = {};
+                                servicesRes.data.forEach(function(s) {
+                                    servicesMap[s.name] = s.id;
+                                });
+
+                                var defaultOptions = [
+                                    { name: 'Аватарка', price: 400, service_name: 'Оформление соцсетей', min_quantity: 1, max_quantity: 1 },
+                                    { name: 'Шапка', price: 450, service_name: 'Оформление соцсетей', min_quantity: 1, max_quantity: 1 },
+                                    { name: 'Логотип', price: 700, service_name: 'Оформление соцсетей', min_quantity: 1, max_quantity: 1 },
+                                    { name: 'Баннер', price: 400, service_name: 'Оформление соцсетей', min_quantity: 1, max_quantity: 10, discount_min_quantity: 2, discount_price: 350 },
+                                    { name: 'Страница сайта', price: 3000, service_name: 'Дизайн сайтов', min_quantity: 1, max_quantity: 20, discount_min_quantity: 4, discount_price: 2500 },
+                                    { name: 'Карточка товара', price: 800, service_name: 'Карточки товаров', min_quantity: 1, max_quantity: 20, discount_min_quantity: 3, discount_price: 700 }
+                                ];
+
+                                var order = 0;
+                                defaultOptions.forEach(function(opt) {
+                                    var serviceId = servicesMap[opt.service_name];
+                                    if (serviceId) {
+                                        supabase.from('service_options').insert([{
+                                            service_id: serviceId,
+                                            name: opt.name,
+                                            price: opt.price,
+                                            option_type: 'checkbox',
+                                            min_quantity: opt.min_quantity || 1,
+                                            max_quantity: opt.max_quantity || 1,
+                                            discount_min_quantity: opt.discount_min_quantity || null,
+                                            discount_price: opt.discount_price || null,
+                                            is_required: false,
+                                            order: order++
+                                        }]);
+                                    }
+                                });
+                            });
+                    }
+                });
+        }
+
         // ================================================================
         // ЗАГРУЗКА ДАННЫХ И REALTIME
         // ================================================================
@@ -3040,22 +3118,22 @@
         // ================================================================
         // ЗАПУСК
         // ================================================================
-        function init() {
-            createStars();
-            createAsteroids();
-            createLoadingStars();
-            setupTabs();
-            setupModalHandlers();
-            preventModalCloseOnInput();
-            initDefaultServices();
-            initDefaultServiceOptions();
-            setupRealTimeListeners();
-            initTelegram();
-            renderOrdersSection();
-            if (lastSpinDiscount > 0) applyDiscount(lastSpinDiscount);
-            loadActivePosts();
-            setTimeout(function() { document.getElementById('loadingScreen').classList.add('hidden'); }, 800);
-        }
+function init() {
+    createStars();
+    createAsteroids();
+    createLoadingStars();
+    setupTabs();
+    setupModalHandlers();
+    preventModalCloseOnInput();
+    initDefaultServices();      // ДОЛЖНО БЫТЬ
+    initDefaultServiceOptions(); // ДОЛЖНО БЫТЬ
+    setupRealTimeListeners();
+    initTelegram();
+    renderOrdersSection();
+    if (lastSpinDiscount > 0) applyDiscount(lastSpinDiscount);
+    loadActivePosts();
+    setTimeout(function() { document.getElementById('loadingScreen').classList.add('hidden'); }, 800);
+}
 
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', init);
