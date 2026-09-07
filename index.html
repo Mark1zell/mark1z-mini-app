@@ -2679,20 +2679,66 @@ function processStarsPayment(tg, orderId, total, starsAmount) {
     }
 }
 
+var SHOP_ID = '1454329';
+var SECRET_KEY = 'live_DxS3JaTYF2Uid_22sWWn0_2c0nNu-5AyaUtmyxxLmIk';
+
 function payByKassa(orderId, total) {
     closeModal();
     
-    supabase.from('orders').update({ status: 'pending_kassa' }).eq('id', orderId)
-        .then(function() {
-            // ЗАМЕНИТЕ НА ВАШУ ССЫЛКУ
-            var paymentUrl = 'https://yoomoney.ru/quickpay/confirm.xml?receiver=НОМЕР&sum=' + total + '&label=order_' + orderId;
-            
-            if (window.Telegram?.WebApp?.openTelegramLink) {
-                window.Telegram.WebApp.openTelegramLink(paymentUrl);
-            } else {
-                window.open(paymentUrl, '_blank');
+    // Создаём платёж через API ЮKassa
+    fetch('https://yookassa.ru/api/v3/payments', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Idempotence-Key': 'order_' + orderId + '_' + Date.now(),
+            'Authorization': 'Basic ' + btoa(SHOP_ID + ':' + SECRET_KEY)
+        },
+        body: JSON.stringify({
+            amount: {
+                value: total.toFixed(2),
+                currency: 'RUB'
+            },
+            capture: true,
+            confirmation: {
+                type: 'redirect',
+                return_url: 'https://t.me/Mark1zDesign_bot'
+            },
+            description: 'Оплата заказа #' + orderId,
+            metadata: {
+                order_id: orderId
             }
-        });
+        })
+    })
+    .then(function(res) {
+        if (!res.ok) {
+            return res.json().then(function(err) {
+                throw new Error('Ошибка API: ' + JSON.stringify(err));
+            });
+        }
+        return res.json();
+    })
+    .then(function(data) {
+        console.log('Платёж создан:', data);
+        
+        if (data.confirmation && data.confirmation.confirmation_url) {
+            // Открываем ссылку на оплату
+            if (window.Telegram?.WebApp?.openTelegramLink) {
+                window.Telegram.WebApp.openTelegramLink(data.confirmation.confirmation_url);
+            } else if (window.Telegram?.WebApp?.openLink) {
+                window.Telegram.WebApp.openLink(data.confirmation.confirmation_url);
+            } else {
+                window.open(data.confirmation.confirmation_url, '_blank');
+            }
+            
+            alert('💳 Открываю страницу оплаты...');
+        } else {
+            alert('Ошибка создания платежа: ' + JSON.stringify(data));
+        }
+    })
+    .catch(function(err) {
+        console.error('Ошибка оплаты:', err);
+        alert('❌ Ошибка оплаты: ' + err.message);
+    });
 }
         
 // ===== НОВАЯ ФУНКЦИЯ ДЛЯ СБРОСА СКИДКИ =====
