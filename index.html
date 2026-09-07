@@ -395,9 +395,7 @@
         // TELEGRAM INIT
         // ================================================================
 function initTelegram() {
-    // Пытаемся получить Telegram WebApp
     var tg = window.Telegram?.WebApp;
-    
     if (tg) {
         window.telegramAvailable = true;
         window.tg = tg;
@@ -412,27 +410,8 @@ function initTelegram() {
             window.isAdmin = true;
             document.body.classList.add('admin-mode');
         }
-        // Пробуем ещё раз через 1 секунду
-        setTimeout(function() {
-            var tgRetry = window.Telegram?.WebApp;
-            if (tgRetry) {
-                window.telegramAvailable = true;
-                window.tg = tgRetry;
-                tgRetry.ready();
-                tgRetry.expand();
-                tgRetry.setHeaderColor('#0a050d');
-                tgRetry.setBackgroundColor('#0a0012');
-                tgRetry.MainButton.hide();
-                var user = tgRetry.initDataUnsafe?.user;
-                window.currentUser = user;
-                if (user?.username?.toLowerCase() === 'mark1zell') {
-                    window.isAdmin = true;
-                    document.body.classList.add('admin-mode');
-                }
-                window.telegramAvailable = false;
-                window.tg = null;
-            }
-        }, 1000);
+    } else {
+        setTimeout(initTelegram, 500);
     }
 }
 
@@ -791,7 +770,7 @@ function canSpin() {
     return (Date.now() - lastSpinTime) >= oneWeek; // Можно только через неделю
 }
 
-        function applyDiscount(percent) {
+function applyDiscount(percent) {
     currentDiscount = percent;
     localStorage.setItem('lastSpinDiscount', percent);
     localStorage.removeItem('discountUsed');
@@ -3975,7 +3954,7 @@ function updateReviewButton(canReview) {
         // ================================================================
         function createStars() {
             var container = document.getElementById('starsContainer');
-            for (var i = 0; i < 45; i++) {
+            for (var i = 0; i < 30; i++) {
                 var star = document.createElement('div');
                 star.classList.add('star');
                 star.style.width = (Math.random() * 2 + 1) + 'px';
@@ -3990,7 +3969,7 @@ function updateReviewButton(canReview) {
 
         function createAsteroids() {
             var container = document.getElementById('asteroidContainer');
-            for (var i = 0; i < 7; i++) {
+            for (var i = 0; i < 5; i++) {
                 var asteroid = document.createElement('div');
                 asteroid.classList.add('asteroid');
                 asteroid.style.width = (Math.random() * 3 + 2) + 'px';
@@ -4007,7 +3986,7 @@ function updateReviewButton(canReview) {
 
         function createLoadingStars() {
             var container = document.getElementById('loadingStars');
-            for (var i = 0; i < 20; i++) {
+            for (var i = 0; i < 10; i++) {
                 var star = document.createElement('div');
                 star.classList.add('loading-star');
                 star.style.width = (Math.random() * 3 + 1) + 'px';
@@ -4037,7 +4016,6 @@ function updateReviewButton(canReview) {
         // ЗАПУСК
         // ================================================================
 function init() {
-    // Сначала показываем интерфейс
     createStars();
     createAsteroids();
     createLoadingStars();
@@ -4047,18 +4025,16 @@ function init() {
     initImageViewerZoom();
     initTelegram();
     
-    // Скрываем загрузку БЫСТРО
+    // Скрываем загрузку
     setTimeout(function() { 
         document.getElementById('loadingScreen').classList.add('hidden'); 
-    }, 300);
+    }, 500);
     
-    // Загружаем данные в фоне
-    setTimeout(function() {
-        initDefaultServices();
-        initDefaultServiceOptions();
-        setupRealTimeListeners();
-        renderOrdersSection();
-    }, 100);
+    // Загружаем данные
+    initDefaultServices();
+    initDefaultServiceOptions();
+    setupRealTimeListeners();
+    renderOrdersSection();
     
     var discountUsed = localStorage.getItem('discountUsed');
     if (discountUsed === 'true') {
