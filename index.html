@@ -2507,8 +2507,7 @@ function submitOrderWithOptions() {
                 total: total,
                 description: description,
                 reference_urls: referenceUrls,
-                status: 'pending_payment',
-                discount_used: currentDiscount > 0 ? currentDiscount : 0 // Сохраняем информацию о скидке
+                status: 'pending_payment'
             };
             
             return supabase.from('orders').insert([order]).select();
@@ -2516,6 +2515,7 @@ function submitOrderWithOptions() {
         .then(function(res) {
             if (res.error) {
                 alert('❌ Ошибка при сохранении: ' + res.error.message);
+                console.error('Ошибка сохранения:', res.error);
                 return;
             }
             
