@@ -2665,19 +2665,52 @@ function payPendingOrder(orderId, total) {
 function cancelOrder(orderId) {
     if (!confirm('Вы уверены, что хотите отменить заказ?')) return;
     
-    supabase.from('orders')
-        .update({ status: 'cancelled' })
-        .eq('id', orderId)
+    // Получаем информацию о заказе перед удалением
+    supabase.from('orders').select('*').eq('id', orderId).single()
         .then(function(res) {
-            if (res.error) {
-                alert('Ошибка: ' + res.error.message);
+            if (res.error || !res.data) {
+                alert('Заказ не найден');
                 return;
             }
             
-            alert('✅ Заказ отменен');
-            loadUserOrders();
+            var order = res.data;
+            
+            // Удаляем референсы из хранилища если есть
+            var deletePromises = [];
+            if (order.reference_urls && order.reference_urls.length > 0) {
+                order.reference_urls.forEach(function(url) {
+                    var path = url.split('/public/')[1];
+                    if (path) {
+                        deletePromises.push(supabase.storage.from('public').remove([path]));
+                    }
+                });
+            }
+            
+            // Удаляем файлы и сам заказ
+            return Promise.all(deletePromises).catch(function() {}).then(function() {
+                return supabase.from('orders').delete().eq('id', orderId);
+            });
+        })
+        .then(function(deleteRes) {
+            if (deleteRes && deleteRes.error) {
+                alert('Ошибка при удалении: ' + deleteRes.error.message);
+                return;
+            }
+            
+            alert('✅ Заказ отменен и удален');
+            
+            // Обновляем список заказов
+            if (window.isAdmin) {
+                loadAdminOrders();
+            } else {
+                loadUserOrders();
+            }
+            
+            // Обновляем весь раздел
+            renderOrdersSection();
         })
         .catch(function(err) {
+            console.error('Ошибка:', err);
             alert('Ошибка: ' + err.message);
         });
 }
@@ -3261,9 +3294,11 @@ function loadUserOrders() {
     
     var userIdentifier = user.username || user.first_name || user.id.toString();
     
+    // Загружаем все заказы, кроме отмененных
     supabase.from('orders')
         .select('*')
         .or('user_username.eq.' + userIdentifier + ',user_name.eq.' + userIdentifier)
+        .neq('status', 'cancelled') // Исключаем отмененные
         .order('timestamp', { ascending: false })
         .then(function(res) {
             if (res.error) {
@@ -3272,17 +3307,7 @@ function loadUserOrders() {
                 return;
             }
             
-            if (!res.data || res.data.length === 0) {
-                container.innerHTML = `
-                    <div style="text-align:center;padding:20px;background:rgba(255,255,255,0.03);border-radius:12px;">
-                        <p style="font-size:36px;margin-bottom:10px;">📋</p>
-                        <p style="color:var(--text-muted);">У вас пока нет заказов</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            renderUserOrdersList(res.data);
+            renderUserOrdersList(res.data || []);
         })
         .catch(function(err) {
             console.error('Ошибка:', err);
@@ -3308,6 +3333,9 @@ function renderUserOrdersList(orders) {
     var html = '<div style="display:flex;flex-direction:column;gap:15px;">';
     
     orders.forEach(function(order) {
+        // Пропускаем отмененные заказы
+        if (order.status === 'cancelled') return;
+        
         var statusInfo = getStatusInfo(order.status);
         var options = [];
         try {
@@ -3318,11 +3346,24 @@ function renderUserOrdersList(orders) {
         
         // Проверяем, не истекло ли время ожидания оплаты
         var isExpired = false;
+        var timeLeft = 0;
+        
         if (order.status === 'pending_payment' && order.timestamp) {
             var orderTime = new Date(order.timestamp).getTime();
             var now = Date.now();
             var tenMinutes = 10 * 60 * 1000;
-            isExpired = (now - orderTime) > tenMinutes;
+            timeLeft = tenMinutes - (now - orderTime);
+            isExpired = timeLeft <= 0;
+        }
+        
+        // Форматируем оставшееся время
+        var timeLeftText = '';
+        if (order.status === 'pending_payment' && !isExpired) {
+            var minutes = Math.floor(timeLeft / 60000);
+            var seconds = Math.floor((timeLeft % 60000) / 1000);
+            timeLeftText = '⏰ Осталось: ' + minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+        } else if (order.status === 'pending_payment' && isExpired) {
+            timeLeftText = '⏰ Заказ просрочен';
         }
         
         html += `
@@ -3333,6 +3374,8 @@ function renderUserOrdersList(orders) {
                 padding:20px;
                 margin-bottom:10px;
                 position:relative;
+                data-order-id="${order.id}"
+                data-timestamp="${order.timestamp || ''}"
             ">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:15px;">
                     <div>
@@ -3361,6 +3404,20 @@ function renderUserOrdersList(orders) {
                     ">
                         <p style="font-size:16px;font-weight:600;color:#10b981;">✅ Работа готова!</p>
                         <p style="font-size:13px;color:var(--text-muted);margin-top:5px;">Поделитесь впечатлениями в отзывах</p>
+                    </div>
+                ` : ''}
+                
+                ${timeLeftText ? `
+                    <div style="
+                        text-align:center;
+                        padding:8px;
+                        margin-bottom:15px;
+                        border-radius:8px;
+                        background:${isExpired ? 'rgba(255,0,0,0.1)' : 'rgba(255,193,7,0.1)'};
+                    ">
+                        <span class="order-timer" style="color:${isExpired ? '#ff6b6b' : '#ffc107'};font-size:13px;font-weight:600;">
+                            ${timeLeftText}
+                        </span>
                     </div>
                 ` : ''}
                 
@@ -3408,19 +3465,20 @@ function renderUserOrdersList(orders) {
                         <p style="font-size:22px;font-weight:700;color:#c084fc;">${order.total || 0} ₽</p>
                     </div>
                     
-                    ${order.status === 'pending_payment' && !isExpired ? `
-                        <div style="display:flex;gap:8px;">
-                            <button class="btn btn-sm" onclick="payPendingOrder(${order.id}, ${order.total})" style="background:linear-gradient(135deg, #10b981, #059669);">
-                                💳 Оплатить
-                            </button>
-                            <button class="btn btn-sm" onclick="cancelOrder(${order.id})" style="background:rgba(255,0,0,0.3);">
-                                Отменить
+                    ${order.status === 'pending_payment' ? `
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            ${!isExpired ? `
+                                <button class="btn btn-sm" onclick="payPendingOrder(${order.id}, ${order.total})" style="background:linear-gradient(135deg, #10b981, #059669);">
+                                    💳 Оплатить
+                                </button>
+                            ` : ''}
+                            <a href="https://t.me/mark1zell" target="_blank" class="btn btn-sm" style="text-decoration:none;font-size:12px;">
+                                💬 Связаться
+                            </a>
+                            <button class="btn btn-sm cancel-order-btn" onclick="cancelOrder(${order.id})" style="background:rgba(255,0,0,0.3);">
+                                ❌ Отменить
                             </button>
                         </div>
-                    ` : order.status === 'pending_payment' && isExpired ? `
-                        <button class="btn btn-sm" onclick="cancelOrder(${order.id})" style="background:rgba(255,0,0,0.3);">
-                            ❌ Отменить заказ
-                        </button>
                     ` : `
                         <a href="https://t.me/mark1zell" target="_blank" style="
                             background:linear-gradient(135deg, #7c3aed, #be185d);
@@ -3438,10 +3496,22 @@ function renderUserOrdersList(orders) {
     });
     
     html += '</div>';
+    
+    // Если все заказы отменены, показываем сообщение
+    var activeOrders = orders.filter(function(o) { return o.status !== 'cancelled'; });
+    if (activeOrders.length === 0) {
+        html = `
+            <div style="text-align:center;padding:30px;background:rgba(255,255,255,0.03);border-radius:12px;">
+                <p style="font-size:48px;margin-bottom:10px;">📋</p>
+                <p style="color:var(--text-muted);">У вас пока нет активных заказов</p>
+            </div>
+        `;
+    }
+    
     container.innerHTML = html;
     
     // Проверяем, есть ли готовые заказы
-    var readyOrders = orders.filter(function(o) { return o.status === 'ready'; });
+    var readyOrders = activeOrders.filter(function(o) { return o.status === 'ready'; });
     if (readyOrders.length > 0) {
         showReadyNotification(readyOrders[0]);
     }
@@ -5020,12 +5090,18 @@ function autoCancelExpiredOrders() {
                 console.log('Найдено просроченных заказов:', res.data.length);
                 
                 res.data.forEach(function(order) {
+                    // Полностью удаляем просроченный заказ
                     supabase.from('orders')
-                        .update({ status: 'cancelled' })
+                        .delete()
                         .eq('id', order.id)
-                        .then(function(updateRes) {
-                            if (!updateRes.error) {
-                                console.log('✅ Заказ #' + order.id + ' отменен автоматически');
+                        .then(function(deleteRes) {
+                            if (!deleteRes.error) {
+                                console.log('✅ Заказ #' + order.id + ' удален автоматически');
+                                
+                                // Обновляем интерфейс
+                                if (window.currentUser) {
+                                    loadUserOrders();
+                                }
                             }
                         });
                 });
