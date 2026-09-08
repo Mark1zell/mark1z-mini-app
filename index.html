@@ -531,57 +531,46 @@ function compressImage(file, maxSize, quality) {
         // ================================================================
         // FAQ, LEGAL, PRIVACY
         // ================================================================
-        function openFaqModal() {
-            var modal = document.getElementById('modalOverlay');
-            var content = document.getElementById('modalContent');
-            content.innerHTML = `
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
-                    <h3>FAQ</h3>
-                    <button class="btn" onclick="closeModal()" style="margin:0;">×</button>
-                </div>
-                <div style="line-height:1.6;">
-                    <p><strong>1. Как оформить заказ?</strong><br>Выберите услугу в разделе "Заказы", отметьте нужные опции и отправьте заявку. Я свяжусь с вами для уточнения деталей.</p>
-                    <p><strong>2. Какая предоплата?</strong><br>Работаю по 100% предоплате после согласования всех деталей.</p>
-                    <p><strong>3. Сколько правок входит в стоимость?</strong><br>2 бесплатные правки, последующие — 50₽ за 2 правки.</p>
-                    <p><strong>4. Какие сроки выполнения?</strong><br>Зависят от сложности. Обычно 1-3 дня, срочные заказы — от 24 часов с доплатой.</p>
-                    <p><strong>5. Можно ли вернуть деньги?</strong><br>Деньги возврату не подлежат после начала работы.</p>
-                    <p><strong>6. Предоставляете ли исходники?</strong><br>Да, все исходники передаются после полной оплаты.</p>
-                    <p><strong>7. Есть ли скидки?</strong><br>Да, при заказе нескольких услуг. Также можно испытать удачу в кейсе скидок!</p>
-                </div>
-                <button class="btn" style="width:100%;margin-top:20px;" onclick="openLegalModal()">Условия и реквизиты</button>
-                <button class="btn" style="width:100%;margin-top:5px;" onclick="contactDesigner()">Связаться с Дизайнером</button>
-            `;
-            modal.style.display = 'flex';
-        }
+function openFaqModal() {
+    var modal = document.getElementById('modalOverlay');
+    var content = document.getElementById('modalContent');
+    content.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+            <h3>FAQ</h3>
+            <button class="btn" onclick="closeModal()" style="margin:0;">×</button>
+        </div>
+        <div style="line-height:1.6;max-height:70vh;overflow-y:auto;">
+            <p><strong>1. Как оформить заказ?</strong><br>Выберите услугу в разделе "Услуги", отметьте нужные опции и отправьте заявку. После оплаты заказ поступит дизайнеру.</p>
+            <p><strong>2. Какие способы оплаты?</strong><br>Оплата картой через ЮKassa или звёздами Telegram.</p>
+            <p><strong>3. Как отслеживать статус заказа?</strong><br>В разделе "Мои заказы" вы можете видеть статус вашего заказа: "Оплачен", "Ещё не приступили", "Готовится", "Готов".</p>
+            <p><strong>4. Сколько правок входит в стоимость?</strong><br>2 бесплатные правки, последующие — 50₽ за 2 правки.</p>
+            <p><strong>5. Какие сроки выполнения?</strong><br>Зависят от сложности. Обычно 1-3 дня.</p>
+            <p><strong>6. Можно ли вернуть деньги?</strong><br>После начала работы деньги не возвращаются.</p>
+            <p><strong>7. Что делать, если оплата не прошла?</strong><br>Свяжитесь с дизайнером через @mark1zell, он поможет решить проблему.</p>
+        </div>
+        <button class="btn" style="width:100%;margin-top:20px;" onclick="openLegalModal()">Условия и реквизиты</button>
+        <button class="btn" style="width:100%;margin-top:5px;" onclick="contactDesigner()">Связаться с Дизайнером</button>
+    `;
+    modal.style.display = 'flex';
+}
 
-        function openLegalModal() {
-            var modal = document.getElementById('modalOverlay');
-            var content = document.getElementById('modalContent');
-            content.innerHTML = `
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
-                    <h3>Условия и реквизиты</h3>
-                    <button class="btn" onclick="closeModal()" style="margin:0;">×</button>
-                </div>
-                <div style="line-height:1.6;max-height:60vh;overflow-y:auto;">
-                    <p><strong>Описание услуг</strong><br>
-                    Графический дизайн, оформление соцсетей, веб-дизайн, UI/UX, презентации и другие digital-услуги.</p>
-                    <p><strong>Порядок работы</strong><br>
-                    1. Выбор услуги и опций<br>
-                    2. Отправка заявки<br>
-                    3. Согласование деталей<br>
-                    4. Оплата<br>
-                    5. Выполнение работы<br>
-                    6. Передача исходников</p>
-                    <p><strong>Контакты</strong><br>
-                    Telegram: <a href="https://t.me/mark1zell" target="_blank" style="color:#ec4899;">@Mark1zell</a><br>
-                    Email: keklolorbidollol321@gmail.com</p>
-                    <p><strong>Реквизиты самозанятого</strong><br>
-                    ФИО: Кузнецов Дмитрий Александрович<br>
-                    ИНН: 710609555942</p>
-                </div>
-            `;
-            modal.style.display = 'flex';
-        }
+function openLegalModal() {
+    var modal = document.getElementById('modalOverlay');
+    var content = document.getElementById('modalContent');
+    content.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+            <h3>Условия и реквизиты</h3>
+            <button class="btn" onclick="closeModal()" style="margin:0;">×</button>
+        </div>
+        <div style="line-height:1.6;max-height:60vh;overflow-y:auto;">
+            <p><strong>Описание услуг</strong><br>Графический дизайн, оформление соцсетей, веб-дизайн, UI/UX, презентации и другие digital-услуги.</p>
+            <p><strong>Порядок работы</strong><br>1. Выбор услуги<br>2. Отправка заявки<br>3. Оплата<br>4. Выполнение работы<br>5. Передача исходников</p>
+            <p><strong>Контакты</strong><br>Telegram: <a href="https://t.me/mark1zell" target="_blank" style="color:#ec4899;">@Mark1zell</a></p>
+            <p><strong>Реквизиты</strong><br>ФИО: Кузнецов Дмитрий Александрович<br>ИНН: 710609555942</p>
+        </div>
+    `;
+    modal.style.display = 'flex';
+}
 
 function openPrivacyPolicy() {
     var modal = document.getElementById('modalOverlay');
@@ -3220,17 +3209,22 @@ function resetDiscountAfterPayment() {
     if (window.isAdmin) {
         var html = `
             <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap;">
-                <button class="btn ${adminOrdersMode === 'services' ? 'active' : ''}" onclick="switchAdminMode('services')">Услуги</button>
-                <button class="btn ${adminOrdersMode === 'orders' ? 'active' : ''}" onclick="switchAdminMode('orders')">Заказы</button>
-                <button class="btn" onclick="openAdminPromoPanel()">👑 Админ</button>
+                <button class="btn ${adminOrdersMode === 'services' ? 'active' : ''}" onclick="switchAdminMode('services')" style="flex:1;background:${adminOrdersMode === 'services' ? 'linear-gradient(135deg, #7c3aed, #be185d)' : 'rgba(255,255,255,0.1)'};">🛠️ Услуги</button>
+                <button class="btn ${adminOrdersMode === 'orders' ? 'active' : ''}" onclick="switchAdminMode('orders')" style="flex:1;background:${adminOrdersMode === 'orders' ? 'linear-gradient(135deg, #7c3aed, #be185d)' : 'rgba(255,255,255,0.1)'};">📋 Заказы</button>
+                <button class="btn ${adminOrdersMode === 'admin' ? 'active' : ''}" onclick="switchAdminMode('admin')" style="flex:1;background:${adminOrdersMode === 'admin' ? 'linear-gradient(135deg, #f59e0b, #be185d)' : 'rgba(255,255,255,0.1)'};">👑 Админ</button>
             </div>
         `;
+        
         if (adminOrdersMode === 'services') {
             html += renderServicesForAdmin();
-        } else {
+        } else if (adminOrdersMode === 'orders') {
             html += '<div id="adminOrdersList"></div>';
+        } else {
+            html += renderAdminPanel();
         }
+        
         container.innerHTML = html;
+        
         if (adminOrdersMode === 'orders') {
             loadAdminOrders();
         }
@@ -3238,11 +3232,10 @@ function resetDiscountAfterPayment() {
             setupSortableForServices();
         }
     } else {
-        // Для пользователя - две вкладки
         var html = `
             <div style="display:flex; gap:10px; margin-bottom:15px;">
-                <button class="btn ${userOrdersMode === 'services' ? 'active' : ''}" onclick="switchUserMode('services')" style="flex:1;">🛠️ Услуги</button>
-                <button class="btn ${userOrdersMode === 'orders' ? 'active' : ''}" onclick="switchUserMode('orders')" style="flex:1;">📋 Мои заказы</button>
+                <button class="btn ${userOrdersMode === 'services' ? 'active' : ''}" onclick="switchUserMode('services')" style="flex:1;background:${userOrdersMode === 'services' ? 'linear-gradient(135deg, #7c3aed, #be185d)' : 'rgba(255,255,255,0.1)'};">🛠️ Услуги</button>
+                <button class="btn ${userOrdersMode === 'orders' ? 'active' : ''}" onclick="switchUserMode('orders')" style="flex:1;background:${userOrdersMode === 'orders' ? 'linear-gradient(135deg, #7c3aed, #be185d)' : 'rgba(255,255,255,0.1)'};">📋 Мои заказы</button>
             </div>
             <div id="userOrdersContent"></div>
         `;
@@ -3390,7 +3383,7 @@ function renderUserOrdersList(orders) {
     var html = '<div style="display:flex;flex-direction:column;gap:15px;">';
     
     orders.forEach(function(order) {
-        // Пропускаем отмененные заказы
+        // Пропускаем отмененные
         if (order.status === 'cancelled') return;
         
         var statusInfo = getStatusInfo(order.status);
@@ -3401,26 +3394,31 @@ function renderUserOrdersList(orders) {
             options = [];
         }
         
-        // Проверяем, не истекло ли время ожидания оплаты
-        var isExpired = false;
-        var timeLeft = 0;
-        
-        if (order.status === 'pending_payment' && order.timestamp) {
-            var orderTime = new Date(order.timestamp).getTime();
-            var now = Date.now();
-            var tenMinutes = 10 * 60 * 1000;
-            timeLeft = tenMinutes - (now - orderTime);
-            isExpired = timeLeft <= 0;
-        }
-        
-        // Форматируем оставшееся время
-        var timeLeftText = '';
-        if (order.status === 'pending_payment' && !isExpired) {
-            var minutes = Math.floor(timeLeft / 60000);
-            var seconds = Math.floor((timeLeft % 60000) / 1000);
-            timeLeftText = '⏰ Осталось: ' + minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
-        } else if (order.status === 'pending_payment' && isExpired) {
-            timeLeftText = '⏰ Заказ просрочен';
+        // Для заказов со статусом paid_card - показываем анимацию
+        var statusHtml = '';
+        if (order.status === 'paid_card') {
+            statusHtml = `
+                <span class="status-transition" data-order-id="${order.id}" style="
+                    background:${statusInfo.bgColor};
+                    color:${statusInfo.textColor};
+                    padding:8px 14px;
+                    border-radius:8px;
+                    font-size:12px;
+                    font-weight:600;
+                    transition:all 0.5s ease;
+                ">${statusInfo.label}</span>
+            `;
+        } else {
+            statusHtml = `
+                <span style="
+                    background:${statusInfo.bgColor};
+                    color:${statusInfo.textColor};
+                    padding:8px 14px;
+                    border-radius:8px;
+                    font-size:12px;
+                    font-weight:600;
+                ">${statusInfo.label}</span>
+            `;
         }
         
         html += `
@@ -3430,53 +3428,14 @@ function renderUserOrdersList(orders) {
                 border-radius:16px;
                 padding:20px;
                 margin-bottom:10px;
-                position:relative;
-                data-order-id="${order.id}"
-                data-timestamp="${order.timestamp || ''}"
             ">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:15px;">
                     <div>
                         <h4 style="font-size:18px;font-weight:600;margin-bottom:5px;">${order.service}</h4>
                         <p style="font-size:12px;color:var(--text-muted);">Заказ #${order.id} · ${order.time || ''}</p>
                     </div>
-                    <span style="
-                        background:${statusInfo.bgColor};
-                        color:${statusInfo.textColor};
-                        padding:8px 14px;
-                        border-radius:8px;
-                        font-size:12px;
-                        font-weight:600;
-                        white-space:nowrap;
-                    ">${statusInfo.label}</span>
+                    ${statusHtml}
                 </div>
-                
-                ${order.status === 'ready' ? `
-                    <div style="
-                        background:rgba(16,185,129,0.15);
-                        border:1px solid rgba(16,185,129,0.3);
-                        border-radius:12px;
-                        padding:15px;
-                        margin-bottom:15px;
-                        text-align:center;
-                    ">
-                        <p style="font-size:16px;font-weight:600;color:#10b981;">✅ Работа готова!</p>
-                        <p style="font-size:13px;color:var(--text-muted);margin-top:5px;">Поделитесь впечатлениями в отзывах</p>
-                    </div>
-                ` : ''}
-                
-                ${timeLeftText ? `
-                    <div style="
-                        text-align:center;
-                        padding:8px;
-                        margin-bottom:15px;
-                        border-radius:8px;
-                        background:${isExpired ? 'rgba(255,0,0,0.1)' : 'rgba(255,193,7,0.1)'};
-                    ">
-                        <span class="order-timer" style="color:${isExpired ? '#ff6b6b' : '#ffc107'};font-size:13px;font-weight:600;">
-                            ${timeLeftText}
-                        </span>
-                    </div>
-                ` : ''}
                 
                 <div style="margin-bottom:15px;">
                     <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Выбранные опции:</p>
@@ -3505,73 +3464,53 @@ function renderUserOrdersList(orders) {
                     </div>
                 ` : ''}
                 
-                ${order.reference_urls && order.reference_urls.length > 0 ? `
-                    <div style="margin-bottom:15px;">
-                        <p style="font-size:12px;color:var(--text-muted);margin-bottom:5px;">Референсы:</p>
-                        <div style="display:flex;flex-wrap:wrap;gap:8px;">
-                            ${order.reference_urls.map(function(url) {
-                                return `<img src="${url}" onclick="viewImage('${url}', 'Референс', false)" style="width:60px;height:60px;object-fit:cover;border-radius:8px;cursor:pointer;">`;
-                            }).join('')}
-                        </div>
-                    </div>
-                ` : ''}
-                
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-top:15px;padding-top:15px;border-top:1px solid var(--card-border);">
                     <div>
                         <p style="font-size:12px;color:var(--text-muted);">Итого:</p>
                         <p style="font-size:22px;font-weight:700;color:#c084fc;">${order.total || 0} ₽</p>
                     </div>
-                    
-                    ${order.status === 'pending_payment' ? `
-                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                            ${!isExpired ? `
-                                <button class="btn btn-sm" onclick="payPendingOrder(${order.id}, ${order.total})" style="background:linear-gradient(135deg, #10b981, #059669);">
-                                    💳 Оплатить
-                                </button>
-                            ` : ''}
-                            <a href="https://t.me/mark1zell" target="_blank" class="btn btn-sm" style="text-decoration:none;font-size:12px;">
-                                💬 Связаться
-                            </a>
-                            <button class="btn btn-sm cancel-order-btn" onclick="cancelOrder(${order.id})" style="background:rgba(255,0,0,0.3);">
-                                ❌ Отменить
-                            </button>
-                        </div>
-                    ` : `
-                        <a href="https://t.me/mark1zell" target="_blank" style="
-                            background:linear-gradient(135deg, #7c3aed, #be185d);
-                            color:#fff;
-                            padding:10px 16px;
-                            border-radius:20px;
-                            text-decoration:none;
-                            font-size:13px;
-                            font-weight:600;
-                        ">💬 Связаться</a>
-                    `}
+                    <a href="https://t.me/mark1zell" target="_blank" style="
+                        background:linear-gradient(135deg, #7c3aed, #be185d);
+                        color:#fff;
+                        padding:10px 16px;
+                        border-radius:20px;
+                        text-decoration:none;
+                        font-size:13px;
+                        font-weight:600;
+                    ">💬 Связаться</a>
                 </div>
             </div>
         `;
     });
     
     html += '</div>';
-    
-    // Если все заказы отменены, показываем сообщение
-    var activeOrders = orders.filter(function(o) { return o.status !== 'cancelled'; });
-    if (activeOrders.length === 0) {
-        html = `
-            <div style="text-align:center;padding:30px;background:rgba(255,255,255,0.03);border-radius:12px;">
-                <p style="font-size:48px;margin-bottom:10px;">📋</p>
-                <p style="color:var(--text-muted);">У вас пока нет активных заказов</p>
-            </div>
-        `;
-    }
-    
     container.innerHTML = html;
     
-    // Проверяем, есть ли готовые заказы
-    var readyOrders = activeOrders.filter(function(o) { return o.status === 'ready'; });
-    if (readyOrders.length > 0) {
-        showReadyNotification(readyOrders[0]);
-    }
+    // Запускаем анимацию для paid_card заказов
+    animatePaidStatuses();
+}
+
+// Функция анимации статусов
+function animatePaidStatuses() {
+    var paidStatuses = document.querySelectorAll('.status-transition');
+    
+    paidStatuses.forEach(function(el) {
+        var orderId = el.dataset.orderId;
+        
+        setTimeout(function() {
+            el.style.background = 'rgba(255,0,0,0.2)';
+            el.style.color = '#ff6b6b';
+            el.textContent = 'Ещё не приступили';
+            
+            // Обновляем статус в базе данных
+            supabase.from('orders')
+                .update({ status: 'not_started' })
+                .eq('id', orderId)
+                .then(function() {
+                    console.log('✅ Статус заказа #' + orderId + ' изменен на "Ещё не приступили"');
+                });
+        }, 3000);
+    });
 }
 
 // Получение информации о статусе
@@ -3585,15 +3524,15 @@ function getStatusInfo(status) {
         },
         'paid_card': {
             label: 'Оплачен',
-            bgColor: 'rgba(16,185,129,0.2)',
-            textColor: '#10b981',
-            borderColor: 'rgba(16,185,129,0.4)'
+            bgColor: 'rgba(59,130,246,0.2)',
+            textColor: '#3b82f6',
+            borderColor: 'rgba(59,130,246,0.4)'
         },
         'paid_stars': {
             label: 'Оплачен звёздами',
-            bgColor: 'rgba(16,185,129,0.2)',
-            textColor: '#10b981',
-            borderColor: 'rgba(16,185,129,0.4)'
+            bgColor: 'rgba(59,130,246,0.2)',
+            textColor: '#3b82f6',
+            borderColor: 'rgba(59,130,246,0.4)'
         },
         'not_started': {
             label: 'Ещё не приступили',
@@ -3612,6 +3551,12 @@ function getStatusInfo(status) {
             bgColor: 'rgba(16,185,129,0.2)',
             textColor: '#10b981',
             borderColor: 'rgba(16,185,129,0.4)'
+        },
+        'cancelled': {
+            label: 'Отменен',
+            bgColor: 'rgba(128,128,128,0.2)',
+            textColor: '#808080',
+            borderColor: 'rgba(128,128,128,0.4)'
         }
     };
     
@@ -3690,6 +3635,133 @@ function goToReviews() {
             html += '</div>';
             return html;
         }
+
+        function renderAdminPanel() {
+    var html = `
+        <div style="
+            background:linear-gradient(135deg, rgba(245,158,11,0.1), rgba(190,24,93,0.1));
+            border:1px solid rgba(245,158,11,0.3);
+            border-radius:16px;
+            padding:20px;
+            margin-bottom:15px;
+        ">
+            <h3 style="margin-bottom:15px;">👑 Панель администратора</h3>
+            <p style="color:var(--text-muted);font-size:13px;margin-bottom:15px;">Управление приложением и заказами</p>
+            
+            <button class="btn" onclick="openAdminPromoPanel()" style="width:100%;margin-bottom:10px;">
+                🎁 Управление промокодами
+            </button>
+            <button class="btn" onclick="openPostManager()" style="width:100%;margin-bottom:10px;">
+                📢 Управление постами
+            </button>
+            <button class="btn" onclick="loadPendingOrders()" style="width:100%;margin-bottom:10px;">
+                📋 Просмотреть неоплаченные заказы
+            </button>
+        </div>
+        <div id="adminPanelContent"></div>
+    `;
+    return html;
+}
+
+// Загрузка неоплаченных заказов
+function loadPendingOrders() {
+    var container = document.getElementById('adminPanelContent');
+    if (!container) return;
+    
+    container.innerHTML = '<p style="color:var(--text-muted);">Загрузка...</p>';
+    
+    supabase.from('orders')
+        .select('*')
+        .eq('status', 'pending_payment')
+        .order('timestamp', { ascending: false })
+        .then(function(res) {
+            if (res.error) {
+                container.innerHTML = '<p style="color:var(--text-muted);">Ошибка загрузки</p>';
+                return;
+            }
+            
+            var orders = res.data || [];
+            
+            if (orders.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align:center;padding:30px;background:rgba(255,255,255,0.03);border-radius:12px;">
+                        <p style="font-size:48px;margin-bottom:10px;">📭</p>
+                        <p style="color:var(--text-muted);">Нет неоплаченных заказов</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            var html = '<h4 style="margin-bottom:15px;">Неоплаченные заказы (' + orders.length + ')</h4>';
+            html += '<div style="display:flex;flex-direction:column;gap:10px;">';
+            
+            orders.forEach(function(order) {
+                html += `
+                    <div style="
+                        background:rgba(255,193,7,0.05);
+                        border:1px solid rgba(255,193,7,0.3);
+                        border-radius:12px;
+                        padding:15px;
+                        display:flex;
+                        justify-content:space-between;
+                        align-items:center;
+                    ">
+                        <div>
+                            <strong>#${order.id} - ${order.service}</strong>
+                            <p style="font-size:12px;color:var(--text-muted);">
+                                ${order.user_name} @${order.user_username || 'нет'}
+                            </p>
+                            <p style="font-size:12px;color:var(--text-muted);">${order.total} ₽</p>
+                        </div>
+                        <div style="display:flex;gap:8px;">
+                            <button class="btn btn-sm" onclick="markAsPaidManually(${order.id})" style="background:rgba(59,130,246,0.5);">
+                                ✓ Оплачен
+                            </button>
+                            <button class="btn btn-sm" onclick="cancelOrder(${order.id})" style="background:rgba(255,0,0,0.5);">
+                                ✕ Отменить
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+        });
+}
+
+// Ручное подтверждение оплаты
+function markAsPaidManually(orderId) {
+    if (!confirm('Отметить заказ #' + orderId + ' как оплаченный?')) return;
+    
+    supabase.from('orders')
+        .update({ 
+            status: 'paid_card',
+            paid_at: new Date().toISOString()
+        })
+        .eq('id', orderId)
+        .then(function(res) {
+            if (res.error) {
+                alert('Ошибка: ' + res.error.message);
+                return;
+            }
+            alert('✅ Заказ отмечен как оплаченный');
+            loadPendingOrders();
+            loadAdminOrders();
+        });
+}
+
+// Обновите switchAdminMode
+function switchAdminMode(mode) {
+    adminOrdersMode = mode;
+    renderOrdersSection();
+}
+
+// Обновите switchUserMode
+function switchUserMode(mode) {
+    userOrdersMode = mode;
+    renderOrdersSection();
+}
 
         function renderServicesForAdmin() {
             var html = '<div class="order-list" id="servicesList" style="display:flex; flex-direction:column; gap:12px;">';
