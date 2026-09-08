@@ -1591,17 +1591,16 @@ function setupRealTimeListeners() {
     console.log('📡 Настройка realtime listeners...');
     
     try {
-        // Realtime для заказов (все изменения)
+        // Realtime для заказов
         supabase.channel('orders_realtime')
             .on('postgres_changes', { 
-                event: '*', 
+                event: 'UPDATE', 
                 schema: 'public', 
                 table: 'orders' 
             }, function(payload) {
-                console.log('🔄 Realtime обновление заказов:', payload.eventType);
-                console.log('Данные:', payload.new);
+                console.log('🔄 Realtime UPDATE заказа:', payload.new);
                 
-                // Обновляем интерфейс в зависимости от режима
+                // Обновляем интерфейс
                 if (window.isAdmin) {
                     if (adminOrdersMode === 'orders') {
                         loadAdminOrders();
@@ -1614,23 +1613,28 @@ function setupRealTimeListeners() {
                     }
                 }
                 
-                // Если заказ готов - показываем уведомление
-                if (payload.eventType === 'UPDATE' && payload.new.status === 'ready') {
+                // Проверяем, если заказ стал "ready"
+                if (payload.new.status === 'ready') {
                     var user = window.currentUser;
                     if (user) {
                         var userIdentifier = user.username || user.first_name || user.id.toString();
-                        if (payload.new.user_username === userIdentifier || payload.new.user_name === userIdentifier) {
+                        var orderUserIdentifier = payload.new.user_username || payload.new.user_name;
+                        
+                        if (orderUserIdentifier === userIdentifier) {
+                            console.log('🎉 Показываем уведомление о готовности');
                             showReadyNotification(payload.new);
                         }
                     }
                 }
                 
-                // Если заказ оплачен - показываем уведомление
-                if (payload.eventType === 'UPDATE' && payload.new.status === 'paid_card') {
+                // Проверяем, если заказ стал "paid_card"
+                if (payload.new.status === 'paid_card') {
                     var user = window.currentUser;
                     if (user) {
                         var userIdentifier = user.username || user.first_name || user.id.toString();
-                        if (payload.new.user_username === userIdentifier || payload.new.user_name === userIdentifier) {
+                        var orderUserIdentifier = payload.new.user_username || payload.new.user_name;
+                        
+                        if (orderUserIdentifier === userIdentifier) {
                             resetDiscountAfterPayment();
                             showPaymentSuccessNotification(payload.new.id);
                         }
@@ -1639,60 +1643,103 @@ function setupRealTimeListeners() {
             })
             .subscribe();
 
-        // Realtime для категорий портфолио
-        supabase.channel('portfolio_categories_changes')
+        // Realtime для INSERT заказов
+        supabase.channel('orders_insert')
             .on('postgres_changes', { 
-                event: '*', 
+                event: 'INSERT', 
                 schema: 'public', 
-                table: 'portfolio_categories' 
+                table: 'orders' 
             }, function(payload) {
-                loadPortfolioCategories();
-                if (currentCategoryId) openCategory(currentCategoryId);
+                console.log('🔄 Новый заказ:', payload.new);
+                
+                if (window.isAdmin) {
+                    if (adminOrdersMode === 'orders') {
+                        loadAdminOrders();
+                    }
+                }
             })
             .subscribe();
 
-        // Realtime для услуг
-        supabase.channel('services_changes')
+        // Realtime для DELETE заказов
+        supabase.channel('orders_delete')
             .on('postgres_changes', { 
-                event: '*', 
+                event: 'DELETE', 
                 schema: 'public', 
-                table: 'services' 
+                table: 'orders' 
             }, function(payload) {
+                console.log('🔄 Заказ удален:', payload.old);
+                
+                if (window.isAdmin) {
+                    if (adminOrdersMode === 'orders') {
+                        loadAdminOrders();
+                    }
+                } else {
+                    if (userOrdersMode === 'orders') {
+                        loadUserOrders();
+                    }
+                }
+            })
+            .subscribe();
+
+        // Realtime для уведомлений
+        supabase.channel('notifications_realtime')
+            .on('postgres_changes', { 
+                event: 'INSERT', 
+                schema: 'public', 
+                table: 'notifications' 
+            }, function(payload) {
+                console.log('🔔 Новое уведомление:', payload.new);
+                
+                var user = window.currentUser;
+                if (user) {
+                    var userIdentifier = user.username || user.first_name || user.id.toString();
+                    
+                    if (payload.new.user_username === userIdentifier || payload.new.user_name === userIdentifier) {
+                        if (payload.new.type === 'order_ready') {
+                            // Показываем уведомление
+                            supabase.from('orders')
+                                .select('*')
+                                .eq('id', payload.new.order_id)
+                                .single()
+                                .then(function(res) {
+                                    if (res.data) {
+                                        showReadyNotification(res.data);
+                                    }
+                                });
+                        }
+                    }
+                }
+            })
+            .subscribe();
+
+        // Остальные realtime listeners...
+        supabase.channel('portfolio_categories_changes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'portfolio_categories' }, function() {
+                loadPortfolioCategories();
+            })
+            .subscribe();
+
+        supabase.channel('services_changes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'services' }, function() {
                 loadServices();
             })
             .subscribe();
 
-        // Realtime для опций услуг
         supabase.channel('service_options_changes')
-            .on('postgres_changes', { 
-                event: '*', 
-                schema: 'public', 
-                table: 'service_options' 
-            }, function(payload) {
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'service_options' }, function() {
                 loadServiceOptions();
             })
             .subscribe();
 
-        // Realtime для отзывов
         supabase.channel('reviews_changes')
-            .on('postgres_changes', { 
-                event: '*', 
-                schema: 'public', 
-                table: 'reviews' 
-            }, function(payload) {
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews' }, function() {
                 loadReviews();
             })
             .subscribe();
 
-        // Realtime для постов
         supabase.channel('posts_changes')
-            .on('postgres_changes', { 
-                event: '*', 
-                schema: 'public', 
-                table: 'posts' 
-            }, function(payload) {
-                var postsList = document.getElementById('postsList');
-                if (postsList && postsList.innerHTML !== '') loadPostsList();
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, function() {
+                loadActivePosts();
             })
             .subscribe();
 
@@ -4142,7 +4189,7 @@ function switchUserMode(mode) {
             container.innerHTML = html;
         }
 
-        function viewOrderDetails(orderId) {
+function viewOrderDetails(orderId) {
     supabase.from('orders').select('*').eq('id', orderId).single()
         .then(function(res) {
             if (res.error || !res.data) {
@@ -4293,27 +4340,80 @@ function switchUserMode(mode) {
         });
 }
 
-// Обновление статуса заказа
+// Функция обновления статуса заказа
 function updateOrderStatus(orderId, newStatus) {
+    console.log('📊 Обновление статуса заказа:', orderId, newStatus);
+    
     supabase.from('orders')
         .update({ status: newStatus })
         .eq('id', orderId)
         .then(function(res) {
             if (res.error) {
                 alert('Ошибка: ' + res.error.message);
+                console.error('Ошибка:', res.error);
                 return;
             }
             
-            alert('✅ Статус обновлен!');
+            console.log('✅ Статус обновлен в базе данных');
+            
+            // Закрываем модальное окно
             closeModal();
+            
+            // Показываем уведомление
+            alert('✅ Статус обновлен!');
             
             // Обновляем список заказов
             if (window.isAdmin) {
                 loadAdminOrders();
             }
+            
+            // Если статус "ready" - создаем уведомление
+            if (newStatus === 'ready') {
+                notifyUserOrderReady(orderId);
+            }
+            
+            // Обновляем весь раздел
+            renderOrdersSection();
         })
         .catch(function(err) {
+            console.error('Ошибка:', err);
             alert('Ошибка: ' + err.message);
+        });
+}
+
+// Функция создания уведомления
+function notifyUserOrderReady(orderId) {
+    console.log('📢 Создание уведомления о готовности заказа #' + orderId);
+    
+    supabase.from('orders')
+        .select('*')
+        .eq('id', orderId)
+        .single()
+        .then(function(res) {
+            if (res.error || !res.data) {
+                console.error('Ошибка получения заказа:', res.error);
+                return;
+            }
+            
+            var order = res.data;
+            
+            supabase.from('notifications')
+                .insert([{
+                    order_id: orderId,
+                    user_username: order.user_username,
+                    user_name: order.user_name,
+                    type: 'order_ready',
+                    message: 'Ваша работа готова!',
+                    is_read: false,
+                    created_at: new Date().toISOString()
+                }])
+                .then(function(notifRes) {
+                    if (notifRes.error) {
+                        console.error('Ошибка создания уведомления:', notifRes.error);
+                    } else {
+                        console.log('✅ Уведомление создано');
+                    }
+                });
         });
 }
 
