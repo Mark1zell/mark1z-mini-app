@@ -1588,52 +1588,111 @@ function applyPromo(code) {
         // ЗАГРУЗКА ДАННЫХ И REALTIME
         // ================================================================
 function setupRealTimeListeners() {
+    console.log('📡 Настройка realtime listeners...');
+    
     try {
-        console.log('📡 Настройка realtime listeners...');
-        
+        // Realtime для заказов (все изменения)
+        supabase.channel('orders_realtime')
+            .on('postgres_changes', { 
+                event: '*', 
+                schema: 'public', 
+                table: 'orders' 
+            }, function(payload) {
+                console.log('🔄 Realtime обновление заказов:', payload.eventType);
+                console.log('Данные:', payload.new);
+                
+                // Обновляем интерфейс в зависимости от режима
+                if (window.isAdmin) {
+                    if (adminOrdersMode === 'orders') {
+                        loadAdminOrders();
+                    } else if (adminOrdersMode === 'admin') {
+                        loadPendingOrders();
+                    }
+                } else {
+                    if (userOrdersMode === 'orders') {
+                        loadUserOrders();
+                    }
+                }
+                
+                // Если заказ готов - показываем уведомление
+                if (payload.eventType === 'UPDATE' && payload.new.status === 'ready') {
+                    var user = window.currentUser;
+                    if (user) {
+                        var userIdentifier = user.username || user.first_name || user.id.toString();
+                        if (payload.new.user_username === userIdentifier || payload.new.user_name === userIdentifier) {
+                            showReadyNotification(payload.new);
+                        }
+                    }
+                }
+                
+                // Если заказ оплачен - показываем уведомление
+                if (payload.eventType === 'UPDATE' && payload.new.status === 'paid_card') {
+                    var user = window.currentUser;
+                    if (user) {
+                        var userIdentifier = user.username || user.first_name || user.id.toString();
+                        if (payload.new.user_username === userIdentifier || payload.new.user_name === userIdentifier) {
+                            resetDiscountAfterPayment();
+                            showPaymentSuccessNotification(payload.new.id);
+                        }
+                    }
+                }
+            })
+            .subscribe();
+
+        // Realtime для категорий портфолио
         supabase.channel('portfolio_categories_changes')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'portfolio_categories' }, function(payload) {
+            .on('postgres_changes', { 
+                event: '*', 
+                schema: 'public', 
+                table: 'portfolio_categories' 
+            }, function(payload) {
                 loadPortfolioCategories();
                 if (currentCategoryId) openCategory(currentCategoryId);
             })
             .subscribe();
 
+        // Realtime для услуг
         supabase.channel('services_changes')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'services' }, function(payload) {
+            .on('postgres_changes', { 
+                event: '*', 
+                schema: 'public', 
+                table: 'services' 
+            }, function(payload) {
                 loadServices();
             })
             .subscribe();
 
+        // Realtime для опций услуг
         supabase.channel('service_options_changes')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'service_options' }, function(payload) {
+            .on('postgres_changes', { 
+                event: '*', 
+                schema: 'public', 
+                table: 'service_options' 
+            }, function(payload) {
                 loadServiceOptions();
             })
             .subscribe();
 
+        // Realtime для отзывов
         supabase.channel('reviews_changes')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews' }, function(payload) {
+            .on('postgres_changes', { 
+                event: '*', 
+                schema: 'public', 
+                table: 'reviews' 
+            }, function(payload) {
                 loadReviews();
             })
             .subscribe();
 
+        // Realtime для постов
         supabase.channel('posts_changes')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, function(payload) {
+            .on('postgres_changes', { 
+                event: '*', 
+                schema: 'public', 
+                table: 'posts' 
+            }, function(payload) {
                 var postsList = document.getElementById('postsList');
                 if (postsList && postsList.innerHTML !== '') loadPostsList();
-            })
-            .subscribe();
-
-        supabase.channel('orders_changes')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, function(payload) {
-                if (adminOrdersMode === 'orders') {
-                    supabase.from('orders').select('*').order('timestamp', { ascending: false })
-                        .then(function(res) {
-                            if (!res.error && res.data) renderOrdersList(res.data);
-                        })
-                        .catch(function(err) {
-                            console.error('Ошибка загрузки заказов:', err);
-                        });
-                }
             })
             .subscribe();
 
@@ -3264,7 +3323,10 @@ function loadAdminOrders() {
     var container = document.getElementById('adminOrdersList');
     if (!container) return;
     
-    container.innerHTML = '<p style="color:var(--text-muted);">Загрузка заказов...</p>';
+    // Показываем загрузку только если контейнер пустой
+    if (!container.innerHTML || container.innerHTML === '<p style="color:var(--text-muted);">Загрузка заказов...</p>') {
+        container.innerHTML = '<p style="color:var(--text-muted);">Загрузка заказов...</p>';
+    }
     
     supabase.from('orders')
         .select('*')
@@ -3280,7 +3342,7 @@ function loadAdminOrders() {
             
             var orders = res.data || [];
             
-            // Убираем дубликаты (если есть)
+            // Убираем дубликаты
             var uniqueOrders = [];
             var seenIds = {};
             orders.forEach(function(order) {
@@ -3291,10 +3353,6 @@ function loadAdminOrders() {
             });
             
             renderAdminOrdersList(uniqueOrders);
-        })
-        .catch(function(err) {
-            console.error('Ошибка:', err);
-            container.innerHTML = '<p style="color:var(--text-muted);">Ошибка загрузки</p>';
         });
 }
 
@@ -3443,11 +3501,24 @@ function loadUserOrders() {
     
     var userIdentifier = user.username || user.first_name || user.id.toString();
     
-    // Загружаем все заказы, кроме отмененных
+    // Используем кэширование
+    var cacheKey = 'user_orders_' + userIdentifier;
+    var cachedOrders = sessionStorage.getItem(cacheKey);
+    
+    if (cachedOrders) {
+        try {
+            var parsed = JSON.parse(cachedOrders);
+            if (parsed.timestamp && (Date.now() - parsed.timestamp < 30000)) {
+                renderUserOrdersList(parsed.data);
+                return;
+            }
+        } catch(e) {}
+    }
+    
     supabase.from('orders')
         .select('*')
         .or('user_username.eq.' + userIdentifier + ',user_name.eq.' + userIdentifier)
-        .neq('status', 'cancelled') // Исключаем отмененные
+        .neq('status', 'cancelled')
         .order('timestamp', { ascending: false })
         .then(function(res) {
             if (res.error) {
@@ -3456,7 +3527,15 @@ function loadUserOrders() {
                 return;
             }
             
-            renderUserOrdersList(res.data || []);
+            var orders = res.data || [];
+            
+            // Кэшируем
+            sessionStorage.setItem(cacheKey, JSON.stringify({
+                data: orders,
+                timestamp: Date.now()
+            }));
+            
+            renderUserOrdersList(orders);
         })
         .catch(function(err) {
             console.error('Ошибка:', err);
@@ -5753,11 +5832,13 @@ function markPaymentShown(orderId) {
             console.log('🚀 Начало инициализации...');
             
             try {
-                // Создаем фоновые элементы
+                // Создаем фоновые элементы (только если их нет)
                 console.log('✨ Создание фоновых элементов...');
-                createStars();
-                createAsteroids();
-                createLoadingStars();
+                if (!document.querySelector('.star')) {
+                    createStars();
+                    createAsteroids();
+                    createLoadingStars();
+                }
                 console.log('✅ Фон создан');
                 
                 // Настраиваем интерфейс
@@ -5809,25 +5890,28 @@ function markPaymentShown(orderId) {
                 // ================================================================
                 
                 // Автоматическая проверка просроченных заказов (сразу)
+                console.log('🔄 Проверка просроченных заказов...');
                 autoCancelExpiredOrders();
                 
                 // Автоматическое удаление старых готовых заказов (сразу)
+                console.log('🗑 Проверка старых готовых заказов...');
                 autoDeleteOldReadyOrders();
                 
                 // Автоматическая проверка платежей (через 2 секунды)
+                console.log('💳 Запуск автоматической проверки платежей...');
                 setTimeout(function() {
                     autoCheckPendingPayments();
                 }, 2000);
                 
-                // Периодическая проверка платежей каждые 10 секунд
+                // Периодическая проверка платежей каждые 15 секунд
                 setInterval(function() {
                     autoCheckPendingPayments();
-                }, 10000);
+                }, 15000);
                 
-                // Проверка просроченных заказов каждые 30 секунд
+                // Проверка просроченных заказов каждую минуту
                 setInterval(function() {
                     autoCancelExpiredOrders();
-                }, 30000);
+                }, 60000);
                 
                 // Проверка старых готовых заказов каждый час
                 setInterval(function() {
@@ -5868,6 +5952,21 @@ function markPaymentShown(orderId) {
                 
                 alert('Ошибка при загрузке: ' + err.message);
             }
+        }
+
+        // ================================================================
+        // ФУНКЦИЯ DEBOUNCE
+        // ================================================================
+        function debounce(func, wait) {
+            var timeout;
+            return function() {
+                var context = this;
+                var args = arguments;
+                clearTimeout(timeout);
+                timeout = setTimeout(function() {
+                    func.apply(context, args);
+                }, wait);
+            };
         }
 
         // ================================================================
