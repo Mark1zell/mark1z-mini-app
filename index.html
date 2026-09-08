@@ -3269,6 +3269,7 @@ function loadAdminOrders() {
     supabase.from('orders')
         .select('*')
         .not('status', 'eq', 'cancelled')
+        .not('status', 'eq', 'payment_canceled')
         .order('timestamp', { ascending: false })
         .then(function(res) {
             if (res.error) {
@@ -3279,23 +3280,21 @@ function loadAdminOrders() {
             
             var orders = res.data || [];
             
-            // Проверяем, есть ли готовые заказы
-            var readyOrders = orders.filter(function(o) { return o.status === 'ready'; });
+            // Убираем дубликаты (если есть)
+            var uniqueOrders = [];
+            var seenIds = {};
+            orders.forEach(function(order) {
+                if (!seenIds[order.id]) {
+                    seenIds[order.id] = true;
+                    uniqueOrders.push(order);
+                }
+            });
             
-            // Кнопка удаления готовых заказов
-            var html = '';
-            if (readyOrders.length > 0) {
-                html += `
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
-                        <p style="color:var(--text-muted);font-size:13px;">Готовых заказов: ${readyOrders.length}</p>
-                        <button class="btn btn-sm" onclick="clearReadyOrders()" style="background:rgba(16,185,129,0.3);">
-                            🗑️ Удалить готовые заказы
-                        </button>
-                    </div>
-                `;
-            }
-            
-            renderAdminOrdersList(orders);
+            renderAdminOrdersList(uniqueOrders);
+        })
+        .catch(function(err) {
+            console.error('Ошибка:', err);
+            container.innerHTML = '<p style="color:var(--text-muted);">Ошибка загрузки</p>';
         });
 }
 
@@ -3359,10 +3358,26 @@ function renderAdminOrdersList(orders) {
     var container = document.getElementById('adminOrdersList');
     if (!container) return;
     
+    if (!orders || orders.length === 0) {
+        container.innerHTML = `
+            <div style="text-align:center;padding:30px;background:rgba(255,255,255,0.03);border-radius:12px;">
+                <p style="font-size:48px;margin-bottom:10px;">📭</p>
+                <p style="color:var(--text-muted);">Нет заказов</p>
+            </div>
+        `;
+        return;
+    }
+    
     var html = '<div style="display:flex;flex-direction:column;gap:12px;">';
     
     orders.forEach(function(order) {
         var statusInfo = getStatusInfo(order.status);
+        var options = [];
+        try {
+            options = order.options ? JSON.parse(order.options) : [];
+        } catch(e) {
+            options = [];
+        }
         
         html += `
             <div onclick="viewOrderDetails(${order.id})" style="
@@ -3373,10 +3388,22 @@ function renderAdminOrdersList(orders) {
                 cursor:pointer;
                 transition:border-color 0.2s;
                 margin-bottom:10px;
-            ">
+            " onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='${statusInfo.borderColor}'">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;">
                     <div style="flex:1;">
                         <h4 style="font-size:16px;font-weight:600;margin-bottom:8px;">${order.service}</h4>
+                        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
+                            ${options.map(function(o) {
+                                return `<span style="
+                                    background:rgba(124,58,237,0.2);
+                                    border:1px solid rgba(124,58,237,0.3);
+                                    padding:4px 10px;
+                                    border-radius:12px;
+                                    font-size:12px;
+                                    color:#ddd6fe;
+                                ">${o.name} ×${o.quantity}</span>`;
+                            }).join('')}
+                        </div>
                         <p style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">
                             От: ${order.user_name || 'Пользователь'}
                             ${order.user_username ? '<a href="https://t.me/' + order.user_username + '" target="_blank" onclick="event.stopPropagation();" style="color:var(--accent);text-decoration:none;">@' + order.user_username + '</a>' : ''}
@@ -3626,6 +3653,18 @@ function getStatusInfo(status) {
         },
         'cancelled': {
             label: 'Отменен',
+            bgColor: 'rgba(128,128,128,0.2)',
+            textColor: '#808080',
+            borderColor: 'rgba(128,128,128,0.4)'
+        },
+        'payment_canceled': {
+            label: 'Платеж отменен',
+            bgColor: 'rgba(128,128,128,0.2)',
+            textColor: '#808080',
+            borderColor: 'rgba(128,128,128,0.4)'
+        },
+        'refunded': {
+            label: 'Возврат',
             bgColor: 'rgba(128,128,128,0.2)',
             textColor: '#808080',
             borderColor: 'rgba(128,128,128,0.4)'
