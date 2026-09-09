@@ -740,14 +740,15 @@ function spinCase() {
         } else {
             var discount = parseInt(caseItems[chosenIndex]);
             if (!window.isAdmin) {
-                applyDiscount(discount);
-                localStorage.setItem('lastSpinTime', Date.now());
-                localStorage.setItem('lastSpinDiscount', discount);
-                localStorage.removeItem('discountUsed');
-                lastSpinTime = Date.now();
-                lastSpinDiscount = discount;
-                alert('🎉 Поздравляем! Ваша скидка: ' + discount + '%');
-            } else {
+                if (!window.isAdmin) {
+    applyDiscount(discount);
+    localStorage.setItem('lastSpinTime', Date.now());
+    localStorage.setItem('lastSpinDiscount', discount);
+    localStorage.removeItem('discountUsed'); // Убираем метку
+    lastSpinTime = Date.now();
+    lastSpinDiscount = discount;
+    alert('🎉 Поздравляем! Ваша скидка: ' + discount + '%');
+} else {
                 alert('👑 Вы админ, скидка не применена. Выпало: ' + discount + '%');
             }
             
@@ -2187,7 +2188,12 @@ function loadAbout() {
         // ================================================================
         // КОНСТРУКТОР ЗАКАЗА
         // ================================================================
-function openOrderConstructor(serviceId) {
+    function openOrderConstructor(serviceId) {
+    var discountUsed = localStorage.getItem('discountUsed');
+    if (discountUsed === 'true') {
+        currentDiscount = 0;
+        lastSpinDiscount = 0;
+    }
     var service = servicesData.find(function(s) { return s.id == serviceId; });
     if (!service) return;
 
@@ -2543,7 +2549,12 @@ function updateOrderTotal() {
             });
         }
 
-function submitOrderWithOptions() {
+    function submitOrderWithOptions() {
+    var discountUsed = localStorage.getItem('discountUsed');
+    if (discountUsed === 'true') {
+        currentDiscount = 0;
+        lastSpinDiscount = 0;
+    }
     var selectedOptions = [];
     var missingRequired = [];
     
@@ -2637,8 +2648,6 @@ function showPaymentOptions(orderId, total, selectedOptions) {
     var modal = document.getElementById('modalOverlay');
     var content = document.getElementById('modalContent');
     
-    // Конвертация рублей в Stars
-    // 1 Star ≈ 1.3 рубля (примерный курс)
     var starsAmount = Math.ceil(total / 1.3);
     
     content.innerHTML = `
@@ -2648,7 +2657,6 @@ function showPaymentOptions(orderId, total, selectedOptions) {
             <p style="font-size:28px;font-weight:700;color:#c084fc;margin-bottom:25px;">${total} ₽</p>
             
             ${total > 0 ? `
-                <!-- Оплата звёздами -->
                 <div onclick="payByStars(${orderId}, ${total}, ${starsAmount})" style="
                     background:linear-gradient(135deg, rgba(124,58,237,0.3), rgba(190,24,93,0.3));
                     border:2px solid rgba(124,58,237,0.5);
@@ -2656,14 +2664,12 @@ function showPaymentOptions(orderId, total, selectedOptions) {
                     padding:18px;
                     cursor:pointer;
                     margin-bottom:12px;
-                    transition:transform 0.2s;
                 ">
                     <div style="font-size:32px;margin-bottom:8px;">⭐</div>
                     <div style="font-size:17px;font-weight:700;margin-bottom:3px;">Оплатить звёздами</div>
                     <div style="font-size:13px;color:var(--text-muted);">${starsAmount} Telegram Stars</div>
                 </div>
                 
-                <!-- Оплата картой -->
                 <div onclick="payByKassa(${orderId}, ${total})" style="
                     background:linear-gradient(135deg, rgba(16,185,129,0.2), rgba(5,150,105,0.2));
                     border:2px solid rgba(16,185,129,0.5);
@@ -2671,7 +2677,6 @@ function showPaymentOptions(orderId, total, selectedOptions) {
                     padding:18px;
                     cursor:pointer;
                     margin-bottom:12px;
-                    transition:transform 0.2s;
                 ">
                     <div style="font-size:32px;margin-bottom:8px;">💳</div>
                     <div style="font-size:17px;font-weight:700;margin-bottom:3px;">Оплатить картой</div>
@@ -2691,7 +2696,7 @@ function showPaymentOptions(orderId, total, selectedOptions) {
                 </div>
             `}
             
-            <button class="btn" onclick="closeModal()" style="background:rgba(255,255,255,0.1);width:100%;margin-top:10px;">Закрыть</button>
+            <button class="btn" onclick="closeModalAndResetDiscount(${orderId})" style="background:rgba(255,255,255,0.1);width:100%;margin-top:10px;">Закрыть</button>
         </div>
     `;
     modal.style.display = 'flex';
@@ -2706,7 +2711,7 @@ function payByStars(orderId, total, starsAmount) {
     var tg = window.Telegram?.WebApp || window.TG || window.tg;
     
     if (!tg || !tg.showInvoice) {
-        alert('Оплата звёздами недоступна. Откройте через бота.');
+        alert('Оплата звёздами недоступна.');
         return;
     }
     
@@ -2719,25 +2724,20 @@ function payByStars(orderId, total, starsAmount) {
             prices: [{ label: 'Дизайн услуга', amount: starsAmount }]
         }, function(success) {
             if (success) {
-                supabase.from('orders').update({ status: 'paid_stars' }).eq('id', orderId)
+                supabase.from('orders')
+                    .update({ status: 'paid_stars', paid_at: new Date().toISOString() })
+                    .eq('id', orderId)
                     .then(function() {
-                        // СБРАСЫВАЕМ СКИДКУ ПОСЛЕ ОПЛАТЫ ЗВЕЗДАМИ
                         resetDiscountAfterPayment();
-                        
+                        alert('✅ Оплата прошла! Скидка сброшена.');
                         renderOrdersSection();
-                        alert('✅ Оплата звёздами прошла успешно!');
-                    })
-                    .catch(function(err) {
-                        console.error('Ошибка обновления статуса:', err);
-                        alert('✅ Оплата прошла, но статус не обновлен');
                     });
             } else {
                 alert('❌ Оплата отменена');
             }
         });
     } catch(e) {
-        console.error('Ошибка showInvoice:', e);
-        alert('Ошибка оплаты: ' + e.message);
+        alert('Ошибка: ' + e.message);
     }
 }
 
@@ -3150,8 +3150,6 @@ function processStarsPayment(tg, orderId, total, starsAmount) {
 
 function payByKassa(orderId, total) {
     console.log('💳 Начало оплаты картой...');
-    console.log('Order ID:', orderId);
-    console.log('Amount:', total);
     
     closeModal();
     
@@ -3181,52 +3179,32 @@ function payByKassa(orderId, total) {
             description: 'Оплата заказа #' + orderId
         })
     })
-    .then(function(res) {
-        return res.json();
-    })
-    .then(function(data) {
-        console.log('✅ Ответ от ЮKassa:', JSON.stringify(data, null, 2));
-        
-        if (data.error) {
-            alert('Ошибка: ' + data.error);
-            closeModal();
-            return;
-        }
+    .then(res => res.json())
+    .then(data => {
+        console.log('✅ Ответ от ЮKassa:', data);
         
         if (data.confirmation && data.confirmation.confirmation_url) {
             var paymentUrl = data.confirmation.confirmation_url;
             var paymentId = data.id;
             
-            console.log('🔗 URL оплаты:', paymentUrl);
-            console.log('💳 Payment ID:', paymentId);
-            
-            // СОХРАНЯЕМ payment_id В БАЗУ ДАННЫХ
             if (paymentId) {
                 supabase.from('orders')
-                    .update({ 
-                        payment_id: paymentId,
-                        status: 'pending_payment'
-                    })
+                    .update({ payment_id: paymentId })
                     .eq('id', orderId)
-                    .then(function(updateRes) {
-                        if (updateRes.error) {
-                            console.error('❌ Ошибка сохранения payment_id:', updateRes.error);
-                        } else {
-                            console.log('✅ payment_id сохранен:', paymentId);
-                        }
+                    .then(function() {
+                        console.log('✅ payment_id сохранен');
                     });
             }
             
-            // Показываем ссылку на оплату
             content.innerHTML = `
                 <div style="text-align:center;padding:20px;">
                     <h3 style="margin-bottom:15px;">💳 Оплата заказа #${orderId}</h3>
                     <p style="margin-bottom:20px;">Сумма: <strong style="color:#c084fc;">${total} ₽</strong></p>
-                    <p style="color:var(--text-muted);font-size:14px;margin-bottom:20px;">
-                        Нажмите кнопку ниже, чтобы перейти к оплате
-                    </p>
                     <button class="btn" onclick="window.open('${paymentUrl}', '_blank')" style="width:100%;margin-bottom:10px;">
                         💳 Перейти к оплате
+                    </button>
+                    <button class="btn" onclick="checkPaymentAndResetDiscount('${paymentId}', ${orderId})" style="width:100%;margin-bottom:10px;background:rgba(16,185,129,0.2);">
+                        ✅ Я оплатил
                     </button>
                     <button class="btn" onclick="closeModal()" style="width:100%;background:rgba(255,255,255,0.1);">
                         Закрыть
@@ -3235,13 +3213,11 @@ function payByKassa(orderId, total) {
             `;
             modal.style.display = 'flex';
             
-            // Открываем оплату
             try {
                 window.open(paymentUrl, '_blank');
             } catch(e) {
                 console.log('Не удалось открыть автоматически');
             }
-            
         } else {
             alert('Ошибка: не получен URL для оплаты');
             closeModal();
@@ -3251,6 +3227,43 @@ function payByKassa(orderId, total) {
         console.error('❌ Ошибка:', err);
         alert('Ошибка: ' + err.message);
         closeModal();
+    });
+}
+
+        function checkPaymentAndResetDiscount(paymentId, orderId) {
+    console.log('🔍 Проверка оплаты...');
+    
+    var functionUrl = 'https://lcgbpwowppwwpjjlphod.supabase.co/functions/v1/check-payment';
+    var supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZ2Jwd293cHB3d3BqamxwaG9kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NDAwNTMsImV4cCI6MjEwNDIxNjA1M30.95VPot7saWmlgv1IzBop3E4x-ZxSc8HepqKdDLJa7JI';
+    
+    fetch(functionUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + supabaseKey,
+            'apikey': supabaseKey
+        },
+        body: JSON.stringify({ paymentId: paymentId })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'succeeded' || data.paid === true) {
+            supabase.from('orders')
+                .update({ status: 'paid_card', paid_at: new Date().toISOString() })
+                .eq('id', orderId)
+                .then(function() {
+                    resetDiscountAfterPayment();
+                    closeModal();
+                    alert('✅ Оплата подтверждена! Скидка сброшена.');
+                    renderOrdersSection();
+                });
+        } else {
+            alert('⏳ Оплата не обнаружена. Попробуйте снова.');
+        }
+    })
+    .catch(function(err) {
+        console.error('Ошибка:', err);
+        alert('Ошибка проверки: ' + err.message);
     });
 }
 
@@ -3298,6 +3311,49 @@ function resetDiscountAfterPayment() {
     
     // Сбрасываем глобальные переменные
     lastSpinDiscount = 0;
+    window.currentOrderFinalTotal = 0;
+    window.currentOrderOriginalTotal = 0;
+    window.freeOptionName = null;
+    
+    console.log('✅ Скидка сброшена');
+}
+
+        function closeModalAndResetDiscount(orderId) {
+    console.log('🔄 Закрытие и сброс скидки...');
+    
+    // Сбрасываем скидку
+    resetDiscountAfterPayment();
+    
+    // Закрываем модальное окно
+    closeModal();
+    
+    // Если это бесплатный заказ - обновляем статус
+    if (orderId) {
+        supabase.from('orders')
+            .update({ status: 'paid_card', paid_at: new Date().toISOString() })
+            .eq('id', orderId)
+            .then(function() {
+                console.log('✅ Заказ #' + orderId + ' отмечен как оплаченный (бесплатный)');
+            });
+    }
+    
+    // Обновляем интерфейс
+    renderOrdersSection();
+}
+
+function resetDiscountAfterPayment() {
+    console.log('🔄 Сброс скидки...');
+    
+    // Сбрасываем глобальные переменные
+    currentDiscount = 0;
+    lastSpinDiscount = 0;
+    
+    // Очищаем localStorage
+    localStorage.removeItem('lastSpinDiscount');
+    localStorage.removeItem('lastSpinTime');
+    localStorage.setItem('discountUsed', 'true');
+    
+    // Сбрасываем другие переменные
     window.currentOrderFinalTotal = 0;
     window.currentOrderOriginalTotal = 0;
     window.freeOptionName = null;
