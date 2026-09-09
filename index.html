@@ -3543,7 +3543,7 @@ function renderAdminOrdersList(orders) {
                 cursor:pointer;
                 transition:border-color 0.2s;
                 margin-bottom:10px;
-            " onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='${statusInfo.borderColor}'">
+            ">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;">
                     <div style="flex:1;">
                         <h4 style="font-size:16px;font-weight:600;margin-bottom:8px;">${order.service}</h4>
@@ -3561,7 +3561,7 @@ function renderAdminOrdersList(orders) {
                         </div>
                         <p style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">
                             От: ${order.user_name || 'Пользователь'}
-                            ${order.user_username ? '<a href="https://t.me/' + order.user_username + '" target="_blank" onclick="event.stopPropagation();" style="color:var(--accent);text-decoration:none;">@' + order.user_username + '</a>' : ''}
+                            ${order.user_username ? '<span style="color:var(--accent);">@' + order.user_username + '</span>' : ''}
                         </p>
                         <p style="font-size:11px;color:var(--text-muted);">${order.time || ''}</p>
                     </div>
@@ -3697,13 +3697,15 @@ function renderUserOrdersList(orders) {
         }
         
         html += `
-            <div style="
-                background:rgba(15,7,25,0.9);
-                border:1px solid ${statusInfo.borderColor};
-                border-radius:16px;
-                padding:20px;
-                margin-bottom:10px;
-            ">
+            html += `
+    <div onclick="viewUserOrderDetails(${order.id})" style="
+        background:rgba(15,7,25,0.9);
+        border:1px solid ${statusInfo.borderColor};
+        border-radius:16px;
+        padding:20px;
+        margin-bottom:10px;
+        cursor:pointer;
+    ">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:15px;">
                     <div>
                         <h4 style="font-size:18px;font-weight:600;margin-bottom:5px;">${order.service}</h4>
@@ -4155,6 +4157,8 @@ function switchAdminMode(mode) {
         }
 
 function viewOrderDetails(orderId) {
+    console.log('📋 Открытие деталей заказа #' + orderId);
+    
     supabase.from('orders').select('*').eq('id', orderId).single()
         .then(function(res) {
             if (res.error || !res.data) {
@@ -4174,8 +4178,6 @@ function viewOrderDetails(orderId) {
             } catch(e) {
                 options = [];
             }
-            
-            var statusInfo = getStatusInfo(order.status);
             
             var optionsHtml = options.map(function(o) {
                 return `
@@ -4279,6 +4281,7 @@ function viewOrderDetails(orderId) {
                         </div>
                     ` : ''}
                     
+                    ${window.isAdmin ? `
                     <div style="margin-bottom:20px;">
                         <div style="font-size:14px;color:var(--text-muted);margin-bottom:8px;">📊 Статус заказа:</div>
                         <div style="display:flex;gap:10px;flex-wrap:wrap;">
@@ -4299,9 +4302,107 @@ function viewOrderDetails(orderId) {
                             🗑️ Удалить заказ
                         </button>
                     </div>
+                    ` : ''}
                 </div>
             `;
             modal.style.display = 'flex';
+        })
+        .catch(function(err) {
+            console.error('Ошибка загрузки заказа:', err);
+            alert('Ошибка загрузки заказа');
+        });
+}
+
+// ВОТ СЮДА ДОБАВЬТЕ viewUserOrderDetails
+function viewUserOrderDetails(orderId) {
+    console.log('📋 Просмотр заказа #' + orderId);
+    
+    supabase.from('orders').select('*').eq('id', orderId).single()
+        .then(function(res) {
+            if (res.error || !res.data) {
+                alert('Заказ не найден');
+                return;
+            }
+            
+            var order = res.data;
+            var modal = document.getElementById('modalOverlay');
+            var content = document.getElementById('modalContent');
+            
+            var options = [];
+            try {
+                options = order.options ? JSON.parse(order.options) : [];
+            } catch(e) {
+                options = [];
+            }
+            
+            var statusMap = {
+                'pending_payment': '⏳ Ожидает оплаты',
+                'paid_card': '💳 Оплачен',
+                'not_started': '🔴 Дизайнер ещё не приступил',
+                'in_progress': '🟡 Дизайнер приступил к вашей работе',
+                'ready': '✅ Работа готова!',
+                'cancelled': '❌ Отменен'
+            };
+            
+            var optionsHtml = options.map(function(o) {
+                return `
+                    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+                        <span>${o.name} ×${o.quantity}</span>
+                        <span>${o.total} ₽</span>
+                    </div>
+                `;
+            }).join('');
+            
+            content.innerHTML = `
+                <div style="max-height:80vh;overflow-y:auto;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+                        <h3>📋 Заказ #${order.id}</h3>
+                        <button class="btn" onclick="closeModal()">×</button>
+                    </div>
+                    
+                    <p><strong>🛠️ Услуга:</strong> ${order.service}</p>
+                    <p><strong>📊 Статус:</strong> ${statusMap[order.status] || order.status}</p>
+                    <p><strong>💰 Сумма:</strong> ${order.total} ₽</p>
+                    <p><strong>📅 Дата:</strong> ${order.time || 'Не указана'}</p>
+                    
+                    ${options.length > 0 ? `
+                        <div style="margin-top:15px;">
+                            <strong>📦 Опции:</strong>
+                            ${optionsHtml}
+                        </div>
+                    ` : ''}
+                    
+                    ${order.description ? `
+                        <div style="margin-top:15px;">
+                            <strong>📝 Ваше ТЗ:</strong>
+                            <div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:8px;margin-top:5px;white-space:pre-wrap;">${order.description}</div>
+                        </div>
+                    ` : ''}
+                    
+                    ${order.reference_urls && order.reference_urls.length > 0 ? `
+                        <div style="margin-top:15px;">
+                            <strong>📎 Референсы:</strong>
+                            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">
+                                ${order.reference_urls.map(function(url) {
+                                    return `<img src="${url}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;cursor:pointer;" onclick="viewImage('${url}', 'Референс', false)">`;
+                                }).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    ${order.work_message ? `
+                        <div style="margin-top:15px;">
+                            <strong>💬 Сообщение от дизайнера:</strong>
+                            <div style="background:rgba(16,185,129,0.1);padding:12px;border-radius:8px;margin-top:5px;">${order.work_message}</div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            modal.style.display = 'flex';
+        })
+        .catch(function(err) {
+            console.error('Ошибка:', err);
+            alert('Ошибка загрузки заказа');
         });
 }
 
