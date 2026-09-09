@@ -4112,39 +4112,6 @@ function switchAdminMode(mode) {
     renderOrdersSection();
 }
 
-// Обновите switchUserMode
-function switchUserMode(mode) {
-    userOrdersMode = mode;
-    renderOrdersSection();
-}
-
-        function renderServicesForAdmin() {
-            var html = '<div class="order-list" id="servicesList" style="display:flex; flex-direction:column; gap:12px;">';
-            servicesData.forEach(function(s) {
-                var optionsCount = serviceOptionsData.filter(function(o) { return o.service_id == s.id; }).length;
-                html += `
-                    <div class="order-item admin-grab" data-id="${s.id}" style="cursor:grab;" onclick="openServiceOptionsManager(${s.id})">
-                        <div class="order-info">
-                            <h4>${s.emoji} ${s.name}</h4>
-                            <p>${s.description || ''}</p>
-                            <p style="color:var(--text-muted); font-size:12px;">
-                                ${optionsCount} опций
-                                <span style="color:var(--accent); margin-left:10px;">⚙️ Управлять опциями</span>
-                            </p>
-                        </div>
-                        <div style="display:flex; gap:5px; align-items:center;" onclick="event.stopPropagation();">
-                            <button class="btn btn-sm" onclick="editService(${s.id})">✏️</button>
-                            <button class="btn btn-sm" onclick="deleteService(${s.id})">🗑️</button>
-                        </div>
-                    </div>
-                `;
-            });
-            html += '</div>';
-            html += '<div style="margin-top:15px;"><button class="btn" onclick="addService()">➕ Добавить услугу</button></div>';
-            html += '<div style="margin-top:10px;"><button class="btn" onclick="clearOrders()" style="background:rgba(255,0,0,0.3);">🗑️ Очистить все заказы</button></div>';
-            return html;
-        }
-
         function setupSortableForServices() {
             var list = document.getElementById('servicesList');
             if (!list || !window.isAdmin) return;
