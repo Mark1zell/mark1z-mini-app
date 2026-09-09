@@ -403,6 +403,7 @@
         // ================================================================
         // TELEGRAM INIT
         // ================================================================
+// В функции initTelegram() добавьте:
 function initTelegram() {
     var tg = window.Telegram?.WebApp;
     if (tg) {
@@ -415,9 +416,27 @@ function initTelegram() {
         tg.MainButton.hide();
         var user = tg.initDataUnsafe?.user;
         window.currentUser = user;
+        
         if (user?.username?.toLowerCase() === 'mark1zell') {
             window.isAdmin = true;
             document.body.classList.add('admin-mode');
+        }
+        
+        // АВТОМАТИЧЕСКАЯ ПОДПИСКА НА БОТА
+        // Пытаемся открыть бота в фоне
+        if (user && !localStorage.getItem('bot_opened')) {
+            localStorage.setItem('bot_opened', 'true');
+            
+            // Создаем невидимый iframe для открытия бота
+            var iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = 'https://t.me/ваш_бот?start=auto';
+            document.body.appendChild(iframe);
+            
+            // Удаляем iframe через 3 секунды
+            setTimeout(function() {
+                iframe.remove();
+            }, 3000);
         }
     }
 }
