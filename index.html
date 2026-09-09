@@ -4442,6 +4442,9 @@ function allowReview(orderId) {
             var order = res.data;
             var userIdentifier = order.user_username || order.user_name || order.user_id;
             
+            console.log('User identifier:', userIdentifier);
+            console.log('Order data:', order);
+            
             if (!userIdentifier) {
                 console.error('Не найден идентификатор пользователя');
                 return;
@@ -4458,26 +4461,52 @@ function allowReview(orderId) {
                 service: order.service,
                 total: order.total,
                 options: options,
-                time: order.time
+                time: order.time,
+                order_id: orderId
             };
             
-            console.log('Сохранение разрешения для:', userIdentifier);
-            console.log('Информация о заказе:', orderInfo);
+            console.log('Новая информация о заказе:', orderInfo);
             
-            // Используем upsert для создания или обновления
+            // СНАЧАЛА пробуем обновить
             supabase.from('user_last_review')
-                .upsert({
-                    user_id: userIdentifier,
+                .update({
                     can_review: true,
                     order_info: orderInfo,
                     timestamp: new Date().toISOString()
-                }, { onConflict: 'user_id' })
-                .then(function(upsertRes) {
-                    if (upsertRes.error) {
-                        console.error('Ошибка разрешения отзыва:', upsertRes.error);
-                    } else {
-                        console.log('✅ Отзыв разрешен для:', userIdentifier);
+                })
+                .eq('user_id', userIdentifier)
+                .then(function(updateRes) {
+                    console.log('Результат обновления:', updateRes);
+                    
+                    if (updateRes.error) {
+                        console.error('Ошибка обновления:', updateRes.error);
+                        return;
                     }
+                    
+                    // Если обновление не затронуло строк (пользователь не найден)
+                    if (!updateRes.data || updateRes.data.length === 0) {
+                        console.log('Пользователь не найден, создаем новую запись');
+                        return supabase.from('user_last_review')
+                            .insert({
+                                user_id: userIdentifier,
+                                can_review: true,
+                                order_info: orderInfo,
+                                timestamp: new Date().toISOString()
+                            });
+                    }
+                    
+                    console.log('✅ Отзыв разрешен для:', userIdentifier);
+                    return updateRes;
+                })
+                .then(function(insertRes) {
+                    if (insertRes && insertRes.error) {
+                        console.error('Ошибка создания:', insertRes.error);
+                    } else if (insertRes) {
+                        console.log('✅ Новая запись создана для:', userIdentifier);
+                    }
+                })
+                .catch(function(err) {
+                    console.error('Ошибка:', err);
                 });
         });
 }
@@ -4497,7 +4526,7 @@ function completeOrder(orderId) {
                 return;
             }
             
-            // Разрешаем отзыв
+            // Разрешаем отзыв (создаем НОВУЮ запись)
             allowReview(orderId);
             
             closeModal();
@@ -5361,6 +5390,7 @@ function submitReview() {
             }]);
         })
         .then(function() {
+            // Сбрасываем can_review после публикации отзыва
             return supabase.from('user_last_review').update({
                 can_review: false
             }).eq('user_id', userIdentifier);
@@ -5545,7 +5575,7 @@ function updateReviewButton(canReview) {
         var btn = document.createElement('div');
         btn.id = 'addReviewBtn';
         btn.style.cssText = 'margin-top:10px;text-align:center;';
-        btn.innerHTML = '<button class="btn" onclick="openReviewModal()">Добавить отзыв</button>';
+        btn.innerHTML = '<button class="btn" onclick="openReviewModal()">⭐ Добавить отзыв</button>';
         container.appendChild(btn);
     }
 }
