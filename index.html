@@ -3298,24 +3298,6 @@ function resetDiscount() {
 }
 
         // Функция сброса скидки после успешной оплаты
-function resetDiscountAfterPayment() {
-    console.log('🔄 Сброс скидки после оплаты...');
-    
-    // Сбрасываем глобальную переменную
-    currentDiscount = 0;
-    
-    // Очищаем localStorage
-    localStorage.removeItem('lastSpinDiscount');
-    localStorage.setItem('discountUsed', 'true');
-    
-    // Сбрасываем глобальные переменные
-    lastSpinDiscount = 0;
-    window.currentOrderFinalTotal = 0;
-    window.currentOrderOriginalTotal = 0;
-    window.freeOptionName = null;
-    
-    console.log('✅ Скидка сброшена');
-}
 
         function closeModalAndResetDiscount(orderId) {
     console.log('🔄 Закрытие и сброс скидки...');
