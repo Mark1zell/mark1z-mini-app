@@ -3297,6 +3297,19 @@ function resetDiscount() {
     window.freeOptionName = null;
 }
 
+        function resetDiscountAfterPayment() {
+    console.log('🔄 Сброс скидки...');
+    currentDiscount = 0;
+    lastSpinDiscount = 0;
+    localStorage.removeItem('lastSpinDiscount');
+    localStorage.removeItem('lastSpinTime');
+    localStorage.setItem('discountUsed', 'true');
+    window.currentOrderFinalTotal = 0;
+    window.currentOrderOriginalTotal = 0;
+    window.freeOptionName = null;
+    console.log('✅ Скидка сброшена');
+}
+
         // Функция сброса скидки после успешной оплаты
 
         function closeModalAndResetDiscount(orderId) {
@@ -4145,85 +4158,6 @@ function switchUserMode(mode) {
                     updateOrder('services', items);
                 }
             });
-        }
-
-        function switchAdminMode(mode) {
-            adminOrdersMode = mode;
-            renderOrdersSection();
-        }
-
-        function renderOrdersList(orders) {
-            var container = document.getElementById('adminOrdersList');
-            if (!container) return;
-            
-            var html = '';
-            if (!orders || orders.length === 0) {
-                html = `
-                    <div style="text-align:center;padding:30px;background:rgba(255,255,255,0.03);border-radius:12px;">
-                        <p style="font-size:48px;margin-bottom:10px;">📭</p>
-                        <p style="color:var(--text-muted);">Нет заказов</p>
-                    </div>
-                `;
-            } else {
-                html = '<div style="display:flex;flex-direction:column;gap:12px;">';
-                orders.forEach(function(order) {
-                    var userName = order.user_name || 'Пользователь';
-                    var userUsername = order.user_username || null;
-                    var options = [];
-                    try {
-                        options = order.options ? JSON.parse(order.options) : [];
-                    } catch(e) {
-                        options = [];
-                    }
-                    
-                    html += `
-                        <div onclick="viewOrderDetails(${order.id})" style="
-                            background:rgba(15,7,25,0.8);
-                            border:1px solid var(--card-border);
-                            border-radius:16px;
-                            padding:16px;
-                            cursor:pointer;
-                            transition:border-color 0.2s;
-                            margin-bottom:10px;
-                        " onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--card-border)'">
-                            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-                                <div style="flex:1;">
-                                    <h4 style="font-size:16px;font-weight:600;margin-bottom:8px;">${order.service}</h4>
-                                    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
-                                        ${options.map(function(o) {
-                                            return `<span style="
-                                                background:rgba(124,58,237,0.2);
-                                                border:1px solid rgba(124,58,237,0.3);
-                                                padding:4px 10px;
-                                                border-radius:12px;
-                                                font-size:12px;
-                                                color:#ddd6fe;
-                                            ">${o.name} ×${o.quantity}</span>`;
-                                        }).join('')}
-                                    </div>
-                                    <p style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">
-                                        От: ${userName}
-                                        ${userUsername ? '<a href="https://t.me/' + userUsername + '" target="_blank" onclick="event.stopPropagation();" style="color:var(--accent);text-decoration:none;">@' + userUsername + '</a>' : ''}
-                                    </p>
-                                    <p style="font-size:11px;color:var(--text-muted);">${order.time || ''}</p>
-                                </div>
-                                <div style="text-align:right;flex-shrink:0;margin-left:10px;">
-                                    <div style="font-weight:700;color:#c084fc;font-size:18px;margin-bottom:8px;">${order.total || 0} ₽</div>
-                                    <span style="
-                                        background:rgba(255,193,7,0.2);
-                                        color:#ffc107;
-                                        padding:4px 8px;
-                                        border-radius:8px;
-                                        font-size:11px;
-                                    ">В ожидании</span>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                });
-                html += '</div>';
-            }
-            container.innerHTML = html;
         }
 
 function viewOrderDetails(orderId) {
@@ -5561,6 +5495,31 @@ function updateReviewButton(canReview) {
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') e.stopPropagation();
             }, true);
         }
+
+        function autoDeleteOldReadyOrders() {
+    console.log('🔄 Проверка старых готовых заказов...');
+    
+    var fifteenDaysAgo = new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString();
+    
+    supabase.from('orders')
+        .select('*')
+        .eq('status', 'ready')
+        .lt('paid_at', fifteenDaysAgo)
+        .then(function(res) {
+            if (res.error) return;
+            
+            if (res.data && res.data.length > 0) {
+                res.data.forEach(function(order) {
+                    supabase.from('orders')
+                        .delete()
+                        .eq('id', order.id)
+                        .then(function() {
+                            console.log('✅ Старый заказ #' + order.id + ' удален');
+                        });
+                });
+            }
+        });
+}
 
         // ================================================================
         // ЗАПУСК
