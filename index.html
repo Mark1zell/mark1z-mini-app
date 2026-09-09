@@ -3335,26 +3335,6 @@ function resetDiscount() {
     renderOrdersSection();
 }
 
-function resetDiscountAfterPayment() {
-    console.log('🔄 Сброс скидки...');
-    
-    // Сбрасываем глобальные переменные
-    currentDiscount = 0;
-    lastSpinDiscount = 0;
-    
-    // Очищаем localStorage
-    localStorage.removeItem('lastSpinDiscount');
-    localStorage.removeItem('lastSpinTime');
-    localStorage.setItem('discountUsed', 'true');
-    
-    // Сбрасываем другие переменные
-    window.currentOrderFinalTotal = 0;
-    window.currentOrderOriginalTotal = 0;
-    window.freeOptionName = null;
-    
-    console.log('✅ Скидка сброшена');
-}
-
                 // ================================================================
         // РАЗДЕЛ ЗАКАЗЫ
         // ================================================================
@@ -3696,8 +3676,7 @@ function renderUserOrdersList(orders) {
             `;
         }
         
-        html += `
-            html += `
+html += `
     <div onclick="viewUserOrderDetails(${order.id})" style="
         background:rgba(15,7,25,0.9);
         border:1px solid ${statusInfo.borderColor};
@@ -4138,6 +4117,12 @@ function markAsPaidManually(orderId) {
 // Обновите switchAdminMode
 function switchAdminMode(mode) {
     adminOrdersMode = mode;
+    renderOrdersSection();
+}
+
+        // Обновите switchUserMode
+function switchUserMode(mode) {
+    userOrdersMode = mode;
     renderOrdersSection();
 }
 
