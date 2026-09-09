@@ -4391,7 +4391,6 @@ function viewUserOrderDetails(orderId) {
         });
 }
 
-// Функция обновления статуса заказа
 function updateOrderStatus(orderId, newStatus) {
     console.log('📊 Обновление статуса заказа:', orderId, newStatus);
     
@@ -4406,9 +4405,14 @@ function updateOrderStatus(orderId, newStatus) {
             
             console.log('✅ Статус обновлен');
             
-            // Если статус "ready" - разрешаем оставить отзыв
+            // Если статус "ready" - разрешаем отзыв
             if (newStatus === 'ready') {
                 allowReview(orderId);
+            }
+            
+            // Создаем уведомление
+            if (newStatus === 'ready') {
+                notifyUserOrderReady(orderId);
             }
             
             closeModal();
@@ -4425,41 +4429,83 @@ function updateOrderStatus(orderId, newStatus) {
         });
 }
 
-// Функция разрешения отзыва
 function allowReview(orderId) {
     console.log('📝 Разрешение отзыва для заказа #' + orderId);
     
     supabase.from('orders').select('*').eq('id', orderId).single()
         .then(function(res) {
-            if (res.error || !res.data) return;
+            if (res.error || !res.data) {
+                console.error('Ошибка загрузки заказа:', res.error);
+                return;
+            }
             
             var order = res.data;
             var userIdentifier = order.user_username || order.user_name || order.user_id;
             
-            if (!userIdentifier) return;
+            if (!userIdentifier) {
+                console.error('Не найден идентификатор пользователя');
+                return;
+            }
+            
+            var options = [];
+            try {
+                options = JSON.parse(order.options || '[]');
+            } catch(e) {
+                options = [];
+            }
             
             var orderInfo = {
                 service: order.service,
                 total: order.total,
-                options: JSON.parse(order.options || '[]'),
+                options: options,
                 time: order.time
             };
             
-            // Создаем или обновляем запись
+            console.log('Сохранение разрешения для:', userIdentifier);
+            console.log('Информация о заказе:', orderInfo);
+            
+            // Используем upsert для создания или обновления
             supabase.from('user_last_review')
                 .upsert({
                     user_id: userIdentifier,
                     can_review: true,
                     order_info: orderInfo,
                     timestamp: new Date().toISOString()
-                })
+                }, { onConflict: 'user_id' })
                 .then(function(upsertRes) {
                     if (upsertRes.error) {
                         console.error('Ошибка разрешения отзыва:', upsertRes.error);
                     } else {
-                        console.log('✅ Отзыв разрешен для пользователя:', userIdentifier);
+                        console.log('✅ Отзыв разрешен для:', userIdentifier);
                     }
                 });
+        });
+}
+
+function completeOrder(orderId) {
+    if (!confirm('Отметить заказ как выполненный? Пользователь сможет оставить отзыв.')) return;
+    
+    supabase.from('orders')
+        .update({ 
+            status: 'ready',
+            completed_at: new Date().toISOString()
+        })
+        .eq('id', orderId)
+        .then(function(res) {
+            if (res.error) {
+                alert('Ошибка: ' + res.error.message);
+                return;
+            }
+            
+            // Разрешаем отзыв
+            allowReview(orderId);
+            
+            closeModal();
+            alert('✅ Заказ отмечен как готовый!');
+            
+            if (window.isAdmin) {
+                loadAdminOrders();
+            }
         });
 }
 
