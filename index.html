@@ -4271,7 +4271,7 @@ function viewOrderDetails(orderId) {
                     
                     ${order.reference_urls && order.reference_urls.length > 0 ? `
                         <div style="margin-bottom:20px;">
-                            <div style="font-size:14px;color:var(--text-muted);margin-bottom:8px;">📎 Референсы:</div>
+                            <div style="font-size:14px;color:var(--text-muted);margin-bottom:8px;">📎 Референсы клиента:</div>
                             <div style="display:flex;flex-wrap:wrap;gap:10px;">
                                 ${order.reference_urls.map(function(url) {
                                     return `
@@ -4279,6 +4279,35 @@ function viewOrderDetails(orderId) {
                                              alt="референс" 
                                              style="width:80px;height:80px;object-fit:cover;border-radius:8px;cursor:pointer;border:1px solid var(--card-border);"
                                              onclick="viewImage('${url}', 'Референс', false)">
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    ${order.work_message ? `
+                        <div style="margin-bottom:20px;">
+                            <div style="font-size:14px;color:var(--text-muted);margin-bottom:8px;">💬 Сообщение дизайнера клиенту:</div>
+                            <div style="
+                                background:rgba(16,185,129,0.1);
+                                border:1px solid rgba(16,185,129,0.3);
+                                border-radius:12px;
+                                padding:16px;
+                                line-height:1.6;
+                            ">${order.work_message}</div>
+                        </div>
+                    ` : ''}
+                    
+                    ${order.work_files && order.work_files.length > 0 ? `
+                        <div style="margin-bottom:20px;">
+                            <div style="font-size:14px;color:var(--text-muted);margin-bottom:8px;">📸 Готовые работы (${order.work_files.length} шт.):</div>
+                            <div style="display:flex;flex-wrap:wrap;gap:10px;">
+                                ${order.work_files.map(function(url) {
+                                    return `
+                                        <img src="${url}" 
+                                             alt="работа" 
+                                             style="width:80px;height:80px;object-fit:cover;border-radius:8px;cursor:pointer;border:1px solid var(--card-border);"
+                                             onclick="viewImage('${url}', 'Готовая работа', true)">
                                     `;
                                 }).join('')}
                             </div>
@@ -4296,7 +4325,7 @@ function viewOrderDetails(orderId) {
                                 🟡 Готовится
                             </button>
                             <button class="btn btn-sm" onclick="updateOrderStatus(${order.id}, 'ready')" style="${order.status === 'ready' ? 'background:rgba(16,185,129,0.5);' : ''}">
-                                🟢 Готов
+                                🟢 Готов (загрузить работы)
                             </button>
                         </div>
                     </div>
@@ -5722,6 +5751,242 @@ function updateReviewButton(canReview) {
                         });
                 });
             }
+        });
+}
+
+        // Переменные для загрузки работ
+var adminWorkFiles = [];
+var adminWorkMessage = '';
+
+// Обновленная функция updateOrderStatus
+function updateOrderStatus(orderId, newStatus) {
+    console.log('📊 Обновление статуса заказа:', orderId, newStatus);
+    
+    if (newStatus === 'ready') {
+        openWorkUploadModal(orderId);
+        return;
+    }
+    
+    supabase.from('orders')
+        .update({ status: newStatus })
+        .eq('id', orderId)
+        .then(function(res) {
+            if (res.error) {
+                alert('Ошибка: ' + res.error.message);
+                return;
+            }
+            
+            closeModal();
+            alert('✅ Статус обновлен!');
+            
+            if (window.isAdmin) {
+                loadAdminOrders();
+            }
+            renderOrdersSection();
+        });
+}
+
+// Открыть модальное окно загрузки работ
+function openWorkUploadModal(orderId) {
+    adminWorkFiles = [];
+    adminWorkMessage = '';
+    
+    var modal = document.getElementById('modalOverlay');
+    var content = document.getElementById('modalContent');
+    
+    content.innerHTML = `
+        <div style="max-height:80vh;overflow-y:auto;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+                <h3>📎 Загрузка работы</h3>
+                <button class="btn" onclick="closeModal()">×</button>
+            </div>
+            
+            <p style="color:var(--text-muted);font-size:13px;margin-bottom:15px;">
+                Заказ #${orderId}. Загрузите готовую работу (до 10 фото) и напишите сообщение клиенту.
+            </p>
+            
+            <div style="margin-bottom:15px;">
+                <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:5px;">
+                    💬 Сообщение для клиента:
+                </label>
+                <textarea id="workMessage" placeholder="Напишите сообщение клиенту..." style="min-height:80px;"></textarea>
+            </div>
+            
+            <div style="margin-bottom:15px;">
+                <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:5px;">
+                    📸 Фотографии работы (до 10 шт.):
+                </label>
+                <input type="file" id="workImagesInput" accept="image/*" multiple onchange="handleAdminWorkFiles(event)">
+                <div id="workImagesPreview" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;"></div>
+            </div>
+            
+            <button class="btn" onclick="saveWorkAndMarkReady(${orderId})" style="width:100%;background:linear-gradient(135deg, #10b981, #059669);">
+                ✅ Отправить работу клиенту
+            </button>
+        </div>
+    `;
+    modal.style.display = 'flex';
+}
+
+// Обработка загрузки файлов работ
+function handleAdminWorkFiles(event) {
+    var files = event.target.files;
+    if (!files || files.length === 0) return;
+    
+    if (files.length + adminWorkFiles.length > 10) {
+        alert('Максимум 10 изображений');
+        return;
+    }
+    
+    for (var i = 0; i < files.length; i++) {
+        if (adminWorkFiles.length >= 10) break;
+        
+        var file = files[i];
+        adminWorkFiles.push(file);
+        
+        (function(fileObj, index) {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                var preview = document.getElementById('workImagesPreview');
+                if (!preview) return;
+                
+                var thumb = document.createElement('div');
+                thumb.className = 'preview-thumb';
+                thumb.innerHTML = `
+                    <img src="${e.target.result}" alt="работа">
+                    <button class="remove-btn" onclick="removeAdminWorkFile(${index})">×</button>
+                `;
+                preview.appendChild(thumb);
+            };
+            reader.readAsDataURL(fileObj);
+        })(file, adminWorkFiles.length - 1);
+    }
+    
+    event.target.value = '';
+}
+
+// Удаление файла работы
+function removeAdminWorkFile(index) {
+    adminWorkFiles.splice(index, 1);
+    
+    var preview = document.getElementById('workImagesPreview');
+    if (!preview) return;
+    preview.innerHTML = '';
+    
+    adminWorkFiles.forEach(function(file, idx) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            var thumb = document.createElement('div');
+            thumb.className = 'preview-thumb';
+            thumb.innerHTML = `
+                <img src="${e.target.result}" alt="работа">
+                <button class="remove-btn" onclick="removeAdminWorkFile(${idx})">×</button>
+            `;
+            preview.appendChild(thumb);
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+// Сохранение работы и отметка "Готов"
+function saveWorkAndMarkReady(orderId) {
+    adminWorkMessage = document.getElementById('workMessage').value.trim();
+    
+    if (!adminWorkMessage) {
+        alert('Напишите сообщение для клиента');
+        return;
+    }
+    
+    if (adminWorkFiles.length === 0) {
+        alert('Загрузите хотя бы одно фото');
+        return;
+    }
+    
+    var btn = document.querySelector('.btn[onclick="saveWorkAndMarkReady(' + orderId + ')"]');
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = '⏳ Загрузка...';
+    }
+    
+    var uploadPromises = adminWorkFiles.map(function(file) {
+        return compressImage(file, 800, 0.7).then(function(dataUrl) {
+            var blob = dataURLToBlob(dataUrl);
+            var f = new File([blob], file.name, { type: 'image/jpeg' });
+            return uploadFileToSupabase(f, 'works');
+        });
+    });
+    
+    Promise.all(uploadPromises)
+        .then(function(urls) {
+            return supabase.from('orders')
+                .update({
+                    status: 'ready',
+                    work_files: urls,
+                    work_message: adminWorkMessage,
+                    completed_at: new Date().toISOString()
+                })
+                .eq('id', orderId);
+        })
+        .then(function(res) {
+            if (res.error) {
+                alert('Ошибка: ' + res.error.message);
+                return;
+            }
+            
+            allowReviewAfterWork(orderId);
+            
+            closeModal();
+            alert('✅ Работа отправлена клиенту!');
+            
+            adminWorkFiles = [];
+            adminWorkMessage = '';
+            
+            if (window.isAdmin) {
+                loadAdminOrders();
+            }
+            renderOrdersSection();
+        })
+        .catch(function(err) {
+            console.error('Ошибка:', err);
+            alert('Ошибка: ' + err.message);
+        });
+}
+
+// Разрешение отзыва после работы
+function allowReviewAfterWork(orderId) {
+    supabase.from('orders').select('*').eq('id', orderId).single()
+        .then(function(res) {
+            if (res.error || !res.data) return;
+            
+            var order = res.data;
+            var userIdentifier = order.user_username || order.user_name || order.user_id;
+            
+            if (!userIdentifier) return;
+            
+            var options = [];
+            try {
+                options = JSON.parse(order.options || '[]');
+            } catch(e) {
+                options = [];
+            }
+            
+            var orderInfo = {
+                service: order.service,
+                total: order.total,
+                options: options,
+                time: order.time
+            };
+            
+            supabase.from('user_last_review')
+                .upsert({
+                    user_id: userIdentifier,
+                    can_review: true,
+                    order_info: orderInfo,
+                    timestamp: new Date().toISOString()
+                })
+                .then(function() {
+                    console.log('✅ Отзыв разрешен для:', userIdentifier);
+                });
         });
 }
 
