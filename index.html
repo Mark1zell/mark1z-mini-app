@@ -3899,29 +3899,56 @@ function goToReviews() {
         reviewsTab.click();
     }
 }
+
+        function renderServicesForAdmin() {
+    var html = '<div class="order-list" id="servicesList" style="display:flex; flex-direction:column; gap:12px;">';
+    servicesData.forEach(function(s) {
+        var optionsCount = serviceOptionsData.filter(function(o) { return o.service_id == s.id; }).length;
+        html += `
+            <div class="order-item admin-grab" data-id="${s.id}" style="cursor:grab;" onclick="openServiceOptionsManager(${s.id})">
+                <div class="order-info">
+                    <h4>${s.emoji} ${s.name}</h4>
+                    <p>${s.description || ''}</p>
+                    <p style="color:var(--text-muted); font-size:12px;">
+                        ${optionsCount} опций
+                        <span style="color:var(--accent); margin-left:10px;">⚙️ Управлять опциями</span>
+                    </p>
+                </div>
+                <div style="display:flex; gap:5px; align-items:center;" onclick="event.stopPropagation();">
+                    <button class="btn btn-sm" onclick="editService(${s.id})">✏️</button>
+                    <button class="btn btn-sm" onclick="deleteService(${s.id})">🗑️</button>
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    html += '<div style="margin-top:15px;"><button class="btn" onclick="addService()">➕ Добавить услугу</button></div>';
+    html += '<div style="margin-top:10px;"><button class="btn" onclick="clearOrders()" style="background:rgba(255,0,0,0.3);">🗑️ Очистить все заказы</button></div>';
+    return html;
+}
+        
         function renderServicesForUser() {
-            if (servicesData.length === 0) return '<p style="color:var(--text-muted)">Услуги пока не добавлены</p>';
-            var html = '<div class="order-list" style="display:flex; flex-direction:column; gap:12px;">';
-            servicesData.forEach(function(s) {
-                var hasOptions = serviceOptionsData.some(function(o) { return o.service_id == s.id; });
-                html += `
-                    <div class="order-item" onclick="openOrderConstructor(${s.id})">
-                        <div class="order-info">
-                            <h4>${s.emoji} ${s.name}</h4>
-                            <p>${s.description || ''}</p>
-                            ${hasOptions ? '<p style="color:var(--accent); font-size:12px;">⚙️ Конструктор заказа</p>' : ''}
-                        </div>
-                        <span style="font-size:24px;">➔</span>
-                    </div>
-                `;
-            });
-            html += '</div>';
-            // Кнопка "Написать дизайнеру" внизу списка услуг
-            html += '<div style="text-align:center;margin-top:20px;">';
-            html += '<button class="btn" onclick="contactDesigner()" style="font-size:14px;padding:12px 24px;">💬 Написать дизайнеру</button>';
-            html += '</div>';
-            return html;
-        }
+    if (servicesData.length === 0) return '<p style="color:var(--text-muted)">Услуги пока не добавлены</p>';
+    var html = '<div class="order-list" style="display:flex; flex-direction:column; gap:12px;">';
+    servicesData.forEach(function(s) {
+        var hasOptions = serviceOptionsData.some(function(o) { return o.service_id == s.id; });
+        html += `
+            <div class="order-item" onclick="openOrderConstructor(${s.id})">
+                <div class="order-info">
+                    <h4>${s.emoji} ${s.name}</h4>
+                    <p>${s.description || ''}</p>
+                    ${hasOptions ? '<p style="color:var(--accent); font-size:12px;">⚙️ Конструктор заказа</p>' : ''}
+                </div>
+                <span style="font-size:24px;">➔</span>
+            </div>
+        `;
+    });
+    html += '</div>';
+    html += '<div style="text-align:center;margin-top:20px;">';
+    html += '<button class="btn" onclick="contactDesigner()" style="font-size:14px;padding:12px 24px;">💬 Написать дизайнеру</button>';
+    html += '</div>';
+    return html;
+}
 
         function renderAdminPanel() {
     var html = `
