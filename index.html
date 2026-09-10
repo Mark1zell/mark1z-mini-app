@@ -4450,52 +4450,62 @@ function viewUserOrderDetails(orderId) {
 }
 
 function updateOrderStatus(orderId, newStatus) {
-    console.log('📊 updateOrderStatus ПОЛУЧЕН статус:', newStatus);
+    console.log('📊 updateOrderStatus:', orderId, newStatus);
     
-    // ЗАЩИТА: исправляем неправильные статусы
-    var statusMap = {
-        'in': 'in_progress',
-        'not': 'not_started',
-        'rea': 'ready',
-        'pai': 'paid_card',
-        'can': 'cancelled'
-    };
-    
-    if (statusMap[newStatus]) {
-        console.log('⚠️ ИСПРАВЛЯЮ:', newStatus, '→', statusMap[newStatus]);
-        newStatus = statusMap[newStatus];
-    }
-    
-    console.log('✅ ИТОГОВЫЙ статус:', newStatus);
+    // Защита от неправильных статусов
+    if (newStatus === 'in') newStatus = 'in_progress';
+    if (newStatus === 'not') newStatus = 'not_started';
+    if (newStatus === 'rea') newStatus = 'ready';
     
     if (newStatus === 'ready') {
         openWorkUploadModal(orderId);
         return;
     }
     
-    var statusNames = {
-        'not_started': 'Ещё не приступили',
-        'in_progress': 'Готовится',
-        'ready': 'Готов',
-        'cancelled': 'Отменён'
-    };
-    
-    supabase.from('orders')
-        .update({ status: newStatus })
-        .eq('id', orderId)
+    // Сначала получаем заказ для уведомления
+    supabase.from('orders').select('*').eq('id', orderId).single()
         .then(function(res) {
-            if (res.error) {
-                alert('Ошибка: ' + res.error.message);
-                return;
-            }
+            if (res.error || !res.data) return;
             
-            closeModal();
-            alert('✅ Статус изменён на: ' + (statusNames[newStatus] || newStatus));
+            var order = res.data;
             
-            if (window.isAdmin) {
-                loadAdminOrders();
-            }
-            renderOrdersSection();
+            // Обновляем статус
+            return supabase.from('orders')
+                .update({ status: newStatus })
+                .eq('id', orderId)
+                .then(function() {
+                    // Отправляем уведомление через Edge Function
+                    var functionUrl = 'https://lcgbpwowppwwpjjlphod.supabase.co/functions/v1/notify-status';
+                    var supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZ2Jwd293cHB3d3BqamxwaG9kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NDAwNTMsImV4cCI6MjEwNDIxNjA1M30.95VPot7saWmlgv1IzBop3E4x-ZxSc8HepqKdDLJa7JI';
+                    
+                    fetch(functionUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + supabaseKey,
+                            'apikey': supabaseKey
+                        },
+                        body: JSON.stringify({
+                            user_id: order.user_id,
+                            username: order.user_username,
+                            status: newStatus,
+                            order_id: orderId
+                        })
+                    })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        console.log('✅ Уведомление отправлено:', data);
+                    })
+                    .catch(function(err) {
+                        console.log('ℹ️ Не удалось отправить уведомление:', err);
+                    });
+                    
+                    closeModal();
+                    alert('✅ Статус изменён!');
+                    
+                    if (window.isAdmin) loadAdminOrders();
+                    renderOrdersSection();
+                });
         });
 }
 
