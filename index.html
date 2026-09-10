@@ -4325,18 +4325,17 @@ function viewOrderDetails(orderId) {
                     ${window.isAdmin ? `
                     <div style="margin-bottom:20px;">
                         <div style="font-size:14px;color:var(--text-muted);margin-bottom:8px;">📊 Статус заказа:</div>
-                        <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                            // ПРАВИЛЬНО:
-<button class="btn btn-sm" onclick="updateOrderStatus(${order.id}, 'not_started')" style="${order.status === 'not_started' ? 'background:rgba(255,0,0,0.5);' : ''}">
-    🔴 Ещё не приступили
-</button>
-<button class="btn btn-sm" onclick="updateOrderStatus(${order.id}, 'in_progress')" style="${order.status === 'in_progress' ? 'background:rgba(255,193,7,0.5);' : ''}">
-    🟡 Готовится
-</button>
-<button class="btn btn-sm" onclick="updateOrderStatus(${order.id}, 'ready')" style="${order.status === 'ready' ? 'background:rgba(16,185,129,0.5);' : ''}">
-    🟢 Готов (загрузить работы)
-</button>
-                        </div>
+<div style="display:flex;gap:10px;flex-wrap:wrap;">
+    <button class="btn btn-sm" onclick="updateOrderStatus(${order.id}, 'not_started')" style="${order.status === 'not_started' ? 'background:rgba(255,0,0,0.5);' : ''}">
+        🔴 Ещё не приступили
+    </button>
+    <button class="btn btn-sm" onclick="updateOrderStatus(${order.id}, 'in_progress')" style="${order.status === 'in_progress' ? 'background:rgba(255,193,7,0.5);' : ''}">
+        🟡 Готовится
+    </button>
+    <button class="btn btn-sm" onclick="updateOrderStatus(${order.id}, 'ready')" style="${order.status === 'ready' ? 'background:rgba(16,185,129,0.5);' : ''}">
+        🟢 Готов (загрузить работы)
+    </button>
+</div>
                     </div>
                     
                     <div style="display:flex;gap:10px;margin-top:20px;">
@@ -4449,14 +4448,14 @@ function viewUserOrderDetails(orderId) {
 }
 
 function updateOrderStatus(orderId, newStatus) {
-    console.log('📊 Обновление статуса заказа:', orderId, newStatus);
+    console.log('📊 Обновление статуса:', orderId, newStatus);
     
     if (newStatus === 'ready') {
         openWorkUploadModal(orderId);
         return;
     }
     
-    // Русские названия для отображения
+    // Русские названия для уведомлений
     var statusNames = {
         'not_started': 'Ещё не приступили',
         'in_progress': 'Готовится',
@@ -4480,9 +4479,6 @@ function updateOrderStatus(orderId, newStatus) {
                 loadAdminOrders();
             }
             renderOrdersSection();
-        })
-        .catch(function(err) {
-            alert('Ошибка: ' + err.message);
         });
 }
 
