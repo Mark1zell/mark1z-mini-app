@@ -270,6 +270,44 @@
         .admin-reply-edit textarea { flex:1; padding:8px; border:1px solid var(--card-border); border-radius:8px; background:rgba(0,0,0,0.3); color:var(--text); font-size:13px; resize:vertical; min-height:50px; }
         .admin-reply-edit button { padding:8px 16px; font-size:12px; }
         .admin-reply .edit-reply-btn { background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-size:14px; padding:2px 6px; }
+                /* ===== ФИКСИРОВАННАЯ КНОПКА ОПЛАТЫ ===== */
+        .checkout-bar {
+            position: sticky;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 12px 0;
+            background: linear-gradient(180deg, rgba(10,5,18,0) 0%, rgba(10,5,18,0.95) 40%);
+            backdrop-filter: blur(10px);
+            z-index: 50;
+            display: flex;
+            justify-content: center;
+            margin-top: 16px;
+        }
+        .checkout-bar .btn {
+            width: 100%;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: 700;
+        }
+        .promo-filter-banner {
+            background: rgba(16,185,129,0.1);
+            border: 1px solid rgba(16,185,129,0.4);
+            padding: 12px 14px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            font-size: 13px;
+        }
+        .promo-filter-banner label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+            cursor: pointer;
+        }
+        .promo-filter-banner input[type="checkbox"] {
+            width: auto;
+        }
     </style>
 </head>
 <body oncontextmenu="return false;">
@@ -399,6 +437,11 @@
         var adminWorkFiles = [];
         var adminWorkMessage = '';
         var userOrdersMode = 'services';
+
+        // ===== ПРОМОКОДЫ И КОРЗИНА =====
+        var currentPromo = null;              // {code, discount_percent, free, applies_to}
+        var showOnlyPromoItems = false;       // чекбокс "показать только то, что подходит"
+        var checkoutRefFiles = [];            // файлы референсов в оверлее оплаты
 
         currentDiscount = lastSpinDiscount;
 
@@ -818,27 +861,34 @@ function applyPromo(code) {
                 canSpinNow = true;
                 alert('Промокод активирован! Теперь вы можете крутить кейс.');
                 openCaseModal();
-            } else if (data.type === 'discount') {
+                return;
+            }
+            if (data.type === 'discount') {
+                // Сохраняем промокод в глобальную переменную
+                currentPromo = {
+                    code: data.code,
+                    discount_percent: data.discount_percent || 0,
+                    free: !!data.free,
+                    applies_to: Array.isArray(data.applies_to) ? data.applies_to : []
+                };
+
+                // Устанавливаем currentDiscount для отображения
                 if (data.free) {
-                    // Бесплатный промокод — только на одну опцию
-                    applyDiscount(100);
-                    localStorage.removeItem('discountUsed');
-                    alert('🎁 Промокод активирован! Одна опция будет БЕСПЛАТНОЙ!');
-                    supabase.from('promocodes').update({ used: true }).eq('code', code).then(function() {
-                        closeModal();
-                        renderOrdersSection();
-                    });
-                } else if (data.discount_percent !== undefined && data.discount_percent !== null && data.discount_percent > 0) {
-                    applyDiscount(data.discount_percent);
-                    localStorage.removeItem('discountUsed');
-                    alert('Скидка ' + data.discount_percent + '% применена!');
-                    supabase.from('promocodes').update({ used: true }).eq('code', code).then(function() {
-                        closeModal();
-                        renderOrdersSection();
-                    });
+                    currentDiscount = 100;
+                } else if (data.discount_percent > 0) {
+                    currentDiscount = data.discount_percent;
                 } else {
                     alert('Ошибка: у промокода нет скидки');
+                    return;
                 }
+
+                localStorage.removeItem('discountUsed');
+                alert('Промокод "' + data.code + '" активирован!' + 
+                      (currentPromo.applies_to.length > 0 
+                        ? '\nСкидка действует только на выбранные услуги/опции.' 
+                        : ''));
+                closeModal();
+                renderOrdersSection();
             }
         })
         .catch(function(err) {
@@ -868,32 +918,136 @@ function applyPromo(code) {
             modal.style.display = 'flex';
         }
 
-        function createPromo(type) {
+                function createPromo(type) {
     var code = prompt('Введите промокод:');
     if (!code) return;
-    
+
     if (type === 'wheel') {
         supabase.from('promocodes').insert([{ code: code, type: 'wheel', used: false }])
             .then(function(res) {
                 if (res.error) { alert('Ошибка: ' + res.error.message); return; }
                 alert('Промокод на кейс создан!');
             });
-    } else if (type === 'discount') {
+        closeModal();
+        return;
+    }
+
+    if (type === 'discount') {
         var discount = prompt('Введите процент скидки (или "free" для бесплатно):');
         if (!discount) return;
-        var data = { code: code, type: 'discount', used: false };
-        if (discount.toLowerCase() === 'free') {
-            data.free = true;
-        } else {
-            data.discount_percent = parseInt(discount);
-        }
-        supabase.from('promocodes').insert([data])
-            .then(function(res) {
-                if (res.error) { alert('Ошибка: ' + res.error.message); return; }
-                alert('Промокод на скидку создан!');
-            });
+        openPromoTargetPicker(code, discount);
     }
-    closeModal();
+}
+
+// ========== ВЫБОР УСЛУГ/ОПЦИЙ ДЛЯ ПРОМОКОДА ==========
+function openPromoTargetPicker(code, discount) {
+    var modal = document.getElementById('modalOverlay');
+    var content = document.getElementById('modalContent');
+
+    var services = servicesData || [];
+    var options = serviceOptionsData || [];
+
+    var html = `
+        <h3>🎯 На что действует скидка?</h3>
+        <p style="color:var(--text-muted);font-size:12px;margin-bottom:15px;">
+            Промокод: <b>${code}</b>, скидка: <b>${discount}</b><br>
+            Ничего не выбирай = скидка на всё.
+        </p>
+
+        <h4 style="margin:12px 0 6px;font-size:14px;">🛠 Услуги</h4>
+        <div id="promoServicesList">
+    `;
+    services.forEach(function(s) {
+        html += `
+            <label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;">
+                <input type="checkbox" class="promo-svc" value="${s.id}" style="width:auto;">
+                <span>${s.emoji || ''} ${s.name}</span>
+            </label>
+        `;
+    });
+    html += `</div><h4 style="margin:12px 0 6px;font-size:14px;">⚙️ Опции</h4><div id="promoOptionsList">`;
+    options.forEach(function(o) {
+        var svc = services.find(function(s) { return s.id == o.service_id; });
+        var svcName = svc ? svc.name : '';
+        html += `
+            <label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;">
+                <input type="checkbox" class="promo-opt" value="${o.id}" style="width:auto;">
+                <span>${o.name} — ${o.price}₽ <span style="color:var(--text-muted);font-size:11px;">(${svcName})</span></span>
+            </label>
+        `;
+    });
+    html += `
+        </div>
+        <div style="display:flex;gap:8px;margin-top:20px;">
+            <button class="btn" onclick='savePromoWithTargets("${code}", "${discount}")' style="flex:1;">💾 Создать</button>
+            <button class="btn" onclick="closeModal()" style="background:rgba(255,255,255,0.1);">Отмена</button>
+        </div>
+    `;
+    content.innerHTML = html;
+    modal.style.display = 'flex';
+}
+
+function savePromoWithTargets(code, discount) {
+    var appliesTo = [];
+
+    document.querySelectorAll('.promo-svc:checked').forEach(function(cb) {
+        appliesTo.push({ type: 'service', id: parseInt(cb.value) });
+    });
+    document.querySelectorAll('.promo-opt:checked').forEach(function(cb) {
+        appliesTo.push({ type: 'option', id: parseInt(cb.value) });
+    });
+
+    var data = {
+        code: code,
+        type: 'discount',
+        used: false,
+        applies_to: appliesTo,
+        single_use: true
+    };
+
+    if (String(discount).toLowerCase() === 'free') {
+        data.free = true;
+    } else {
+        data.discount_percent = parseInt(discount);
+    }
+
+    supabase.from('promocodes').insert([data])
+        .then(function(res) {
+            if (res.error) { alert('Ошибка: ' + res.error.message); return; }
+            alert('✅ Промокод создан!' + 
+                  (appliesTo.length > 0 
+                    ? '\nДействует на ' + appliesTo.length + ' позиц.' 
+                    : '\nДействует на всё.'));
+            closeModal();
+        });
+}
+
+// ========== ФИЛЬТР "ПОКАЗАТЬ ТОЛЬКО ПО ПРОМОКОДУ" ==========
+function togglePromoOnlyFilter(val) {
+    showOnlyPromoItems = val;
+    renderOrdersSection();
+}
+
+// ========== РАСЧЁТ СКИДКИ С УЧЁТОМ APPLIES_TO ==========
+function calcPromoDiscount(cartItems, baseTotal) {
+    if (!currentPromo) return 0;
+    var appliesTo = currentPromo.applies_to || [];
+
+    if (appliesTo.length === 0) {
+        return currentPromo.free ? baseTotal
+            : Math.round(baseTotal * currentPromo.discount_percent / 100);
+    }
+
+    var eligibleSum = 0;
+    cartItems.forEach(function(item) {
+        var match = appliesTo.some(function(t) {
+            return t.type === item.type && t.id === item.id;
+        });
+        if (match) eligibleSum += item.price * item.qty;
+    });
+
+    return currentPromo.free ? eligibleSum
+        : Math.round(eligibleSum * currentPromo.discount_percent / 100);
 }
 
                 // ================================================================
@@ -2250,10 +2404,31 @@ function loadAbout() {
             <div id="orderOptionsContainer">
     `;
 
+        // Баннер промокода
+    if (currentPromo) {
+        html += `
+            <div class="promo-filter-banner">
+                🎁 Промокод <b>${currentPromo.code}</b> — 
+                скидка ${currentPromo.free ? '100%' : currentPromo.discount_percent + '%'}
+                ${currentPromo.applies_to && currentPromo.applies_to.length > 0 
+                    ? '<br><span style="font-size:11px;color:var(--text-muted);">Действует на выбранные позиции</span>' 
+                    : ''}
+            </div>
+        `;
+    }
+
     if (options.length === 0) {
         html += '<p style="color:var(--text-muted)">Для этой услуги пока нет опций. Свяжитесь с дизайнером для уточнения.</p>';
     } else {
         options.forEach(function(opt, idx) {
+            // Фильтр по промокоду
+            if (currentPromo && currentPromo.applies_to && currentPromo.applies_to.length > 0) {
+                var isEligible = currentPromo.applies_to.some(function(t) {
+                    return (t.type === 'option' && t.id == opt.id) 
+                        || (t.type === 'service' && t.id == currentOrderService.id);
+                });
+                if (!isEligible) return; // пропускаем не подходящие
+            }
             var maxQty = opt.max_quantity || 1;
             var isSingle = maxQty <= 1;
             var requiredBadge = opt.is_required ? '<span class="required-badge">Обязательная</span>' : '';
@@ -2301,12 +2476,11 @@ function loadAbout() {
                     <div style="margin-top:15px;">
                         <textarea id="orderDescription" placeholder="Опишите ваше ТЗ (что нужно сделать, стиль, цвета, примеры...)" style="min-height:80px;"></textarea>
                     </div>
-                    <div class="reference-upload">
-                        <p style="color:var(--text-muted); font-size:13px; margin-bottom:8px;">📎 Прикрепить референсы (до 3 изображений)</p>
-                        <input type="file" id="refInput" accept="image/*" multiple onchange="handleRefFiles(event)">
-                        <div id="refPreview" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;"></div>
+                                        <div class="checkout-bar">
+                        <button class="btn" onclick="openCheckoutOverlay()">
+                            💳 Перейти к оплате
+                        </button>
                     </div>
-                    <button class="btn" onclick="submitOrderWithOptions()" style="width:100%; margin-top:15px;">✅ Отправить заявку</button>
                 </div>
     `;
 
@@ -2665,6 +2839,248 @@ function updateOrderTotal() {
         .catch(function(err) {
             alert('❌ Ошибка: ' + err.message);
             console.error('Error:', err);
+        });
+}
+
+        // ========== ОВЕРЛЕЙ ОПЛАТЫ С ТЗ + РЕФЕРЕНСАМИ ==========
+function openCheckoutOverlay() {
+    // Собираем выбранные опции
+    var selected = [];
+    currentOrderOptions.forEach(function(opt) {
+        var qty = currentOrderQuantities[opt.id] || 0;
+        if (qty > 0) {
+            var price = opt.price;
+            if (opt.discount_min_quantity && qty >= opt.discount_min_quantity && opt.discount_price) {
+                price = opt.discount_price;
+            }
+            selected.push({ type: 'option', id: opt.id, name: opt.name, price: price, qty: qty });
+        } else if (opt.is_required) {
+            alert('Выберите обязательную опцию: ' + opt.name);
+            return;
+        }
+    });
+
+    if (selected.length === 0) {
+        alert('Выберите хотя бы одну опцию');
+        return;
+    }
+
+    // Проверяем обязательные
+    var missingRequired = [];
+    currentOrderOptions.forEach(function(opt) {
+        var qty = currentOrderQuantities[opt.id] || 0;
+        if (qty === 0 && opt.is_required) missingRequired.push(opt.name);
+    });
+    if (missingRequired.length > 0) {
+        alert('Выберите обязательные опции:\n' + missingRequired.join('\n'));
+        return;
+    }
+
+    var modal = document.getElementById('modalOverlay');
+    var content = document.getElementById('modalContent');
+
+    content.innerHTML = `
+        <div style="max-height:80vh;overflow-y:auto;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+                <h3>💳 Оформление заказа</h3>
+                <button class="btn" onclick="closeModal()" style="margin:0;">×</button>
+            </div>
+
+            <div style="margin-bottom:15px;">
+                <label style="display:block;font-size:13px;color:var(--text-muted);margin-bottom:6px;">
+                    📝 Техническое задание *
+                </label>
+                <textarea id="checkoutDesc" placeholder="Опишите, что нужно сделать, стиль, цвета, примеры..."
+                          style="width:100%;min-height:100px;"></textarea>
+            </div>
+
+            <div style="margin-bottom:15px;">
+                <label style="display:block;font-size:13px;color:var(--text-muted);margin-bottom:6px;">
+                    📎 Референсы (до 5 изображений)
+                </label>
+                <input type="file" id="checkoutRefs" accept="image/*" multiple
+                       onchange="handleCheckoutRefs(event)" style="width:100%;">
+                <div id="checkoutRefsPreview" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;"></div>
+            </div>
+
+            <div id="checkoutTotal" style="text-align:right;font-size:20px;font-weight:700;
+                                           padding:16px 0;border-top:1px solid var(--card-border);
+                                           color:#e9d5ff;margin-bottom:15px;"></div>
+
+            <button class="btn" style="width:100%;" onclick="submitCheckout()">
+                ✅ Подтвердить и перейти к оплате
+            </button>
+        </div>
+    `;
+    modal.style.display = 'flex';
+
+    checkoutRefFiles = [];
+    renderCheckoutTotal(selected);
+}
+
+function handleCheckoutRefs(event) {
+    var files = event.target.files;
+    if (!files || files.length === 0) return;
+    if (files.length + checkoutRefFiles.length > 5) {
+        alert('Максимум 5 референсов');
+        return;
+    }
+    for (var i = 0; i < files.length; i++) {
+        if (checkoutRefFiles.length >= 5) break;
+        checkoutRefFiles.push(files[i]);
+        (function(file, index) {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                var preview = document.getElementById('checkoutRefsPreview');
+                var thumb = document.createElement('div');
+                thumb.className = 'preview-thumb';
+                thumb.innerHTML = '<img src="' + e.target.result + '"><button class="remove-btn" onclick="removeCheckoutRef(' + index + ')">×</button>';
+                preview.appendChild(thumb);
+            };
+            reader.readAsDataURL(file);
+        })(files[i], checkoutRefFiles.length - 1);
+    }
+    event.target.value = '';
+}
+
+function removeCheckoutRef(index) {
+    checkoutRefFiles.splice(index, 1);
+    var preview = document.getElementById('checkoutRefsPreview');
+    preview.innerHTML = '';
+    checkoutRefFiles.forEach(function(file, idx) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            var thumb = document.createElement('div');
+            thumb.className = 'preview-thumb';
+            thumb.innerHTML = '<img src="' + e.target.result + '"><button class="remove-btn" onclick="removeCheckoutRef(' + idx + ')">×</button>';
+            preview.appendChild(thumb);
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+function renderCheckoutTotal(selected) {
+    var baseTotal = selected.reduce(function(sum, o) { return sum + o.price * o.qty; }, 0);
+    var discountSum = 0;
+
+    if (currentPromo) {
+        var appliesTo = currentPromo.applies_to || [];
+        var eligibleSum = 0;
+        selected.forEach(function(item) {
+            var match = appliesTo.length === 0 || appliesTo.some(function(t) {
+                return t.type === item.type && t.id === item.id;
+            });
+            if (match) eligibleSum += item.price * item.qty;
+        });
+        // скидка по промокоду
+        if (currentPromo.free) {
+            discountSum = eligibleSum;
+        } else {
+            discountSum = Math.round(eligibleSum * currentPromo.discount_percent / 100);
+        }
+    } else if (currentDiscount > 0) {
+        // старая логика со скидкой от кейса
+        var excludedServices = ['Telegram Mini Apps', 'Дизайн сайтов', 'Дизайн мобильных приложений'];
+        var isExcluded = excludedServices.indexOf(currentOrderService.name) !== -1;
+        if (!isExcluded) {
+            if (currentDiscount === 100) {
+                // бесплатная самая дешёвая опция
+                var cheapest = selected[0];
+                selected.forEach(function(o) { if (o.price * o.qty < cheapest.price * cheapest.qty) cheapest = o; });
+                discountSum = cheapest.price * cheapest.qty;
+            } else {
+                discountSum = Math.round(baseTotal * currentDiscount / 100);
+            }
+        }
+    }
+
+    var finalTotal = Math.max(0, baseTotal - discountSum);
+    var totalEl = document.getElementById('checkoutTotal');
+    totalEl.innerHTML = `
+        ${discountSum > 0 ? '<div style="font-size:13px;color:#6ee7b7;">Скидка: −' + discountSum + '₽</div>' : ''}
+        Итого: <span style="color:#c084fc;">${finalTotal}₽</span>
+    `;
+    window.checkoutFinalTotal = finalTotal;
+    window.checkoutBaseTotal = baseTotal;
+}
+
+function submitCheckout() {
+    var desc = document.getElementById('checkoutDesc').value.trim();
+    if (!desc) { alert('Опишите ТЗ, пожалуйста'); return; }
+
+    var selected = [];
+    currentOrderOptions.forEach(function(opt) {
+        var qty = currentOrderQuantities[opt.id] || 0;
+        if (qty > 0) {
+            var price = opt.price;
+            if (opt.discount_min_quantity && qty >= opt.discount_min_quantity && opt.discount_price) {
+                price = opt.discount_price;
+            }
+            selected.push({
+                name: opt.name,
+                price: price,
+                quantity: qty,
+                total: price * qty,
+                option_type: opt.option_type || 'checkbox'
+            });
+        }
+    });
+
+    var user = window.currentUser;
+    var userName = user?.first_name || user?.username || 'Пользователь';
+    var userUsername = user?.username || null;
+    var userId = user?.id ? String(user.id) : null;
+
+    // Загружаем референсы
+    var uploadPromises = checkoutRefFiles.map(function(file) {
+        return uploadFileToSupabase(file, 'references/' + (user?.id || 'anonymous'));
+    });
+
+    Promise.all(uploadPromises)
+        .then(function(refUrls) {
+            var order = {
+                service: currentOrderService.name,
+                user_name: userName,
+                user_username: userUsername,
+                user_id: userId,
+                time: new Date().toLocaleString('ru-RU'),
+                timestamp: new Date().toISOString(),
+                options: JSON.stringify(selected),
+                total: window.checkoutFinalTotal || 0,
+                description: desc,
+                reference_urls: refUrls,
+                promo_code: currentPromo ? currentPromo.code : null,
+                status: 'pending_payment'
+            };
+            return supabase.from('orders').insert([order]).select();
+        })
+        .then(function(res) {
+            if (res.error) {
+                alert('❌ Ошибка: ' + res.error.message);
+                return;
+            }
+            if (res.data && res.data.length > 0) {
+                var orderId = res.data[0].id;
+                closeModal();
+                showPaymentOptions(orderId, window.checkoutFinalTotal, selected);
+            }
+        })
+        .catch(function(err) {
+            alert('❌ Ошибка: ' + err.message);
+            console.error(err);
+        });
+}
+
+// Отметить промокод использованным
+function markPromoUsed(promoCode, orderId) {
+    if (!promoCode) return Promise.resolve();
+    return supabase.from('promocodes')
+        .update({ used: true, order_id: orderId })
+        .eq('code', promoCode)
+        .then(function() {
+            currentPromo = null;
+            currentDiscount = 0;
+            localStorage.removeItem('lastSpinDiscount');
         });
 }
 
