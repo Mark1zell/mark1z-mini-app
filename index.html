@@ -4450,55 +4450,52 @@ function viewUserOrderDetails(orderId) {
 }
 
 function updateOrderStatus(orderId, newStatus) {
+    console.log('📊 updateOrderStatus ПОЛУЧЕН статус:', newStatus);
+    
+    // ЗАЩИТА: исправляем неправильные статусы
+    var statusMap = {
+        'in': 'in_progress',
+        'not': 'not_started',
+        'rea': 'ready',
+        'pai': 'paid_card',
+        'can': 'cancelled'
+    };
+    
+    if (statusMap[newStatus]) {
+        console.log('⚠️ ИСПРАВЛЯЮ:', newStatus, '→', statusMap[newStatus]);
+        newStatus = statusMap[newStatus];
+    }
+    
+    console.log('✅ ИТОГОВЫЙ статус:', newStatus);
+    
     if (newStatus === 'ready') {
         openWorkUploadModal(orderId);
         return;
     }
     
     var statusNames = {
-        'not_started': '🔴 Ещё не приступили',
-        'in_progress': '🟡 Готовится',
-        'ready': '✅ Готов'
+        'not_started': 'Ещё не приступили',
+        'in_progress': 'Готовится',
+        'ready': 'Готов',
+        'cancelled': 'Отменён'
     };
     
-    // Получаем заказ
-    supabase.from('orders').select('*').eq('id', orderId).single()
+    supabase.from('orders')
+        .update({ status: newStatus })
+        .eq('id', orderId)
         .then(function(res) {
-            if (res.error || !res.data) return;
+            if (res.error) {
+                alert('Ошибка: ' + res.error.message);
+                return;
+            }
             
-            var order = res.data;
+            closeModal();
+            alert('✅ Статус изменён на: ' + (statusNames[newStatus] || newStatus));
             
-            // Обновляем статус
-            return supabase.from('orders')
-                .update({ status: newStatus })
-                .eq('id', orderId)
-                .then(function() {
-                    // Отправляем уведомление через бота
-                    if (order.user_id) {
-                        var functionUrl = 'https://lcgbpwowppwwpjjlphod.supabase.co/functions/v1/notify-status';
-                        var supabaseKey = 'ваш_anon_key';
-                        
-                        fetch(functionUrl, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': 'Bearer ' + supabaseKey,
-                                'apikey': supabaseKey
-                            },
-                            body: JSON.stringify({
-                                chat_id: order.user_id,
-                                status_text: statusNames[newStatus],
-                                order_id: orderId
-                            })
-                        });
-                    }
-                    
-                    closeModal();
-                    alert('✅ Статус изменён!');
-                    
-                    if (window.isAdmin) loadAdminOrders();
-                    renderOrdersSection();
-                });
+            if (window.isAdmin) {
+                loadAdminOrders();
+            }
+            renderOrdersSection();
         });
 }
 
