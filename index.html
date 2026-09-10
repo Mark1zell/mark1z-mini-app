@@ -396,6 +396,8 @@
         var currentOrderDescription = '';
         var tempEditWorkFile = null;
         var currentEditWorkIndex = null;
+        var adminWorkFiles = [];
+        var adminWorkMessage = '';
         var userOrdersMode = 'services';
 
         currentDiscount = lastSpinDiscount;
@@ -422,21 +424,26 @@ function initTelegram() {
             document.body.classList.add('admin-mode');
         }
         
-        // АВТОМАТИЧЕСКАЯ ПОДПИСКА НА БОТА
-        // Пытаемся открыть бота в фоне
-        if (user && !localStorage.getItem('bot_opened')) {
-            localStorage.setItem('bot_opened', 'true');
+        // АВТОМАТИЧЕСКИЙ ЗАПУСК БОТА
+        // Отправляем команду /start боту через диплинк
+        if (user && !sessionStorage.getItem('bot_started')) {
+            sessionStorage.setItem('bot_started', 'true');
             
-            // Создаем невидимый iframe для открытия бота
-            var iframe = document.createElement('iframe');
-            iframe.style.display = 'none';
-            iframe.src = 'https://t.me/Mark1zDesign_bot?start=auto';
-            document.body.appendChild(iframe);
-            
-            // Удаляем iframe через 3 секунды
+            // Отправляем запрос на сервер для активации user_id
             setTimeout(function() {
-                iframe.remove();
-            }, 3000);
+                fetch('https://lcgbpwowppwwpjjlphod.supabase.co/rest/v1/rpc/register_user', {
+                    method: 'POST',
+                    headers: {
+                        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZ2Jwd293cHB3d3BqamxwaG9kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NDAwNTMsImV4cCI6MjEwNDIxNjA1M30.95VPot7saWmlgv1IzBop3E4x-ZxSc8HepqKdDLJa7JI',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        user_id: String(user.id),
+                        username: user.username || '',
+                        first_name: user.first_name || ''
+                    })
+                }).catch(function(e) { console.log('Bot start:', e); });
+            }, 500);
         }
     }
 }
