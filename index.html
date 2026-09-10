@@ -5790,34 +5790,6 @@ function updateReviewButton(canReview) {
 var adminWorkFiles = [];
 var adminWorkMessage = '';
 
-// Обновленная функция updateOrderStatus
-function updateOrderStatus(orderId, newStatus) {
-    console.log('📊 Обновление статуса заказа:', orderId, newStatus);
-    
-    if (newStatus === 'ready') {
-        openWorkUploadModal(orderId);
-        return;
-    }
-    
-    supabase.from('orders')
-        .update({ status: newStatus })
-        .eq('id', orderId)
-        .then(function(res) {
-            if (res.error) {
-                alert('Ошибка: ' + res.error.message);
-                return;
-            }
-            
-            closeModal();
-            alert('✅ Статус обновлен!');
-            
-            if (window.isAdmin) {
-                loadAdminOrders();
-            }
-            renderOrdersSection();
-        });
-}
-
 // Открыть модальное окно загрузки работ
 function openWorkUploadModal(orderId) {
     adminWorkFiles = [];
