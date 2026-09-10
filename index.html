@@ -2621,6 +2621,7 @@ function updateOrderTotal() {
     var user = window.currentUser;
     var userName = user?.first_name || user?.username || 'Пользователь';
     var userUsername = user?.username || null;
+    var userId = user?.id ? String(user.id) : null;   // ← ДОБАВЬТЕ ЭТУ СТРОКУ
 
     var uploadPromises = currentOrderFiles.map(function(file) {
         return uploadFileToSupabase(file, 'references/' + (user?.id || 'anonymous'));
@@ -2632,6 +2633,7 @@ function updateOrderTotal() {
                 service: currentOrderService.name,
                 user_name: userName,
                 user_username: userUsername,
+                user_id: userId,   // ← ДОБАВЬТЕ ЭТУ СТРОКУ
                 time: new Date().toLocaleString('ru-RU'),
                 timestamp: new Date().toISOString(),
                 options: JSON.stringify(selectedOptions),
