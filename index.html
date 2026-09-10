@@ -3835,13 +3835,13 @@ function getStatusInfo(status) {
             borderColor: 'rgba(16,185,129,0.4)'
         },
         'cancelled': {
-            label: 'Отменен',
+            label: 'Отменён',
             bgColor: 'rgba(128,128,128,0.2)',
             textColor: '#808080',
             borderColor: 'rgba(128,128,128,0.4)'
         },
         'payment_canceled': {
-            label: 'Платеж отменен',
+            label: 'Платёж отменён',
             bgColor: 'rgba(128,128,128,0.2)',
             textColor: '#808080',
             borderColor: 'rgba(128,128,128,0.4)'
@@ -3854,6 +3854,7 @@ function getStatusInfo(status) {
         }
     };
     
+    // Если статус неизвестный - показываем его как есть
     return info[status] || {
         label: status || 'Неизвестно',
         bgColor: 'rgba(255,255,255,0.1)',
@@ -4325,15 +4326,16 @@ function viewOrderDetails(orderId) {
                     <div style="margin-bottom:20px;">
                         <div style="font-size:14px;color:var(--text-muted);margin-bottom:8px;">📊 Статус заказа:</div>
                         <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                            <button class="btn btn-sm" onclick="updateOrderStatus(${order.id}, 'not_started')" style="${order.status === 'not_started' ? 'background:rgba(255,0,0,0.5);' : ''}">
-                                🔴 Ещё не приступили
-                            </button>
-                            <button class="btn btn-sm" onclick="updateOrderStatus(${order.id}, 'in_progress')" style="${order.status === 'in_progress' ? 'background:rgba(255,193,7,0.5);' : ''}">
-                                🟡 Готовится
-                            </button>
-                            <button class="btn btn-sm" onclick="updateOrderStatus(${order.id}, 'ready')" style="${order.status === 'ready' ? 'background:rgba(16,185,129,0.5);' : ''}">
-                                🟢 Готов (загрузить работы)
-                            </button>
+                            // ПРАВИЛЬНО:
+<button class="btn btn-sm" onclick="updateOrderStatus(${order.id}, 'not_started')" style="${order.status === 'not_started' ? 'background:rgba(255,0,0,0.5);' : ''}">
+    🔴 Ещё не приступили
+</button>
+<button class="btn btn-sm" onclick="updateOrderStatus(${order.id}, 'in_progress')" style="${order.status === 'in_progress' ? 'background:rgba(255,193,7,0.5);' : ''}">
+    🟡 Готовится
+</button>
+<button class="btn btn-sm" onclick="updateOrderStatus(${order.id}, 'ready')" style="${order.status === 'ready' ? 'background:rgba(16,185,129,0.5);' : ''}">
+    🟢 Готов (загрузить работы)
+</button>
                         </div>
                     </div>
                     
@@ -4449,6 +4451,19 @@ function viewUserOrderDetails(orderId) {
 function updateOrderStatus(orderId, newStatus) {
     console.log('📊 Обновление статуса заказа:', orderId, newStatus);
     
+    if (newStatus === 'ready') {
+        openWorkUploadModal(orderId);
+        return;
+    }
+    
+    // Русские названия для отображения
+    var statusNames = {
+        'not_started': 'Ещё не приступили',
+        'in_progress': 'Готовится',
+        'ready': 'Готов',
+        'cancelled': 'Отменён'
+    };
+    
     supabase.from('orders')
         .update({ status: newStatus })
         .eq('id', orderId)
@@ -4458,20 +4473,8 @@ function updateOrderStatus(orderId, newStatus) {
                 return;
             }
             
-            console.log('✅ Статус обновлен');
-            
-            // Если статус "ready" - разрешаем отзыв
-            if (newStatus === 'ready') {
-                allowReview(orderId);
-            }
-            
-            // Создаем уведомление
-            if (newStatus === 'ready') {
-                notifyUserOrderReady(orderId);
-            }
-            
             closeModal();
-            alert('✅ Статус обновлен!');
+            alert('✅ Статус изменён на: ' + (statusNames[newStatus] || newStatus));
             
             if (window.isAdmin) {
                 loadAdminOrders();
@@ -4479,7 +4482,6 @@ function updateOrderStatus(orderId, newStatus) {
             renderOrdersSection();
         })
         .catch(function(err) {
-            console.error('Ошибка:', err);
             alert('Ошибка: ' + err.message);
         });
 }
