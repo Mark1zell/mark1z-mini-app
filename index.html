@@ -507,16 +507,15 @@
 
                 /* ===== ФИКСИРОВАННАЯ НИЖНЯЯ ПАНЕЛЬ В КОНСТРУКТОРЕ ===== */
         .fixed-bottom-bar {
-            position: sticky;
+            position: absolute;
             bottom: 0;
             left: 0;
             right: 0;
-            padding: 12px 0 14px;
-            background: linear-gradient(180deg, rgba(26,11,46,0) 0%, rgba(26,11,46,0.95) 40%, #1a0b2e 100%);
+            padding: 12px 20px 14px;
+            background: linear-gradient(180deg, rgba(26,11,46,0.7) 0%, #1a0b2e 30%, #1a0b2e 100%);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
             border-top: 1px solid var(--card-border);
-            margin-top: 20px;
             z-index: 10;
             display: flex;
             flex-direction: column;
@@ -2751,7 +2750,7 @@ function loadAbout() {
     }
 
         var html = `
-        <div style="max-height:85vh; overflow-y:auto; padding-bottom:140px;">
+        <div style="padding-bottom:140px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                 <h3>${service.emoji} ${service.name}</h3>
                 <button class="btn" onclick="closeModal()" style="margin:0;">×</button>
@@ -3400,6 +3399,70 @@ function submitCheckout() {
     var desc = document.getElementById('checkoutDesc').value.trim();
     if (!desc) { alert('Опишите ТЗ, пожалуйста'); return; }
 
+    // Показываем красивую плашку загрузки
+    var modal = document.getElementById('modalOverlay');
+    var content = document.getElementById('modalContent');
+    content.innerHTML = `
+        <div style="text-align:center;padding:60px 20px;position:relative;overflow:hidden;">
+            <!-- Анимированный фон -->
+            <div style="position:absolute;inset:0;background:radial-gradient(circle at 30% 40%, rgba(124,58,237,0.3) 0%, transparent 50%),
+                        radial-gradient(circle at 70% 60%, rgba(190,24,93,0.3) 0%, transparent 50%);
+                        animation:pulseBg 3s ease-in-out infinite;z-index:0;"></div>
+
+            <div style="position:relative;z-index:1;">
+                <!-- Красивый спиннер -->
+                <div style="position:relative;width:100px;height:100px;margin:0 auto 24px;">
+                    <div style="position:absolute;inset:0;border-radius:50%;border:3px solid transparent;
+                                border-top-color:#7c3aed;border-right-color:#be185d;
+                                animation:spinFast 1s linear infinite;"></div>
+                    <div style="position:absolute;inset:12px;border-radius:50%;border:3px solid transparent;
+                                border-top-color:#be185d;border-left-color:#7c3aed;
+                                animation:spinFast 1.5s linear infinite reverse;"></div>
+                    <div style="position:absolute;inset:24px;border-radius:50%;border:3px solid transparent;
+                                border-top-color:#a855f7;
+                                animation:spinFast 2s linear infinite;"></div>
+                    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+                                font-size:28px;">💫</div>
+                </div>
+
+                <h3 style="font-size:20px;margin-bottom:10px;background:linear-gradient(135deg,#a78bfa,#c084fc,#f472b6);
+                           -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+                           background-clip:text;">Создаём ссылку на оплату</h3>
+                <p style="color:var(--text-muted);font-size:14px;margin-bottom:6px;">Пожалуйста, подождите...</p>
+                <p style="color:var(--text-muted);font-size:12px;opacity:0.7;" id="loadingStep">Загружаем референсы</p>
+
+                <!-- Точки -->
+                <div style="margin-top:20px;display:flex;justify-content:center;gap:8px;">
+                    <span style="width:8px;height:8px;border-radius:50%;background:#7c3aed;
+                                 animation:dotPulse 1.4s ease-in-out infinite;"></span>
+                    <span style="width:8px;height:8px;border-radius:50%;background:#a855f7;
+                                 animation:dotPulse 1.4s ease-in-out 0.2s infinite;"></span>
+                    <span style="width:8px;height:8px;border-radius:50%;background:#be185d;
+                                 animation:dotPulse 1.4s ease-in-out 0.4s infinite;"></span>
+                </div>
+            </div>
+        </div>
+    `;
+    modal.style.display = 'flex';
+
+    // Добавляем keyframes, если ещё нет
+    if (!document.getElementById('loadingAnimations')) {
+        var style = document.createElement('style');
+        style.id = 'loadingAnimations';
+        style.textContent = `
+            @keyframes spinFast { to { transform: rotate(360deg); } }
+            @keyframes pulseBg {
+                0%, 100% { opacity: 0.5; transform: scale(1); }
+                50% { opacity: 0.8; transform: scale(1.1); }
+            }
+            @keyframes dotPulse {
+                0%, 100% { opacity: 0.3; transform: scale(0.8); }
+                50% { opacity: 1; transform: scale(1.2); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
     var selected = [];
     currentOrderOptions.forEach(function(opt) {
         var qty = currentOrderQuantities[opt.id] || 0;
@@ -3424,6 +3487,10 @@ function submitCheckout() {
     var userId = user?.id ? String(user.id) : null;
 
     // Загружаем референсы
+        // Обновляем статус
+    var loadingStep = document.getElementById('loadingStep');
+    if (loadingStep) loadingStep.textContent = 'Загружаем референсы...';
+
     var uploadPromises = checkoutRefFiles.map(function(file) {
         return uploadFileToSupabase(file, 'references/' + (user?.id || 'anonymous'));
     });
@@ -3444,6 +3511,9 @@ function submitCheckout() {
                 promo_code: currentPromo ? currentPromo.code : null,
                 status: 'pending_payment'
             };
+
+            if (loadingStep) loadingStep.textContent = 'Создаём заказ...';
+            
             return supabase.from('orders').insert([order]).select();
         })
         .then(function(res) {
@@ -3475,6 +3545,12 @@ function markPromoUsed(promoCode, orderId) {
             localStorage.removeItem('lastSpinDiscount');
         });
 }
+
+     function retryPayment(orderId, total) {
+    console.log('🔁 Повторить оплату:', orderId, total);
+    closeModal();
+    showPaymentOptions(orderId, total, []);
+}   
 
 // ===== НОВЫЕ ФУНКЦИИ ОПЛАТЫ =====
 // Вставьте эти 3 функции ПОСЛЕ submitOrderWithOptions()
@@ -4525,7 +4601,7 @@ function loadUserOrders() {
 function renderUserOrdersList(orders) {
     var container = document.getElementById('userOrdersList');
     if (!container) return;
-    
+
     if (!orders || orders.length === 0) {
         container.innerHTML = `
             <div style="text-align:center;padding:30px;background:rgba(255,255,255,0.03);border-radius:12px;">
@@ -4535,13 +4611,13 @@ function renderUserOrdersList(orders) {
         `;
         return;
     }
-    
+
     var html = '<div style="display:flex;flex-direction:column;gap:15px;">';
-    
+
     orders.forEach(function(order) {
-        // Пропускаем отмененные
+        // Пропускаем отменённые
         if (order.status === 'cancelled') return;
-        
+
         var statusInfo = getStatusInfo(order.status);
         var options = [];
         try {
@@ -4549,9 +4625,8 @@ function renderUserOrdersList(orders) {
         } catch(e) {
             options = [];
         }
-        
-        // Для заказов со статусом paid_card - показываем анимацию
-                // Для заказов со статусом paid_card/paid_stars - показываем анимацию (только 1 раз)
+
+        // ===== Статус =====
         var statusHtml = '';
         var animatedOrders = JSON.parse(localStorage.getItem('animatedPaidOrders') || '[]');
         var alreadyAnimated = animatedOrders.indexOf(String(order.id)) !== -1;
@@ -4580,16 +4655,37 @@ function renderUserOrdersList(orders) {
                 ">${statusInfo.label}</span>
             `;
         }
-        
-html += `
-    <div onclick="viewUserOrderDetails(${order.id})" style="
-        background:rgba(15,7,25,0.9);
-        border:1px solid ${statusInfo.borderColor};
-        border-radius:16px;
-        padding:20px;
-        margin-bottom:10px;
-        cursor:pointer;
-    ">
+
+        // ===== Кнопка "Повторить оплату" =====
+        var retryPaymentHtml = '';
+        if (order.status === 'pending_payment') {
+            retryPaymentHtml = `
+                <button onclick="event.stopPropagation(); retryPayment(${order.id}, ${order.total || 0})" style="
+                    width:100%;
+                    margin-top:12px;
+                    padding:12px;
+                    background:linear-gradient(135deg, #7c3aed, #be185d);
+                    border:none;
+                    border-radius:12px;
+                    color:#fff;
+                    font-size:14px;
+                    font-weight:700;
+                    cursor:pointer;
+                    font-family:inherit;
+                ">💳 Повторить оплату</button>
+            `;
+        }
+
+        // ===== Карточка заказа =====
+        html += `
+            <div onclick="viewUserOrderDetails(${order.id})" style="
+                background:rgba(15,7,25,0.9);
+                border:1px solid ${statusInfo.borderColor};
+                border-radius:16px;
+                padding:20px;
+                margin-bottom:10px;
+                cursor:pointer;
+            ">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:15px;">
                     <div>
                         <h4 style="font-size:18px;font-weight:600;margin-bottom:5px;">${order.service}</h4>
@@ -4597,7 +4693,7 @@ html += `
                     </div>
                     ${statusHtml}
                 </div>
-                
+
                 <div style="margin-bottom:15px;">
                     <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Выбранные опции:</p>
                     ${options.map(function(o) {
@@ -4609,7 +4705,7 @@ html += `
                         `;
                     }).join('')}
                 </div>
-                
+
                 ${order.description ? `
                     <div style="margin-bottom:15px;">
                         <p style="font-size:12px;color:var(--text-muted);margin-bottom:5px;">Ваше ТЗ:</p>
@@ -4624,13 +4720,13 @@ html += `
                         ">${order.description}</div>
                     </div>
                 ` : ''}
-                
+
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-top:15px;padding-top:15px;border-top:1px solid var(--card-border);">
                     <div>
                         <p style="font-size:12px;color:var(--text-muted);">Итого:</p>
                         <p style="font-size:22px;font-weight:700;color:#c084fc;">${order.total || 0} ₽</p>
                     </div>
-                    <a href="https://t.me/mark1zell" target="_blank" style="
+                    <a href="https://t.me/mark1zell" target="_blank" onclick="event.stopPropagation();" style="
                         background:linear-gradient(135deg, #7c3aed, #be185d);
                         color:#fff;
                         padding:10px 16px;
@@ -4640,13 +4736,14 @@ html += `
                         font-weight:600;
                     ">💬 Связаться</a>
                 </div>
+                ${retryPaymentHtml}
             </div>
         `;
     });
-    
+
     html += '</div>';
     container.innerHTML = html;
-    
+
     // Запускаем анимацию для paid_card заказов
     animatePaidStatuses();
 }
@@ -5879,34 +5976,35 @@ function viewOrderDetails(orderId) {
 // ВОТ СЮДА ДОБАВЬТЕ viewUserOrderDetails
 function viewUserOrderDetails(orderId) {
     console.log('📋 Просмотр заказа #' + orderId);
-    
+
     supabase.from('orders').select('*').eq('id', orderId).single()
         .then(function(res) {
             if (res.error || !res.data) {
                 alert('Заказ не найден');
                 return;
             }
-            
+
             var order = res.data;
             var modal = document.getElementById('modalOverlay');
             var content = document.getElementById('modalContent');
-            
+
             var options = [];
             try {
                 options = order.options ? JSON.parse(order.options) : [];
             } catch(e) {
                 options = [];
             }
-            
+
             var statusMap = {
                 'pending_payment': '⏳ Ожидает оплаты',
                 'paid_card': '💳 Оплачен',
+                'paid_stars': '⭐ Оплачен звёздами',
                 'not_started': '🔴 Дизайнер ещё не приступил',
                 'in_progress': '🟡 Дизайнер приступил к вашей работе',
                 'ready': '✅ Работа готова!',
-                'cancelled': '❌ Отменен'
+                'cancelled': '❌ Отменён'
             };
-            
+
             var optionsHtml = options.map(function(o) {
                 return `
                     <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
@@ -5915,34 +6013,64 @@ function viewUserOrderDetails(orderId) {
                     </div>
                 `;
             }).join('');
-            
+
+            // Кнопка "Повторить оплату" — если ожидает оплаты
+            var retryBtn = '';
+            if (order.status === 'pending_payment') {
+                retryBtn = `
+                    <div style="margin-top:16px;text-align:center;">
+                        <button onclick="retryPayment(${order.id}, ${order.total || 0})"
+                                style="width:100%;padding:12px;background:linear-gradient(135deg, #7c3aed, #be185d);
+                                       border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;
+                                       cursor:pointer;font-family:inherit;">
+                            💳 Повторить оплату
+                        </button>
+                    </div>
+                `;
+            }
+
+            // Кнопка "Удалить заказ" — только для ready и pending_payment
+            var deleteBtn = '';
+            if (order.status === 'ready' || order.status === 'pending_payment') {
+                deleteBtn = `
+                    <div style="margin-top:12px;text-align:center;">
+                        <button onclick="userDeleteOrder(${order.id})"
+                                style="background:rgba(255,0,0,0.15);border:1px solid rgba(255,0,0,0.4);
+                                       color:#ff6b6b;font-size:13px;padding:8px 16px;border-radius:12px;
+                                       cursor:pointer;font-family:inherit;">
+                            🗑️ Удалить заказ
+                        </button>
+                    </div>
+                `;
+            }
+
             content.innerHTML = `
                 <div style="max-height:80vh;overflow-y:auto;">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
                         <h3>📋 Заказ #${order.id}</h3>
                         <button class="btn" onclick="closeModal()">×</button>
                     </div>
-                    
+
                     <p><strong>🛠️ Услуга:</strong> ${order.service}</p>
                     <p><strong>📊 Статус:</strong> ${statusMap[order.status] || order.status}</p>
                     <p><strong>💰 Сумма:</strong> ${order.total} ₽</p>
                     ${order.stars_amount ? `<p><strong>⭐ Оплачено:</strong> ${order.stars_amount} звёзд</p>` : ''}
                     <p><strong>📅 Дата:</strong> ${order.time || 'Не указана'}</p>
-                    
+
                     ${options.length > 0 ? `
                         <div style="margin-top:15px;">
                             <strong>📦 Опции:</strong>
                             ${optionsHtml}
                         </div>
                     ` : ''}
-                    
+
                     ${order.description ? `
                         <div style="margin-top:15px;">
                             <strong>📝 Ваше ТЗ:</strong>
                             <div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:8px;margin-top:5px;white-space:pre-wrap;">${order.description}</div>
                         </div>
                     ` : ''}
-                    
+
                     ${order.reference_urls && order.reference_urls.length > 0 ? `
                         <div style="margin-top:15px;">
                             <strong>📎 Референсы:</strong>
@@ -5953,20 +6081,23 @@ function viewUserOrderDetails(orderId) {
                             </div>
                         </div>
                     ` : ''}
-                    
-                                        ${order.work_message ? `
+
+                    ${order.work_message ? `
                         <div style="margin-top:15px;">
                             <strong>💬 Сообщение от дизайнера:</strong>
                             <div style="background:rgba(16,185,129,0.1);padding:12px;border-radius:8px;margin-top:5px;">${order.work_message}</div>
                         </div>
                     ` : ''}
-                    
+
                     <div style="margin-top:20px;text-align:center;">
-                        <button class="btn" onclick="contactDesignerAboutOrder(${order.id})" 
+                        <button class="btn" onclick="contactDesignerAboutOrder(${order.id})"
                                 style="background:rgba(124,58,237,0.15);border:1px solid rgba(124,58,237,0.4);color:#c084fc;font-size:13px;padding:8px 16px;">
                             💬 Связаться с дизайнером
                         </button>
                     </div>
+
+                    ${retryBtn}
+                    ${deleteBtn}
                 </div>
             `;
             modal.style.display = 'flex';
@@ -5974,6 +6105,61 @@ function viewUserOrderDetails(orderId) {
         .catch(function(err) {
             console.error('Ошибка:', err);
             alert('Ошибка загрузки заказа');
+        });
+}
+
+        function userDeleteOrder(orderId) {
+    if (!confirm('Удалить заказ #' + orderId + '? Это действие нельзя отменить.')) return;
+
+    // Сначала получаем данные заказа (для очистки референсов)
+    supabase.from('orders').select('*').eq('id', orderId).single()
+        .then(function(res) {
+            if (res.error || !res.data) {
+                alert('Заказ не найден');
+                return;
+            }
+
+            var order = res.data;
+
+            // Проверяем, что можно удалять
+            if (order.status !== 'ready' && order.status !== 'pending_payment') {
+                alert('Можно удалять только готовые заказы и заказы, ожидающие оплаты.');
+                return;
+            }
+
+            // Удаляем референсы из Storage
+            var deletePromises = [];
+            if (order.reference_urls && order.reference_urls.length > 0) {
+                order.reference_urls.forEach(function(url) {
+                    var path = url.split('/public/')[1];
+                    if (path) {
+                        deletePromises.push(supabase.storage.from('public').remove([path]));
+                    }
+                });
+            }
+
+            return Promise.all(deletePromises).catch(function() {}).then(function() {
+                return supabase.from('orders').delete().eq('id', orderId);
+            });
+        })
+        .then(function(deleteRes) {
+            if (deleteRes && deleteRes.error) {
+                alert('Ошибка удаления: ' + deleteRes.error.message);
+                return;
+            }
+
+            closeModal();
+            alert('✅ Заказ удалён');
+
+            // Обновляем список заказов
+            renderOrdersSection();
+            if (userOrdersMode === 'orders') {
+                loadUserOrders();
+            }
+        })
+        .catch(function(err) {
+            console.error('Ошибка:', err);
+            alert('Ошибка: ' + err.message);
         });
 }
 
