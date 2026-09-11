@@ -4276,9 +4276,6 @@ function closeModalAndResetDiscount(orderId) {
     }
 }
 
-// Добавьте глобальную переменную
-var userOrdersMode = 'services'; // 'services' или 'orders'
-
 // Функция переключения режима для пользователя
 function switchUserMode(mode) {
     userOrdersMode = mode;
@@ -7490,15 +7487,6 @@ function saveWorkAndMarkReady(orderId) {
             closeModal();
             alert('✅ Работа отправлена клиенту!');
 
-            adminWorkFiles = [];
-            adminWorkMessage = '';
-
-            if (window.isAdmin) {
-                loadAdminOrders();
-            }
-            renderOrdersSection();
-        })
-        .catch(function(err) {
             console.error('Ошибка:', err);
             alert('Ошибка: ' + err.message);
         });
