@@ -504,6 +504,49 @@
                 .modal .btn[style*="width:100%"] {
             margin-right: 0;
         }
+
+                /* ===== ФИКСИРОВАННАЯ НИЖНЯЯ ПАНЕЛЬ В КОНСТРУКТОРЕ ===== */
+        .fixed-bottom-bar {
+            position: sticky;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 12px 0 14px;
+            background: linear-gradient(180deg, rgba(26,11,46,0) 0%, rgba(26,11,46,0.95) 40%, #1a0b2e 100%);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-top: 1px solid var(--card-border);
+            margin-top: 20px;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .fixed-bottom-bar .order-total {
+            margin: 0;
+            padding: 0;
+            border-top: none;
+            text-align: right;
+            font-size: 18px;
+        }
+        .fixed-bottom-bar .checkout-btn {
+            width: 100%;
+            padding: 14px 20px;
+            font-size: 16px;
+            font-weight: 700;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #be185d 100%);
+            box-shadow: 0 4px 20px rgba(124,58,237,0.35), 0 0 0 1px rgba(168,85,247,0.2) inset;
+            margin: 0;
+            transition: transform 0.15s ease, box-shadow 0.25s ease;
+        }
+        .fixed-bottom-bar .checkout-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 24px rgba(124,58,237,0.5), 0 0 0 1px rgba(168,85,247,0.3) inset;
+        }
+        .fixed-bottom-bar .checkout-btn:active {
+            transform: scale(0.98);
+        }
         
     </style>
 </head>
@@ -646,6 +689,21 @@
 
         currentDiscount = lastSpinDiscount;
 
+        function subscribeToBot() {
+    try {
+        if (window.tg && window.tg.openTelegramLink) {
+            window.tg.openTelegramLink('https://t.me/Mark1zDesign_bot?start=from_app');
+        } else {
+            window.open('https://t.me/Mark1zDesign_bot?start=from_app', '_blank');
+        }
+        var banner = document.getElementById('subscribeBanner');
+        if (banner) banner.remove();
+        localStorage.setItem('bot_started_once', 'true');
+    } catch (e) {
+        console.log('Subscribe error:', e);
+    }
+}
+
         // ================================================================
         // TELEGRAM INIT
         // ================================================================
@@ -690,17 +748,22 @@ function initTelegram() {
             }, 500);
 
             // Открываем бота с /start (один раз)
+                       // Показываем баннер "Нажми, чтобы подписаться"
             setTimeout(function() {
-                try {
-                    if (window.tg && window.tg.openTelegramLink) {
-                        window.tg.openTelegramLink('https://t.me/Mark1zDesign_bot?start=from_app');
-                    } else {
-                        window.open('https://t.me/Mark1zDesign_bot?start=from_app', '_blank');
-                    }
-                } catch (e) {
-                    console.log('Auto-start error:', e);
-                }
-            }, 1500);
+                var banner = document.createElement('div');
+                banner.id = 'subscribeBanner';
+                banner.style.cssText = 'position:fixed;bottom:80px;left:16px;right:16px;z-index:9999;' +
+                    'background:linear-gradient(135deg, #7c3aed, #be185d);color:#fff;padding:14px 16px;' +
+                    'border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,0.4);display:flex;' +
+                    'align-items:center;justify-content:space-between;gap:10px;font-family:inherit;';
+                banner.innerHTML = `
+                    <span style="font-size:13px;line-height:1.3;">🔔 Подпишитесь на бота, чтобы получать уведомления о статусе заказов</span>
+                    <button onclick="subscribeToBot()" style="background:#fff;color:#7c3aed;border:none;' +
+                        'padding:8px 14px;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;' +
+                        'font-family:inherit;flex-shrink:0;">Подписаться</button>
+                `;
+                document.body.appendChild(banner);
+            }, 1000);
         }
     }
 }
@@ -2673,8 +2736,8 @@ function loadAbout() {
         lastSpinDiscount = 0;
     }
 
-    var html = `
-        <div style="max-height:75vh; overflow-y:auto;">
+        var html = `
+        <div style="max-height:85vh; overflow-y:auto; padding-bottom:140px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                 <h3>${service.emoji} ${service.name}</h3>
                 <button class="btn" onclick="closeModal()" style="margin:0;">×</button>
@@ -2749,14 +2812,11 @@ function loadAbout() {
 
     html += `
                     </div>
-                    <div class="order-total">
-                        Итого: <span id="orderTotalPrice">0 ₽</span>
-                    </div>
-                    <div style="margin-top:15px;">
-                        <textarea id="orderDescription" placeholder="Опишите ваше ТЗ (что нужно сделать, стиль, цвета, примеры...)" style="min-height:80px;"></textarea>
-                    </div>
-                                        <div class="checkout-bar">
-                        <button class="btn" onclick="openCheckoutOverlay()">
+                    <div class="fixed-bottom-bar">
+                        <div class="order-total">
+                            Итого: <span id="orderTotalPrice">0 ₽</span>
+                        </div>
+                        <button class="btn checkout-btn" onclick="openCheckoutOverlay()">
                             💳 Перейти к оплате
                         </button>
                     </div>
@@ -3028,6 +3088,11 @@ function updateOrderTotal() {
         }
 
     function submitOrderWithOptions() {
+        console.warn('submitOrderWithOptions устарела, использую openCheckoutOverlay');
+    if (typeof openCheckoutOverlay === 'function') {
+        return openCheckoutOverlay();
+    }
+    return;
     var discountUsed = localStorage.getItem('discountUsed');
     if (discountUsed === 'true') {
         currentDiscount = 0;
@@ -3120,6 +3185,7 @@ function updateOrderTotal() {
             console.error('Error:', err);
         });
 }
+        
 
         // ========== ОВЕРЛЕЙ ОПЛАТЫ С ТЗ + РЕФЕРЕНСАМИ ==========
 function openCheckoutOverlay() {
@@ -3158,11 +3224,29 @@ function openCheckoutOverlay() {
     var modal = document.getElementById('modalOverlay');
     var content = document.getElementById('modalContent');
 
+    var optionsHtml = selected.map(function(o) {
+        return `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:rgba(255,255,255,0.05);border-radius:10px;margin-bottom:6px;">
+                <div>
+                    <div style="font-weight:600;font-size:14px;">${o.name}</div>
+                    <div style="font-size:11px;color:var(--text-muted);">${o.price} ₽ × ${o.qty}</div>
+                </div>
+                <div style="font-weight:700;color:#c084fc;font-size:14px;">${o.price * o.qty} ₽</div>
+            </div>
+        `;
+    }).join('');
+
     content.innerHTML = `
         <div style="max-height:80vh;overflow-y:auto;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
                 <h3>💳 Оформление заказа</h3>
                 <button class="btn" onclick="closeModal()" style="margin:0;">×</button>
+            </div>
+
+            <div style="margin-bottom:15px;">
+                <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">🛠 ${currentOrderService.name}</div>
+                <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">📦 Выбранные опции:</div>
+                ${optionsHtml}
             </div>
 
             <div style="margin-bottom:15px;">
@@ -3759,9 +3843,20 @@ function autoCheckPendingPayments() {
             console.log('Найдено неоплаченных заказов:', res.data.length);
             
             // Проверяем каждый заказ
-            res.data.forEach(function(order) {
+                        res.data.forEach(function(order) {
                 if (order.payment_id) {
-                    checkPaymentStatusSilent(order.payment_id, order.id);
+                    // Если payment_id начинается с "charge_" или содержит цифры — это звёзды
+                    // Иначе — ЮKassa
+                    if (String(order.payment_id).startsWith('charge_') || /^\d+$/.test(order.payment_id)) {
+                        // Звёзды — статус уже обновляется ботом через handle_successful_payment
+                        // Просто проверяем ещё раз через 10 минут
+                        var orderTime = new Date(order.timestamp).getTime();
+                        if (Date.now() - orderTime > 10 * 60 * 1000) {
+                            cancelExpiredOrder(order.id);
+                        }
+                    } else {
+                        checkPaymentStatusSilent(order.payment_id, order.id);
+                    }
                 } else {
                     // Если нет payment_id, но заказ старый - отменяем
                     var orderTime = new Date(order.timestamp).getTime();
@@ -4098,26 +4193,24 @@ function resetDiscount() {
 
         // Функция сброса скидки после успешной оплаты
 
-        function closeModalAndResetDiscount(orderId) {
-    console.log('🔄 Закрытие и сброс скидки...');
-    
-    // Сбрасываем скидку
-    resetDiscountAfterPayment();
-    
-    // Закрываем модальное окно
-    closeModal();
-    
-    // Если это бесплатный заказ - обновляем статус
+function closeModalAndResetDiscount(orderId) {
+    console.log('🔄 Закрытие окна оплаты...');
+
+    // Если это был бесплатный заказ (сумма 0) — сразу помечаем оплаченным
+    // Для платных заказов статус НЕ трогаем — оплата подтверждается отдельно
     if (orderId) {
-        supabase.from('orders')
-            .update({ status: 'paid_card', paid_at: new Date().toISOString() })
-            .eq('id', orderId)
-            .then(function() {
-                console.log('✅ Заказ #' + orderId + ' отмечен как оплаченный (бесплатный)');
+        supabase.from('orders').select('total, status').eq('id', orderId).single()
+            .then(function(res) {
+                if (res.data && res.data.total === 0 && res.data.status === 'pending_payment') {
+                    return supabase.from('orders')
+                        .update({ status: 'paid_card', paid_at: new Date().toISOString() })
+                        .eq('id', orderId);
+                }
             });
     }
-    
-    // Обновляем интерфейс
+
+    resetDiscountAfterPayment();
+    closeModal();
     renderOrdersSection();
 }
 
@@ -5663,7 +5756,7 @@ function viewOrderDetails(orderId) {
                         <div style="font-size:14px;color:var(--text-muted);margin-bottom:8px;">📦 Выбранные опции:</div>
                         ${optionsHtml}
                         
-                        <div style="
+                    <div style="
                             display:flex;
                             justify-content:space-between;
                             align-items:center;
@@ -5674,7 +5767,10 @@ function viewOrderDetails(orderId) {
                             margin-top:16px;
                         ">
                             <span style="font-weight:600;">Итого:</span>
-                            <span style="font-size:24px;font-weight:700;color:#c084fc;">${order.total || 0} ₽</span>
+                            <div style="text-align:right;">
+                                <div style="font-size:24px;font-weight:700;color:#c084fc;">${order.total || 0} ₽</div>
+                                ${order.stars_amount ? `<div style="font-size:12px;color:#fbbf24;">⭐ ${order.stars_amount} звёзд</div>` : ''}
+                            </div>
                         </div>
                     </div>
                     
@@ -5819,6 +5915,7 @@ function viewUserOrderDetails(orderId) {
                     <p><strong>🛠️ Услуга:</strong> ${order.service}</p>
                     <p><strong>📊 Статус:</strong> ${statusMap[order.status] || order.status}</p>
                     <p><strong>💰 Сумма:</strong> ${order.total} ₽</p>
+                    ${order.stars_amount ? `<p><strong>⭐ Оплачено:</strong> ${order.stars_amount} звёзд</p>` : ''}
                     <p><strong>📅 Дата:</strong> ${order.time || 'Не указана'}</p>
                     
                     ${options.length > 0 ? `
@@ -7005,6 +7102,7 @@ function renderReviews(reviews) {
                         <div><strong>${oi.service || 'Заказ'}</strong></div>
 ${opts ? '<div style="margin-top:4px;">' + opts + '</div>' : ''}
 ${oi.total ? '<div style="margin-top:4px;color:#c084fc;font-weight:600;">' + oi.total + ' ₽</div>' : ''}
+${oi.stars_amount ? '<div style="margin-top:4px;color:#fbbf24;font-size:11px;">⭐ ' + oi.stars_amount + ' звёзд</div>' : ''}
 ${oi.time ? '<div style="margin-top:4px;font-size:10px;">📅 Заказ: ' + oi.time + '</div>' : ''}
 ${oi.completed_at ? '<div style="font-size:10px;">✅ Выполнен: ' + new Date(oi.completed_at).toLocaleString('ru-RU') + '</div>' : ''}
                     </div>
@@ -7351,18 +7449,59 @@ function saveWorkAndMarkReady(orderId) {
                     work_message: adminWorkMessage,
                     completed_at: new Date().toISOString()
                 })
-                .eq('id', orderId);
+                .eq('id', orderId)
+                .select()
+                .single();
         })
         .then(function(res) {
             if (res.error) {
                 alert('Ошибка: ' + res.error.message);
                 return;
             }
-            
+
+            var order = res.data;
+
             allowReviewAfterWork(orderId);
-            
+
+            // Отправляем уведомление клиенту через бота
+            return fetch('https://lcgbpwowppwwpjjlphod.supabase.co/functions/v1/notify-work-ready', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZ2Jwd293cHB3d3BqamxwaG9kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NDAwNTMsImV4cCI6MjEwNDIxNjA1M30.95VPot7saWmlgv1IzBop3E4x-ZxSc8HepqKdDLJa7JI',
+                    'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZ2Jwd293cHB3d3BqamxwaG9kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NDAwNTMsImV4cCI6MjEwNDIxNjA1M30.95VPot7saWmlgv1IzBop3E4x-ZxSc8HepqKdDLJa7JI'
+                },
+                body: JSON.stringify({
+                    orderId: orderId,
+                    userId: order.user_id,
+                    username: order.user_username,
+                    workMessage: adminWorkMessage,
+                    workFiles: urls
+                })
+            });
+        })
+        .then(function(fetchRes) {
+            if (fetchRes && fetchRes.ok) {
+                console.log('✅ Уведомление отправлено клиенту');
+            } else {
+                console.log('⚠️ Не удалось отправить уведомление');
+            }
+
             closeModal();
             alert('✅ Работа отправлена клиенту!');
+
+            adminWorkFiles = [];
+            adminWorkMessage = '';
+
+            if (window.isAdmin) {
+                loadAdminOrders();
+            }
+            renderOrdersSection();
+        })
+        .catch(function(err) {
+            console.error('Ошибка:', err);
+            alert('Ошибка: ' + err.message);
+        });
             
             adminWorkFiles = [];
             adminWorkMessage = '';
