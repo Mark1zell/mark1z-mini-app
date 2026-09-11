@@ -555,6 +555,63 @@
             min-height: 0;
             padding-bottom: 8px;
         }
+
+        #subscribeBanner {
+    bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+                /* ===== АДАПТАЦИЯ ПОД ПЛАНШЕТЫ ===== */
+        @media (min-width: 768px) {
+            .app-container { max-width: 720px; }
+            .card { padding: 28px; }
+            .brand-name { font-size: 36px; }
+            .categories-grid { grid-template-columns: repeat(3, 1fr); }
+            .works-grid { grid-template-columns: repeat(3, 1fr); }
+            .tab-btn { padding: 14px 10px; font-size: 15px; }
+            .modal { max-width: 640px; padding: 32px; }
+            .order-constructor-wrapper { max-height: 80vh; }
+        }
+
+        /* ===== АДАПТАЦИЯ ПОД ПК ===== */
+        @media (min-width: 1024px) {
+            .app-container { max-width: 900px; }
+            .categories-grid { grid-template-columns: repeat(4, 1fr); }
+            .works-grid { grid-template-columns: repeat(4, 1fr); }
+            .modal { max-width: 720px; }
+        }
+
+        /* ===== БЕЗОПАСНЫЕ ОТСТУПЫ iOS ===== */
+        body {
+            padding-top: env(safe-area-inset-top, 0);
+            padding-left: env(safe-area-inset-left, 0);
+            padding-right: env(safe-area-inset-right, 0);
+            padding-bottom: calc(80px + env(safe-area-inset-bottom, 0));
+        }
+
+        .modal {
+            padding-top: calc(24px + env(safe-area-inset-top, 0));
+            padding-bottom: calc(24px + env(safe-area-inset-bottom, 0));
+        }
+
+        .header {
+            padding-top: calc(30px + env(safe-area-inset-top, 0));
+        }
+
+        /* Отключаем зум на iOS при фокусе в input */
+        input, textarea, select {
+            font-size: 16px !important;
+        }
+
+        /* Улучшаем кликабельность на тач-устройствах */
+        .btn, .tab-btn, .user-tab, .admin-tab, .quick-action {
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Баннер подписки — с учётом safe area */
+        #subscribeBanner {
+            bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+        }
         
     </style>
 </head>
@@ -697,19 +754,24 @@
 
         currentDiscount = lastSpinDiscount;
 
-        function subscribeToBot() {
+function subscribeToBot() {
+    var url = 'https://t.me/Mark1zDesign_bot?start=from_app';
     try {
-        if (window.tg && window.tg.openTelegramLink) {
-            window.tg.openTelegramLink('https://t.me/Mark1zDesign_bot?start=from_app');
+        if (window.tg && typeof window.tg.openTelegramLink === 'function') {
+            window.tg.openTelegramLink(url);
+        } else if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openTelegramLink === 'function') {
+            window.Telegram.WebApp.openTelegramLink(url);
         } else {
-            window.open('https://t.me/Mark1zDesign_bot?start=from_app', '_blank');
+            window.open(url, '_blank');
         }
-        var banner = document.getElementById('subscribeBanner');
-        if (banner) banner.remove();
-        localStorage.setItem('bot_started_once', 'true');
     } catch (e) {
         console.log('Subscribe error:', e);
+        window.open(url, '_blank');
     }
+
+    var banner = document.getElementById('subscribeBanner');
+    if (banner) banner.remove();
+    localStorage.setItem('bot_started_once', 'true');
 }
 
         // ================================================================
@@ -718,62 +780,140 @@
 // В функции initTelegram() добавьте:
 function initTelegram() {
     var tg = window.Telegram?.WebApp;
-    if (tg) {
-        window.telegramAvailable = true;
-        window.tg = tg;
-        tg.ready();
-        tg.expand();
-        tg.setHeaderColor('#0a050d');
-        tg.setBackgroundColor('#0a0012');
-        tg.MainButton.hide();
-        var user = tg.initDataUnsafe?.user;
-        window.currentUser = user;
-        
-        if (user?.username?.toLowerCase() === 'mark1zell') {
-            window.isAdmin = true;
-            document.body.classList.add('admin-mode');
+    if (!tg) {
+        console.warn('⚠️ Telegram WebApp недоступен');
+        return;
+    }
+
+    window.telegramAvailable = true;
+    window.tg = tg;
+    tg.ready();
+    tg.expand();
+
+    // setHeaderColor / setBackgroundColor — только если версия >= 6.1
+    try {
+        if (typeof tg.isVersionAtLeast === 'function' && tg.isVersionAtLeast('6.1')) {
+            tg.setHeaderColor('#0a050d');
+            tg.setBackgroundColor('#0a0012');
         }
-        
-        // АВТОМАТИЧЕСКИЙ ЗАПУСК БОТА
-        // Отправляем команду /start боту через диплинк
-                if (user && !localStorage.getItem('bot_started_once')) {
-            localStorage.setItem('bot_started_once', 'true');
+    } catch (e) { console.log('Theme error:', e); }
 
-            // Регистрируем user_id в БД
-            setTimeout(function() {
-                fetch('https://lcgbpwowppwwpjjlphod.supabase.co/rest/v1/rpc/register_user', {
-                    method: 'POST',
-                    headers: {
-                        'apikey': '...',
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        user_id: String(user.id),
-                        username: user.username || '',
-                        first_name: user.first_name || ''
-                    })
-                }).catch(function(e) { console.log('Bot register:', e); });
-            }, 500);
+    tg.MainButton.hide();
 
-            // Открываем бота с /start (один раз)
-                       // Показываем баннер "Нажми, чтобы подписаться"
-            setTimeout(function() {
-                var banner = document.createElement('div');
-                banner.id = 'subscribeBanner';
-                banner.style.cssText = 'position:fixed;bottom:80px;left:16px;right:16px;z-index:9999;' +
-                    'background:linear-gradient(135deg, #7c3aed, #be185d);color:#fff;padding:14px 16px;' +
-                    'border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,0.4);display:flex;' +
-                    'align-items:center;justify-content:space-between;gap:10px;font-family:inherit;';
-                banner.innerHTML = `
-                    <span style="font-size:13px;line-height:1.3;">🔔 Подпишитесь на бота, чтобы получать уведомления о статусе заказов</span>
-                    <button onclick="subscribeToBot()" style="background:#fff;color:#7c3aed;border:none;' +
-                        'padding:8px 14px;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;' +
-                        'font-family:inherit;flex-shrink:0;">Подписаться</button>
-                `;
-                document.body.appendChild(banner);
-            }, 1000);
+    // ===== Ожидание user (для планшетов/iOS) =====
+    var attempts = 0;
+    function tryGetUser() {
+        var user = tg.initDataUnsafe?.user;
+        if (user && user.id) {
+            window.currentUser = user;
+            console.log('✅ currentUser получен:', user.id, user.first_name, user.username);
+
+            // Сохраняем в localStorage — чтобы не терять между сессиями
+            localStorage.setItem('tg_user_id', String(user.id));
+            localStorage.setItem('tg_user_username', user.username || '');
+            localStorage.setItem('tg_user_first_name', user.first_name || '');
+
+            if (user.username?.toLowerCase() === 'mark1zell') {
+                window.isAdmin = true;
+                document.body.classList.add('admin-mode');
+            }
+            onTelegramUserReady(user);
+            return;
+        }
+        attempts++;
+        if (attempts < 10) {
+            setTimeout(tryGetUser, 200);
+        } else {
+            console.warn('⚠️ Не удалось получить user из Telegram');
+            // Fallback: берём из localStorage
+            var savedId = localStorage.getItem('tg_user_id');
+            if (savedId) {
+                window.currentUser = {
+                    id: savedId,
+                    username: localStorage.getItem('tg_user_username') || '',
+                    first_name: localStorage.getItem('tg_user_first_name') || ''
+                };
+                console.log('✅ currentUser восстановлен из localStorage:', savedId);
+                onTelegramUserReady(window.currentUser);
+            }
         }
     }
+    tryGetUser();
+}
+
+// ===== Действия, когда user получен =====
+function onTelegramUserReady(user) {
+    if (!user) return;
+
+    // Регистрируем user_id в БД
+    setTimeout(function() {
+        fetch('https://lcgbpwowppwwpjjlphod.supabase.co/rest/v1/rpc/register_user', {
+            method: 'POST',
+            headers: {
+                'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZ2Jwd293cHB3d3BqamxwaG9kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NDAwNTMsImV4cCI6MjEwNDIxNjA1M30.95VPot7saWmlgv1IzBop3E4x-ZxSc8HepqKdDLJa7JI',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                user_id: String(user.id),
+                username: user.username || '',
+                first_name: user.first_name || ''
+            })
+        }).catch(function(e) { console.log('Bot register:', e); });
+    }, 500);
+
+    // ===== Авто-открытие бота + баннер (только первый раз) =====
+    if (!localStorage.getItem('bot_started_once')) {
+        localStorage.setItem('bot_started_once', 'true');
+
+        // Авто-переход через 2 сек
+        setTimeout(function() {
+            try {
+                var url = 'https://t.me/Mark1zDesign_bot?start=from_app';
+                if (window.tg && typeof window.tg.openTelegramLink === 'function') {
+                    window.tg.openTelegramLink(url);
+                } else {
+                    window.open(url, '_blank');
+                }
+                console.log('✅ Авто-переход в бота выполнен');
+            } catch (e) {
+                console.log('Auto-start error:', e);
+            }
+        }, 2000);
+
+        // Баннер через 1.5 сек (на случай, если авто не сработало)
+        setTimeout(function() {
+            if (document.getElementById('subscribeBanner')) return;
+
+            var banner = document.createElement('div');
+            banner.id = 'subscribeBanner';
+            banner.style.cssText = 'position:fixed;bottom:calc(80px + env(safe-area-inset-bottom, 0px));left:16px;right:16px;z-index:9999;' +
+                'background:linear-gradient(135deg, #7c3aed, #be185d);color:#fff;padding:14px 16px;' +
+                'border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,0.4);display:flex;' +
+                'align-items:center;justify-content:space-between;gap:10px;font-family:inherit;';
+            banner.innerHTML = `
+                <span style="font-size:13px;line-height:1.3;">🔔 Подпишитесь на бота, чтобы получать уведомления о статусе заказов</span>
+                <button onclick="subscribeToBot()" style="background:#fff;color:#7c3aed;border:none;padding:8px 14px;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;flex-shrink:0;">Подписаться</button>
+            `;
+            document.body.appendChild(banner);
+        }, 1500);
+    }
+}
+
+        // Проверяем, начал ли пользователь чат с ботом
+function checkBotSubscription() {
+    if (!window.currentUser) return;
+
+    var userId = String(window.currentUser.id);
+    supabase.from('users_bot')
+        .select('user_id')
+        .eq('user_id', userId)
+        .maybeSingle()
+        .then(function(res) {
+            if (!res.data) {
+                // Пользователь не в боте — показываем жёсткий баннер
+                showSubscribeBanner();
+            }
+        });
 }
 
         // ================================================================
@@ -1150,18 +1290,42 @@ function applyPromo(code) {
                 return;
             }
             var data = res.data;
-            if (data.used) {
-                alert('Промокод уже использован');
+
+            // ===== Проверка: срок действия =====
+            if (data.expires_at && new Date(data.expires_at) < new Date()) {
+                alert('Срок действия промокода истёк');
                 return;
             }
+
+            // ===== Проверка: лимит использований =====
+            var maxUses = data.max_uses || 0;
+            var currentUses = data.uses_count || 0;
+            if (maxUses > 0 && currentUses >= maxUses) {
+                alert('Промокод больше не действует');
+                return;
+            }
+
+            // ===== Проверка: пользователь уже использовал =====
+            var userId = window.currentUser?.id
+                ? String(window.currentUser.id)
+                : localStorage.getItem('tg_user_id');
+
+            var usedBy = Array.isArray(data.used_by) ? data.used_by : [];
+            if (userId && usedBy.indexOf(userId) !== -1) {
+                alert('Вы уже использовали этот промокод');
+                return;
+            }
+
+            // ===== Промокод на кейс =====
             if (data.type === 'wheel') {
                 canSpinNow = true;
                 alert('Промокод активирован! Теперь вы можете крутить кейс.');
                 openCaseModal();
                 return;
             }
+
+            // ===== Промокод на скидку =====
             if (data.type === 'discount') {
-                // Сохраняем промокод в глобальную переменную
                 currentPromo = {
                     code: data.code,
                     discount_percent: data.discount_percent || 0,
@@ -1169,7 +1333,6 @@ function applyPromo(code) {
                     applies_to: Array.isArray(data.applies_to) ? data.applies_to : []
                 };
 
-                // Устанавливаем currentDiscount для отображения
                 if (data.free) {
                     currentDiscount = 100;
                 } else if (data.discount_percent > 0) {
@@ -1179,10 +1342,18 @@ function applyPromo(code) {
                     return;
                 }
 
+                // Записываем юзера в used_by
+                if (userId) {
+                    usedBy.push(userId);
+                    supabase.from('promocodes')
+                        .update({ used_by: usedBy })
+                        .eq('code', code);
+                }
+
                 localStorage.removeItem('discountUsed');
-                alert('Промокод "' + data.code + '" активирован!' + 
-                      (currentPromo.applies_to.length > 0 
-                        ? '\nСкидка действует только на выбранные услуги/опции.' 
+                alert('Промокод "' + data.code + '" активирован!' +
+                      (currentPromo.applies_to.length > 0
+                        ? '\nСкидка действует только на выбранные услуги/опции.'
                         : ''));
                 closeModal();
                 renderOrdersSection();
@@ -3415,13 +3586,11 @@ function submitCheckout() {
     var content = document.getElementById('modalContent');
     content.innerHTML = `
         <div style="text-align:center;padding:60px 20px;position:relative;overflow:hidden;">
-            <!-- Анимированный фон -->
             <div style="position:absolute;inset:0;background:radial-gradient(circle at 30% 40%, rgba(124,58,237,0.3) 0%, transparent 50%),
                         radial-gradient(circle at 70% 60%, rgba(190,24,93,0.3) 0%, transparent 50%);
                         animation:pulseBg 3s ease-in-out infinite;z-index:0;"></div>
 
             <div style="position:relative;z-index:1;">
-                <!-- Красивый спиннер -->
                 <div style="position:relative;width:100px;height:100px;margin:0 auto 24px;">
                     <div style="position:absolute;inset:0;border-radius:50%;border:3px solid transparent;
                                 border-top-color:#7c3aed;border-right-color:#be185d;
@@ -3442,7 +3611,6 @@ function submitCheckout() {
                 <p style="color:var(--text-muted);font-size:14px;margin-bottom:6px;">Пожалуйста, подождите...</p>
                 <p style="color:var(--text-muted);font-size:12px;opacity:0.7;" id="loadingStep">Загружаем референсы</p>
 
-                <!-- Точки -->
                 <div style="margin-top:20px;display:flex;justify-content:center;gap:8px;">
                     <span style="width:8px;height:8px;border-radius:50%;background:#7c3aed;
                                  animation:dotPulse 1.4s ease-in-out infinite;"></span>
@@ -3456,7 +3624,6 @@ function submitCheckout() {
     `;
     modal.style.display = 'flex';
 
-    // Добавляем keyframes, если ещё нет
     if (!document.getElementById('loadingAnimations')) {
         var style = document.createElement('style');
         style.id = 'loadingAnimations';
@@ -3492,18 +3659,17 @@ function submitCheckout() {
         }
     });
 
+    // ===== Fallback на localStorage для планшетов/iOS =====
     var user = window.currentUser;
-    var userName = user?.first_name || user?.username || 'Пользователь';
-    var userUsername = user?.username || null;
-    var userId = user?.id ? String(user.id) : null;
+    var userId = user?.id ? String(user.id) : localStorage.getItem('tg_user_id');
+    var userUsername = user?.username || localStorage.getItem('tg_user_username') || null;
+    var userName = user?.first_name || localStorage.getItem('tg_user_first_name') || userUsername || 'Пользователь';
 
-    // Загружаем референсы
-        // Обновляем статус
     var loadingStep = document.getElementById('loadingStep');
     if (loadingStep) loadingStep.textContent = 'Загружаем референсы...';
 
     var uploadPromises = checkoutRefFiles.map(function(file) {
-        return uploadFileToSupabase(file, 'references/' + (user?.id || 'anonymous'));
+        return uploadFileToSupabase(file, 'references/' + (userId || 'anonymous'));
     });
 
     Promise.all(uploadPromises)
@@ -3524,7 +3690,7 @@ function submitCheckout() {
             };
 
             if (loadingStep) loadingStep.textContent = 'Создаём заказ...';
-            
+
             return supabase.from('orders').insert([order]).select();
         })
         .then(function(res) {
@@ -3534,6 +3700,12 @@ function submitCheckout() {
             }
             if (res.data && res.data.length > 0) {
                 var orderId = res.data[0].id;
+
+                // Списываем промокод
+                if (currentPromo && currentPromo.code) {
+                    markPromoUsed(currentPromo.code, orderId);
+                }
+
                 closeModal();
                 showPaymentOptions(orderId, window.checkoutFinalTotal, selected);
             }
@@ -3547,13 +3719,42 @@ function submitCheckout() {
 // Отметить промокод использованным
 function markPromoUsed(promoCode, orderId) {
     if (!promoCode) return Promise.resolve();
+
+    console.log('🎁 Списываем промокод:', promoCode);
+
     return supabase.from('promocodes')
-        .update({ used: true, order_id: orderId })
+        .select('*')
         .eq('code', promoCode)
+        .single()
+        .then(function(res) {
+            if (res.error || !res.data) return;
+
+            var promo = res.data;
+            var currentUses = promo.uses_count || 0;
+            var maxUses = promo.max_uses || 0; // 0 = безлимит
+
+            // Увеличиваем счётчик использований
+            var newUses = currentUses + 1;
+
+            var update = { uses_count: newUses };
+
+            // Если достигнут лимит — помечаем used
+            if (maxUses > 0 && newUses >= maxUses) {
+                update.used = true;
+            }
+
+            return supabase.from('promocodes')
+                .update(update)
+                .eq('code', promoCode);
+        })
         .then(function() {
             currentPromo = null;
             currentDiscount = 0;
             localStorage.removeItem('lastSpinDiscount');
+            console.log('✅ Промокод списан');
+        })
+        .catch(function(err) {
+            console.error('Ошибка списания промокода:', err);
         });
 }
 
@@ -5406,13 +5607,14 @@ function submitCartOrder(finalTotal) {
     var desc = document.getElementById('cartCheckoutDesc').value.trim();
     if (!desc) { alert('Опишите ТЗ'); return; }
 
+    // Fallback на localStorage
     var user = window.currentUser;
-    var userName = user?.first_name || user?.username || 'Пользователь';
-    var userUsername = user?.username || null;
-    var userId = user?.id ? String(user.id) : null;
+    var userId = user?.id ? String(user.id) : localStorage.getItem('tg_user_id');
+    var userUsername = user?.username || localStorage.getItem('tg_user_username') || null;
+    var userName = user?.first_name || localStorage.getItem('tg_user_first_name') || userUsername || 'Пользователь';
 
     var uploadPromises = checkoutRefFiles.map(function(file) {
-        return uploadFileToSupabase(file, 'references/' + (user?.id || 'anonymous'));
+        return uploadFileToSupabase(file, 'references/' + (userId || 'anonymous'));
     });
 
     Promise.all(uploadPromises)
@@ -5450,6 +5652,11 @@ function submitCartOrder(finalTotal) {
             }
             if (res.data && res.data.length > 0) {
                 var orderId = res.data[0].id;
+
+                if (currentPromo && currentPromo.code) {
+                    markPromoUsed(currentPromo.code, orderId);
+                }
+
                 cart = [];
                 saveCart();
                 closeModal();
