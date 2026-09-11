@@ -633,7 +633,6 @@
         var currentEditWorkIndex = null;
         var adminWorkFiles = [];
         var adminWorkMessage = '';
-        var userOrdersMode = 'services';
 
         // ===== ПРОМОКОДЫ И КОРЗИНА =====
         var currentPromo = null;              // {code, discount_percent, free, applies_to}
@@ -3251,39 +3250,35 @@ function removeCheckoutRef(index) {
 
 function renderCheckoutTotal(selected) {
     var baseTotal = selected.reduce(function(sum, o) { return sum + o.price * o.qty; }, 0);
-        var discountSum = 0;
+    var discountSum = 0;
+
     if (currentPromo) {
+        // Скидка от промокода (только на выбранные позиции)
         var appliesTo = currentPromo.applies_to || [];
         var eligibleSum = 0;
-        cart.forEach(function(item) {
-            var match = appliesTo.length === 0 
-                || appliesTo.some(function(t) { return t.type === 'product' && t.id === item.id; });
-            if (match) eligibleSum += item.price * item.qty;
-        });
-        discountSum = currentPromo.free ? eligibleSum 
-            : Math.round(eligibleSum * currentPromo.discount_percent / 100);
-    }
         selected.forEach(function(item) {
             var match = appliesTo.length === 0 || appliesTo.some(function(t) {
                 return t.type === item.type && t.id === item.id;
             });
             if (match) eligibleSum += item.price * item.qty;
         });
-        // скидка по промокоду
+
         if (currentPromo.free) {
             discountSum = eligibleSum;
         } else {
             discountSum = Math.round(eligibleSum * currentPromo.discount_percent / 100);
         }
     } else if (currentDiscount > 0) {
-        // старая логика со скидкой от кейса
+        // Старая логика со скидкой от кейса
         var excludedServices = ['Telegram Mini Apps', 'Дизайн сайтов', 'Дизайн мобильных приложений'];
         var isExcluded = excludedServices.indexOf(currentOrderService.name) !== -1;
         if (!isExcluded) {
             if (currentDiscount === 100) {
-                // бесплатная самая дешёвая опция
+                // Бесплатная — самая дешёвая опция
                 var cheapest = selected[0];
-                selected.forEach(function(o) { if (o.price * o.qty < cheapest.price * cheapest.qty) cheapest = o; });
+                selected.forEach(function(o) {
+                    if (o.price * o.qty < cheapest.price * cheapest.qty) cheapest = o;
+                });
                 discountSum = cheapest.price * cheapest.qty;
             } else {
                 discountSum = Math.round(baseTotal * currentDiscount / 100);
@@ -3293,10 +3288,12 @@ function renderCheckoutTotal(selected) {
 
     var finalTotal = Math.max(0, baseTotal - discountSum);
     var totalEl = document.getElementById('checkoutTotal');
-    totalEl.innerHTML = `
-        ${discountSum > 0 ? '<div style="font-size:13px;color:#6ee7b7;">Скидка: −' + discountSum + '₽</div>' : ''}
-        Итого: <span style="color:#c084fc;">${finalTotal}₽</span>
-    `;
+    if (totalEl) {
+        totalEl.innerHTML = `
+            ${discountSum > 0 ? '<div style="font-size:13px;color:#6ee7b7;">Скидка: −' + discountSum + '₽</div>' : ''}
+            Итого: <span style="color:#c084fc;">${finalTotal}₽</span>
+        `;
+    }
     window.checkoutFinalTotal = finalTotal;
     window.checkoutBaseTotal = baseTotal;
 }
@@ -7415,7 +7412,6 @@ function allowReviewAfterWork(orderId) {
                 initDefaultServiceOptions();
                 setupRealTimeListeners();
                 renderOrdersSection();
-                loadProducts();
                 console.log('✅ Данные загружены');
                 
                 // Восстанавливаем скидку
