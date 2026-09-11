@@ -507,19 +507,15 @@
 
                 /* ===== ФИКСИРОВАННАЯ НИЖНЯЯ ПАНЕЛЬ В КОНСТРУКТОРЕ ===== */
         .fixed-bottom-bar {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            padding: 12px 20px 14px;
-            background: linear-gradient(180deg, rgba(26,11,46,0.7) 0%, #1a0b2e 30%, #1a0b2e 100%);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            flex-shrink: 0;
+            padding: 12px 0 0;
+            background: linear-gradient(180deg, rgba(26,11,46,0) 0%, #1a0b2e 30%, #1a0b2e 100%);
             border-top: 1px solid var(--card-border);
-            z-index: 10;
             display: flex;
             flex-direction: column;
             gap: 8px;
+            margin-top: 8px;
+            padding-top: 12px;
         }
         .fixed-bottom-bar .order-total {
             margin: 0;
@@ -545,6 +541,19 @@
         }
         .fixed-bottom-bar .checkout-btn:active {
             transform: scale(0.98);
+        }
+
+                .order-constructor-wrapper {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            max-height: 85vh;
+        }
+        .order-constructor-scroll {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+            padding-bottom: 8px;
         }
         
     </style>
@@ -2749,14 +2758,15 @@ function loadAbout() {
         lastSpinDiscount = 0;
     }
 
-        var html = `
-        <div style="padding-bottom:140px;">
+    var html = `
+        <div class="order-constructor-wrapper">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                 <h3>${service.emoji} ${service.name}</h3>
                 <button class="btn" onclick="closeModal()" style="margin:0;">×</button>
             </div>
-            <p style="color:var(--text-muted); font-size:14px; margin-bottom:15px;">${service.description || ''}</p>
-            <div id="orderOptionsContainer">
+            <div class="order-constructor-scroll">
+                <p style="color:var(--text-muted); font-size:14px; margin-bottom:15px;">${service.description || ''}</p>
+                <div id="orderOptionsContainer">
     `;
 
         // Баннер промокода
@@ -2824,16 +2834,17 @@ function loadAbout() {
     }
 
     html += `
-                    </div>
-                    <div class="fixed-bottom-bar">
-                        <div class="order-total">
-                            Итого: <span id="orderTotalPrice">0 ₽</span>
-                        </div>
-                        <button class="btn checkout-btn" onclick="openCheckoutOverlay()">
-                            💳 Перейти к оплате
-                        </button>
-                    </div>
                 </div>
+            </div>
+            <div class="fixed-bottom-bar">
+                <div class="order-total">
+                    Итого: <span id="orderTotalPrice">0 ₽</span>
+                </div>
+                <button class="btn checkout-btn" onclick="openCheckoutOverlay()">
+                    💳 Перейти к оплате
+                </button>
+            </div>
+        </div>
     `;
 
     content.innerHTML = html;
