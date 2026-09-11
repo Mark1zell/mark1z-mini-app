@@ -500,6 +500,10 @@
             margin-right: 0;
             display: block;
         }
+
+                .modal .btn[style*="width:100%"] {
+            margin-right: 0;
+        }
         
     </style>
 </head>
@@ -667,15 +671,15 @@ function initTelegram() {
         
         // АВТОМАТИЧЕСКИЙ ЗАПУСК БОТА
         // Отправляем команду /start боту через диплинк
-        if (user && !sessionStorage.getItem('bot_started')) {
-            sessionStorage.setItem('bot_started', 'true');
-            
-            // Отправляем запрос на сервер для активации user_id
+                if (user && !localStorage.getItem('bot_started_once')) {
+            localStorage.setItem('bot_started_once', 'true');
+
+            // Регистрируем user_id в БД
             setTimeout(function() {
                 fetch('https://lcgbpwowppwwpjjlphod.supabase.co/rest/v1/rpc/register_user', {
                     method: 'POST',
                     headers: {
-                        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZ2Jwd293cHB3d3BqamxwaG9kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NDAwNTMsImV4cCI6MjEwNDIxNjA1M30.95VPot7saWmlgv1IzBop3E4x-ZxSc8HepqKdDLJa7JI',
+                        'apikey': '...',
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
@@ -683,8 +687,21 @@ function initTelegram() {
                         username: user.username || '',
                         first_name: user.first_name || ''
                     })
-                }).catch(function(e) { console.log('Bot start:', e); });
+                }).catch(function(e) { console.log('Bot register:', e); });
             }, 500);
+
+            // Открываем бота с /start (один раз)
+            setTimeout(function() {
+                try {
+                    if (window.tg && window.tg.openTelegramLink) {
+                        window.tg.openTelegramLink('https://t.me/Mark1zDesign_bot?start=from_app');
+                    } else {
+                        window.open('https://t.me/Mark1zDesign_bot?start=from_app', '_blank');
+                    }
+                } catch (e) {
+                    console.log('Auto-start error:', e);
+                }
+            }, 1500);
         }
     }
 }
@@ -825,8 +842,10 @@ function openFaqModal() {
             <p><strong>6. Можно ли вернуть деньги?</strong><br>После начала работы деньги не возвращаются.</p>
             <p><strong>7. Что делать, если оплата не прошла?</strong><br>Свяжитесь с дизайнером через @mark1zell, он поможет решить проблему.</p>
         </div>
-                <button class="btn" style="width:100%;margin-top:20px;display:block;" onclick="openLegalModal()">📄 Условия и реквизиты</button>
-        <button class="btn" style="width:100%;margin-top:8px;display:block;background:linear-gradient(135deg, rgba(16,185,129,0.7), rgba(5,150,105,0.7));" onclick="contactDesigner()">💬 Связаться с дизайнером</button>
+                        <div style="position:sticky;bottom:0;background:linear-gradient(180deg, rgba(26,11,46,0) 0%, rgba(26,11,46,0.95) 30%, #1a0b2e 100%);padding-top:14px;margin-top:14px;">
+            <button class="btn" style="width:100%;margin:0 0 8px 0;display:block;" onclick="openLegalModal()">📄 Условия и реквизиты</button>
+            <button class="btn" style="width:100%;margin:0;display:block;background:linear-gradient(135deg, rgba(16,185,129,0.6), rgba(5,150,105,0.6));" onclick="contactDesigner()">💬 Связаться с дизайнером</button>
+        </div>
     `;
     modal.style.display = 'flex';
 }
@@ -1166,6 +1185,7 @@ function openPromoTargetPicker(code, discount) {
 
     var services = servicesData || [];
     var options = serviceOptionsData || [];
+    var products = productsData || [];
 
     var html = `
         <h3>🎯 На что действует скидка?</h3>
@@ -1185,6 +1205,7 @@ function openPromoTargetPicker(code, discount) {
             </label>
         `;
     });
+
     html += `</div><h4 style="margin:12px 0 6px;font-size:14px;">⚙️ Опции</h4><div id="promoOptionsList">`;
     options.forEach(function(o) {
         var svc = services.find(function(s) { return s.id == o.service_id; });
@@ -1196,6 +1217,21 @@ function openPromoTargetPicker(code, discount) {
             </label>
         `;
     });
+
+    html += `</div><h4 style="margin:12px 0 6px;font-size:14px;">📦 Товары</h4><div id="promoProductsList">`;
+    if (products.length === 0) {
+        html += '<p style="color:var(--text-muted);font-size:12px;">Нет товаров</p>';
+    } else {
+        products.forEach(function(p) {
+            html += `
+                <label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;">
+                    <input type="checkbox" class="promo-prod" value="${p.id}" style="width:auto;">
+                    <span>${p.name} — ${p.price}₽</span>
+                </label>
+            `;
+        });
+    }
+
     html += `
         </div>
         <div style="display:flex;gap:8px;margin-top:20px;">
@@ -1205,6 +1241,27 @@ function openPromoTargetPicker(code, discount) {
     `;
     content.innerHTML = html;
     modal.style.display = 'flex';
+
+    // Если товары не загружены — загрузим
+    if (products.length === 0) {
+        supabase.from('products').select('*').eq('active', true).then(function(res) {
+            if (res.data) {
+                productsData = res.data;
+                // Перерисуем список
+                var listEl = document.getElementById('promoProductsList');
+                if (listEl) {
+                    listEl.innerHTML = productsData.map(function(p) {
+                        return `
+                            <label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;">
+                                <input type="checkbox" class="promo-prod" value="${p.id}" style="width:auto;">
+                                <span>${p.name} — ${p.price}₽</span>
+                            </label>
+                        `;
+                    }).join('');
+                }
+            }
+        });
+    }
 }
 
 function savePromoWithTargets(code, discount) {
@@ -1213,8 +1270,11 @@ function savePromoWithTargets(code, discount) {
     document.querySelectorAll('.promo-svc:checked').forEach(function(cb) {
         appliesTo.push({ type: 'service', id: parseInt(cb.value) });
     });
-    document.querySelectorAll('.promo-opt:checked').forEach(function(cb) {
+        document.querySelectorAll('.promo-opt:checked').forEach(function(cb) {
         appliesTo.push({ type: 'option', id: parseInt(cb.value) });
+    });
+    document.querySelectorAll('.promo-prod:checked').forEach(function(cb) {
+        appliesTo.push({ type: 'product', id: parseInt(cb.value) });
     });
 
     var data = {
@@ -3191,11 +3251,18 @@ function removeCheckoutRef(index) {
 
 function renderCheckoutTotal(selected) {
     var baseTotal = selected.reduce(function(sum, o) { return sum + o.price * o.qty; }, 0);
-    var discountSum = 0;
-
+        var discountSum = 0;
     if (currentPromo) {
         var appliesTo = currentPromo.applies_to || [];
         var eligibleSum = 0;
+        cart.forEach(function(item) {
+            var match = appliesTo.length === 0 
+                || appliesTo.some(function(t) { return t.type === 'product' && t.id === item.id; });
+            if (match) eligibleSum += item.price * item.qty;
+        });
+        discountSum = currentPromo.free ? eligibleSum 
+            : Math.round(eligibleSum * currentPromo.discount_percent / 100);
+    }
         selected.forEach(function(item) {
             var match = appliesTo.length === 0 || appliesTo.some(function(t) {
                 return t.type === item.type && t.id === item.id;
@@ -4787,9 +4854,20 @@ function renderProductsForUser() {
         </div>
     `;
 
-    // Фильтр по поиску
+        // Фильтр по поиску
     var query = productsSearch.trim().toLowerCase();
     var filtered = productsData.filter(function(p) {
+        // Фильтр "только под промокод"
+        if (showOnlyPromoItems && currentPromo) {
+            var appliesTo = currentPromo.applies_to || [];
+            if (appliesTo.length > 0) {
+                var isEligible = appliesTo.some(function(t) {
+                    return t.type === 'product' && t.id === p.id;
+                });
+                if (!isEligible) return false;
+            }
+        }
+        // Поиск
         if (!query) return true;
         return (p.name || '').toLowerCase().indexOf(query) !== -1 
             || (p.description || '').toLowerCase().indexOf(query) !== -1
@@ -4844,13 +4922,22 @@ function renderProductsForUser() {
         </div>`;
     } else {
         html += '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">';
-        filtered.forEach(function(p) {
+                filtered.forEach(function(p) {
             var inCart = cart.find(function(i) { return i.id === p.id; });
+            var underPromo = currentPromo && (
+                (currentPromo.applies_to || []).length === 0
+                || (currentPromo.applies_to || []).some(function(t) { return t.type === 'product' && t.id === p.id; })
+            );
+            var borderColor = inCart ? 'rgba(16,185,129,0.5)' 
+                : (underPromo ? 'rgba(251,191,36,0.5)' : 'var(--card-border)');
             html += `
-                <div style="background:rgba(15,7,25,0.9);border:1px solid ${inCart ? 'rgba(16,185,129,0.5)' : 'var(--card-border)'};
+                <div style="background:rgba(15,7,25,0.9);border:1px solid ${borderColor};
                             border-radius:16px;padding:12px;display:flex;flex-direction:column;">
                     ${p.image ? '<img src="' + p.image + '" style="width:100%;height:100px;object-fit:cover;border-radius:10px;margin-bottom:8px;">' : ''}
-                    <div style="font-weight:600;font-size:14px;margin-bottom:4px;">${p.name}</div>
+                                        <div style="font-weight:600;font-size:14px;margin-bottom:4px;">
+                        ${p.name}
+                        ${underPromo && !inCart ? '<span style="background:rgba(251,191,36,0.2);color:#fbbf24;padding:2px 6px;border-radius:6px;font-size:10px;margin-left:4px;">🎁</span>' : ''}
+                    </div>
                     ${p.description ? '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">' + p.description + '</div>' : ''}
                     <div style="margin-top:auto;display:flex;justify-content:space-between;align-items:center;">
                         <span style="color:#c084fc;font-weight:700;">${p.price} ₽</span>
@@ -6871,8 +6958,10 @@ function renderReviews(reviews) {
                     </button>
                     <div id="orderDetails_${review.id}" style="display:none;margin-top:8px;padding:10px 12px;background:rgba(124,58,237,0.05);border:1px solid rgba(124,58,237,0.15);border-radius:8px;font-size:11px;color:var(--text-muted);">
                         <div><strong>${oi.service || 'Заказ'}</strong></div>
-                        ${opts ? '<div style="margin-top:4px;">' + opts + '</div>' : ''}
-                        ${oi.total ? '<div style="margin-top:4px;color:#c084fc;font-weight:600;">' + oi.total + ' ₽</div>' : ''}
+${opts ? '<div style="margin-top:4px;">' + opts + '</div>' : ''}
+${oi.total ? '<div style="margin-top:4px;color:#c084fc;font-weight:600;">' + oi.total + ' ₽</div>' : ''}
+${oi.time ? '<div style="margin-top:4px;font-size:10px;">📅 Заказ: ' + oi.time + '</div>' : ''}
+${oi.completed_at ? '<div style="font-size:10px;">✅ Выполнен: ' + new Date(oi.completed_at).toLocaleString('ru-RU') + '</div>' : ''}
                     </div>
                 </div>
             `;
