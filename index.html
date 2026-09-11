@@ -3443,39 +3443,87 @@ function showPaymentOptions(orderId, total, selectedOptions) {
 // ОПЛАТА TELEGRAM STARS
 // ================================================================
 function payByStars(orderId, total, starsAmount) {
-    closeModal();
-    
-    var tg = window.Telegram?.WebApp || window.TG || window.tg;
-    
-    if (!tg || !tg.showInvoice) {
-        alert('Оплата звёздами недоступна.');
+    console.log('💫 Оплата звёздами:', { orderId, total, starsAmount });
+
+    // Проверяем, что Telegram WebApp доступен
+    var tg = window.Telegram?.WebApp;
+    if (!tg || !tg.openInvoice) {
+        alert('Оплата звёздами доступна только в Telegram.');
         return;
     }
-    
-    try {
-        tg.showInvoice({
+
+    // Закрываем текущее окно
+    closeModal();
+
+    // Показываем загрузку
+    var modal = document.getElementById('modalOverlay');
+    var content = document.getElementById('modalContent');
+    content.innerHTML = `
+        <div style="text-align:center;padding:40px;">
+            <div class="loader" style="margin:0 auto 20px;"></div>
+            <p style="color:var(--text-muted);">Создание счёта...</p>
+        </div>
+    `;
+    modal.style.display = 'flex';
+
+    // 1. Запрашиваем invoice-ссылку у Edge Function
+    fetch('https://lcgbpwowppwwpjjlphod.supabase.co/functions/v1/create-stars-invoice', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZ2Jwd293cHB3d3BqamxwaG9kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NDAwNTMsImV4cCI6MjEwNDIxNjA1M30.95VPot7saWmlgv1IzBop3E4x-ZxSc8HepqKdDLJa7JI',
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZ2Jwd293cHB3d3BqamxwaG9kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NDAwNTMsImV4cCI6MjEwNDIxNjA1M30.95VPot7saWmlgv1IzBop3E4x-ZxSc8HepqKdDLJa7JI'
+        },
+        body: JSON.stringify({
+            orderId: orderId,
+            amount: starsAmount,
             title: 'Mark1z Design',
-            description: 'Оплата заказа #' + orderId,
-            payload: 'order_' + orderId,
-            currency: 'XTR',
-            prices: [{ label: 'Дизайн услуга', amount: starsAmount }]
-        }, function(success) {
-            if (success) {
+            description: 'Оплата заказа #' + orderId
+        })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data.error || !data.invoiceLink) {
+            alert('❌ Не удалось создать счёт: ' + (data.error || 'неизвестная ошибка'));
+            closeModal();
+            return;
+        }
+
+        console.log('✅ Invoice link получен');
+        closeModal();
+
+        // 2. Открываем нативное окно оплаты
+        tg.openInvoice(data.invoiceLink, function(status) {
+            console.log('💫 Статус оплаты:', status);
+
+            if (status === 'paid') {
+                // 3. Оплата прошла — обновляем локально (бот тоже обновит)
                 supabase.from('orders')
-                    .update({ status: 'paid_stars', paid_at: new Date().toISOString() })
+                    .update({
+                        status: 'paid_stars',
+                        paid_at: new Date().toISOString()
+                    })
                     .eq('id', orderId)
                     .then(function() {
                         resetDiscountAfterPayment();
-                        alert('✅ Оплата прошла! Скидка сброшена.');
+                        showPaymentSuccessNotification(orderId);
                         renderOrdersSection();
                     });
-            } else {
+
+            } else if (status === 'cancelled') {
                 alert('❌ Оплата отменена');
+            } else if (status === 'failed') {
+                alert('❌ Ошибка оплаты. Попробуйте позже.');
+            } else if (status === 'pending') {
+                alert('⏳ Платёж обрабатывается. Мы сообщим, когда завершится.');
             }
         });
-    } catch(e) {
-        alert('Ошибка: ' + e.message);
-    }
+    })
+    .catch(function(err) {
+        console.error('❌ Ошибка создания счёта:', err);
+        alert('Ошибка: ' + err.message);
+        closeModal();
+    });
 }
 
         // Оплата pending заказа
