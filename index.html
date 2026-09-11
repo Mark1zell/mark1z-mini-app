@@ -7487,13 +7487,9 @@ function saveWorkAndMarkReady(orderId) {
             closeModal();
             alert('✅ Работа отправлена клиенту!');
 
-            console.error('Ошибка:', err);
-            alert('Ошибка: ' + err.message);
-        });
-            
             adminWorkFiles = [];
             adminWorkMessage = '';
-            
+
             if (window.isAdmin) {
                 loadAdminOrders();
             }
