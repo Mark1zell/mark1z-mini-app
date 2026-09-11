@@ -7623,23 +7623,23 @@ function removeAdminWorkFile(index) {
 // Сохранение работы и отметка "Готов"
 function saveWorkAndMarkReady(orderId) {
     adminWorkMessage = document.getElementById('workMessage').value.trim();
-    
+
     if (!adminWorkMessage) {
         alert('Напишите сообщение для клиента');
         return;
     }
-    
+
     if (adminWorkFiles.length === 0) {
         alert('Загрузите хотя бы одно фото');
         return;
     }
-    
+
     var btn = document.querySelector('.btn[onclick="saveWorkAndMarkReady(' + orderId + ')"]');
     if (btn) {
         btn.disabled = true;
         btn.textContent = '⏳ Загрузка...';
     }
-    
+
     var uploadPromises = adminWorkFiles.map(function(file) {
         return compressImage(file, 800, 0.7).then(function(dataUrl) {
             var blob = dataURLToBlob(dataUrl);
@@ -7647,9 +7647,10 @@ function saveWorkAndMarkReady(orderId) {
             return uploadFileToSupabase(f, 'works');
         });
     });
-    
+
     Promise.all(uploadPromises)
         .then(function(urls) {
+            // ← ЕДИНСТВЕННОЕ место, где urls доступна
             return supabase.from('orders')
                 .update({
                     status: 'ready',
@@ -7662,6 +7663,7 @@ function saveWorkAndMarkReady(orderId) {
                 .single();
         })
         .then(function(res) {
+            // ← Здесь urls УЖЕ НЕТ, используем order.work_files
             if (res.error) {
                 alert('Ошибка: ' + res.error.message);
                 return;
@@ -7671,20 +7673,19 @@ function saveWorkAndMarkReady(orderId) {
 
             allowReviewAfterWork(orderId);
 
-            // Отправляем уведомление клиенту через бота
             return fetch('https://lcgbpwowppwwpjjlphod.supabase.co/functions/v1/notify-work-ready', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZ2Jwd293cHB3d3BqamxwaG9kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NDAwNTMsImV4cCI6MjEwNDIxNjA1M30.95VPot7saWmlgv1IzBop3E4x-ZxSc8HepqKdDLJa7JI',
-                    'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZ2Jwd293cHB3d3BqamxwaG9kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NDAwNTMsImV4cCI6MjEwNDIxNjA1M30.95VPot7saWmlgv1IzBop3E4x-ZxSc8HepqKdDLJa7JI'
+                    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+                    'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
                 },
                 body: JSON.stringify({
                     orderId: orderId,
                     userId: order.user_id,
                     username: order.user_username,
                     workMessage: adminWorkMessage,
-                    workFiles: urls
+                    workFiles: order.work_files   // ← order, НЕ urls
                 })
             });
         })
