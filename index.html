@@ -353,6 +353,154 @@
         .promo-filter-banner input[type="checkbox"] {
             width: auto;
         }
+
+                /* ===== АДМИН-ТАБЫ (мягкие, не выделяются) ===== */
+        .admin-tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 16px;
+            background: rgba(10,5,18,0.6);
+            border: 1px solid rgba(124,58,237,0.15);
+            border-radius: 14px;
+            padding: 4px;
+        }
+        .admin-tab {
+            flex: 1;
+            padding: 9px 6px;
+            background: transparent;
+            border: none;
+            color: rgba(245,243,255,0.5);
+            font-weight: 500;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+        .admin-tab:hover {
+            background: rgba(124,58,237,0.1);
+            color: rgba(245,243,255,0.8);
+        }
+        .admin-tab.active {
+            background: rgba(124,58,237,0.25);
+            color: #e9d5ff;
+            font-weight: 600;
+            box-shadow: 0 0 0 1px rgba(124,58,237,0.3) inset;
+        }
+
+                /* ===== АДМИН: КАРТОЧКА ТОВАРА ===== */
+        .admin-product-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: rgba(15,7,25,0.6);
+            border: 1px solid rgba(124,58,237,0.15);
+            border-radius: 14px;
+            transition: border-color 0.2s;
+        }
+        .admin-product-item:hover {
+            border-color: rgba(124,58,237,0.35);
+        }
+        .admin-icon-btn {
+            background: rgba(255,255,255,0.05);
+            border: none;
+            color: var(--text-muted);
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .admin-icon-btn:hover {
+            background: rgba(124,58,237,0.2);
+            color: #fff;
+        }
+        .admin-icon-btn.danger:hover {
+            background: rgba(255,0,0,0.3);
+        }
+
+                /* ===== БЫСТРЫЕ ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ ===== */
+        .user-quick-actions {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .quick-action {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            padding: 14px 8px;
+            background: rgba(124,58,237,0.08);
+            border: 1px solid rgba(124,58,237,0.2);
+            border-radius: 14px;
+            color: var(--text);
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        .quick-action:hover {
+            background: rgba(124,58,237,0.18);
+            border-color: rgba(124,58,237,0.4);
+            transform: translateY(-1px);
+        }
+        .quick-action:active {
+            transform: scale(0.97);
+        }
+
+                /* ===== ТАБЫ ПОЛЬЗОВАТЕЛЯ ===== */
+        .user-tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 16px;
+            background: rgba(10,5,18,0.6);
+            border: 1px solid rgba(124,58,237,0.15);
+            border-radius: 14px;
+            padding: 4px;
+        }
+        .user-tab {
+            flex: 1;
+            padding: 10px 6px;
+            background: transparent;
+            border: none;
+            color: rgba(245,243,255,0.5);
+            font-weight: 500;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+        .user-tab.active {
+            background: rgba(124,58,237,0.25);
+            color: #e9d5ff;
+            font-weight: 600;
+            box-shadow: 0 0 0 1px rgba(124,58,237,0.3) inset;
+        }
+        .cart-badge {
+            position: absolute;
+            top: 4px;
+            right: 8px;
+            background: #ef4444;
+            color: #fff;
+            border-radius: 10px;
+            padding: 1px 6px;
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+                .modal button.btn {
+            margin-right: 0;
+            display: block;
+        }
+        
     </style>
 </head>
 <body oncontextmenu="return false;">
@@ -460,7 +608,7 @@
         var servicesData = [];
         var serviceOptionsData = [];
         var portfolioCategoriesData = [];
-        var adminOrdersMode = 'services';
+        var adminOrdersMode = 'services'; // 'services' | 'products' | 'orders' | 'admin'
         var sortableInstances = {};
         var isOrderProcessing = false;
         var currentDiscount = 0;
@@ -677,8 +825,8 @@ function openFaqModal() {
             <p><strong>6. Можно ли вернуть деньги?</strong><br>После начала работы деньги не возвращаются.</p>
             <p><strong>7. Что делать, если оплата не прошла?</strong><br>Свяжитесь с дизайнером через @mark1zell, он поможет решить проблему.</p>
         </div>
-        <button class="btn" style="width:100%;margin-top:20px;" onclick="openLegalModal()">Условия и реквизиты</button>
-        <button class="btn" style="width:100%;margin-top:5px;" onclick="contactDesigner()">Связаться с Дизайнером</button>
+                <button class="btn" style="width:100%;margin-top:20px;display:block;" onclick="openLegalModal()">📄 Условия и реквизиты</button>
+        <button class="btn" style="width:100%;margin-top:8px;display:block;background:linear-gradient(135deg, rgba(16,185,129,0.7), rgba(5,150,105,0.7));" onclick="contactDesigner()">💬 Связаться с дизайнером</button>
     `;
     modal.style.display = 'flex';
 }
@@ -3868,17 +4016,20 @@ function resetDiscount() {
     var container = document.getElementById('ordersContent');
     if (!container) return;
     
-    if (window.isAdmin) {
+        if (window.isAdmin) {
         var html = `
-            <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap;">
-                <button class="btn ${adminOrdersMode === 'services' ? 'active' : ''}" onclick="switchAdminMode('services')" style="flex:1;background:${adminOrdersMode === 'services' ? 'linear-gradient(135deg, #7c3aed, #be185d)' : 'rgba(255,255,255,0.1)'};">🛠️ Услуги</button>
-                <button class="btn ${adminOrdersMode === 'orders' ? 'active' : ''}" onclick="switchAdminMode('orders')" style="flex:1;background:${adminOrdersMode === 'orders' ? 'linear-gradient(135deg, #7c3aed, #be185d)' : 'rgba(255,255,255,0.1)'};">📋 Заказы</button>
-                <button class="btn ${adminOrdersMode === 'admin' ? 'active' : ''}" onclick="switchAdminMode('admin')" style="flex:1;background:${adminOrdersMode === 'admin' ? 'linear-gradient(135deg, #f59e0b, #be185d)' : 'rgba(255,255,255,0.1)'};">👑 Админ</button>
+            <div class="admin-tabs">
+                <button class="admin-tab ${adminOrdersMode === 'services' ? 'active' : ''}" onclick="switchAdminMode('services')">🛠️ Услуги</button>
+                <button class="admin-tab ${adminOrdersMode === 'products' ? 'active' : ''}" onclick="switchAdminMode('products')">📦 Товары</button>
+                <button class="admin-tab ${adminOrdersMode === 'orders' ? 'active' : ''}" onclick="switchAdminMode('orders')">📋 Заказы</button>
+                <button class="admin-tab ${adminOrdersMode === 'admin' ? 'active' : ''}" onclick="switchAdminMode('admin')">👑 Админ</button>
             </div>
         `;
         
         if (adminOrdersMode === 'services') {
             html += renderServicesForAdmin();
+        } else if (adminOrdersMode === 'products') {
+            html += renderProductsForAdmin();
         } else if (adminOrdersMode === 'orders') {
             html += '<div id="adminOrdersList"></div>';
         } else {
@@ -3893,13 +4044,16 @@ function resetDiscount() {
         if (adminOrdersMode === 'services') {
             setupSortableForServices();
         }
-        } else {
+    } else {
         var cartCount = cart.reduce(function(s, i) { return s + i.qty; }, 0);
-        var html = `
-            <div style="display:flex; gap:8px; margin-bottom:15px;">
-                <button class="btn ${userOrdersMode === 'services' ? 'active' : ''}" onclick="switchUserMode('services')" style="flex:1;background:${userOrdersMode === 'services' ? 'linear-gradient(135deg, #7c3aed, #be185d)' : 'rgba(255,255,255,0.1)'};font-size:12px;">🛠️ Услуги</button>
-                <button class="btn ${userOrdersMode === 'products' ? 'active' : ''}" onclick="switchUserMode('products')" style="flex:1;background:${userOrdersMode === 'products' ? 'linear-gradient(135deg, #7c3aed, #be185d)' : 'rgba(255,255,255,0.1)'};font-size:12px;position:relative;">🛒 Товары${cartCount > 0 ? ' <span style="background:#ef4444;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;margin-left:4px;">' + cartCount + '</span>' : ''}</button>
-                <button class="btn ${userOrdersMode === 'orders' ? 'active' : ''}" onclick="switchUserMode('orders')" style="flex:1;background:${userOrdersMode === 'orders' ? 'linear-gradient(135deg, #7c3aed, #be185d)' : 'rgba(255,255,255,0.1)'};font-size:12px;">📋 Мои заказы</button>
+         var html = `
+            <div class="user-tabs">
+                <button class="user-tab ${userOrdersMode === 'services' ? 'active' : ''}" onclick="switchUserMode('services')">🛠️ Услуги</button>
+                <button class="user-tab ${userOrdersMode === 'products' ? 'active' : ''}" onclick="switchUserMode('products')" style="position:relative;">
+                    🛒 Товары
+                    ${cartCount > 0 ? '<span class="cart-badge">' + cartCount + '</span>' : ''}
+                </button>
+                <button class="user-tab ${userOrdersMode === 'orders' ? 'active' : ''}" onclick="switchUserMode('orders')">📋 Заказы</button>
             </div>
             <div id="userOrdersContent"></div>
         `;
@@ -4444,6 +4598,45 @@ function goToReviews() {
     }
 }
 
+     function renderProductsForAdmin() {
+    var html = '<div style="display:flex;gap:8px;margin-bottom:15px;">';
+    html += '<button class="btn btn-sm" onclick="showAddProductForm()" style="flex:1;background:linear-gradient(135deg, rgba(16,185,129,0.6), rgba(5,150,105,0.6));font-size:12px;">➕ Добавить товар</button>';
+    html += '<button class="btn btn-sm" onclick="loadProducts(true)" style="background:rgba(255,255,255,0.08);font-size:12px;">🔄</button>';
+    html += '</div>';
+
+    if (!productsData || productsData.length === 0) {
+        html += `
+            <div style="text-align:center;padding:30px;background:rgba(255,255,255,0.02);border-radius:12px;border:1px dashed rgba(124,58,237,0.2);">
+                <p style="font-size:40px;margin-bottom:8px;">📦</p>
+                <p style="color:var(--text-muted);font-size:13px;">Товаров пока нет</p>
+                <p style="color:var(--text-muted);font-size:11px;">Нажми «Добавить товар», чтобы создать первый</p>
+            </div>
+        `;
+        return html;
+    }
+
+    html += '<div style="display:flex;flex-direction:column;gap:8px;">';
+    productsData.forEach(function(p) {
+        html += `
+            <div class="admin-product-item">
+                ${p.image 
+                    ? '<img src="' + p.image + '" style="width:44px;height:44px;object-fit:cover;border-radius:10px;flex-shrink:0;">'
+                    : '<div style="width:44px;height:44px;border-radius:10px;background:rgba(124,58,237,0.15);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">📦</div>'}
+                <div style="flex:1;min-width:0;">
+                    <div style="font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name}</div>
+                    <div style="font-size:12px;color:var(--text-muted);">${p.price} ₽${p.description ? ' · ' + p.description : ''}</div>
+                </div>
+                <div style="display:flex;gap:4px;flex-shrink:0;">
+                    <button class="admin-icon-btn" onclick="editProduct(${p.id})" title="Редактировать">✏️</button>
+                    <button class="admin-icon-btn danger" onclick="deleteProduct(${p.id})" title="Удалить">🗑️</button>
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    return html;
+}   
+
         function renderServicesForAdmin() {
     var html = '<div class="order-list" id="servicesList" style="display:flex; flex-direction:column; gap:12px;">';
     servicesData.forEach(function(s) {
@@ -4536,16 +4729,29 @@ function goToReviews() {
         `;
     });
     html += '</div>';
-    html += '<div style="text-align:center;margin-top:20px;">';
-    html += '<button class="btn" onclick="contactDesigner()" style="font-size:14px;padding:12px 24px;">💬 Написать дизайнеру</button>';
-    html += '</div>';
+        html += `
+        <div class="user-quick-actions">
+            <button class="quick-action" onclick="contactDesigner()">
+                <span style="font-size:22px;">💬</span>
+                <span style="font-size:12px;font-weight:600;">Написать</span>
+            </button>
+            <button class="quick-action" onclick="openPromoModal()">
+                <span style="font-size:22px;">🎁</span>
+                <span style="font-size:12px;font-weight:600;">Промокод</span>
+            </button>
+            <button class="quick-action" onclick="switchUserMode('orders')">
+                <span style="font-size:22px;">📋</span>
+                <span style="font-size:12px;font-weight:600;">Заказы</span>
+            </button>
+        </div>
+    `;
     return html;
 }
 
         // ================================================================
 // ТОВАРЫ И КОРЗИНА
 // ================================================================
-function loadProducts() {
+function loadProducts(forceReload) {
     supabase.from('products').select('*').eq('active', true).order('order', { ascending: true })
         .then(function(res) {
             if (res.error) {
@@ -4553,9 +4759,15 @@ function loadProducts() {
                 return;
             }
             productsData = res.data || [];
-            var content = document.getElementById('userOrdersContent');
-            if (content && userOrdersMode === 'products') {
-                content.innerHTML = renderProductsForUser();
+
+            // Обновляем UI в зависимости от того, где мы
+            if (window.isAdmin) {
+                if (adminOrdersMode === 'products') renderOrdersSection();
+            } else {
+                var content = document.getElementById('userOrdersContent');
+                if (content && userOrdersMode === 'products') {
+                    content.innerHTML = renderProductsForUser();
+                }
             }
         });
 }
@@ -5212,6 +5424,9 @@ function markAsPaidManually(orderId) {
 // Обновите switchAdminMode
 function switchAdminMode(mode) {
     adminOrdersMode = mode;
+    if (mode === 'products' && (!productsData || productsData.length === 0)) {
+        loadProducts();
+    }
     renderOrdersSection();
 }
 
@@ -7107,6 +7322,7 @@ function allowReviewAfterWork(orderId) {
                 // Загружаем данные
                 console.log('📦 Загрузка данных...');
                 initDefaultServices();
+                loadProducts();
                 initDefaultServiceOptions();
                 setupRealTimeListeners();
                 renderOrdersSection();
