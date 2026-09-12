@@ -224,7 +224,26 @@
         .footer .version { position:absolute; bottom:5px; right:10px; font-size:10px; opacity:0.5; color:var(--text-muted); pointer-events:none; }
         
         #imageViewer { position:fixed; inset:0; background:rgba(0,0,0,0.9); display:none; align-items:center; justify-content:center; z-index:2000; flex-direction:column; overflow:hidden; touch-action:none; }
-        #imageViewer img { max-width:95%; max-height:85%; object-fit:contain; transition:transform 0.2s; transform-origin:center; position:relative; }
+                #imageViewer img {
+            max-width: 95%;
+            max-height: 85%;
+            object-fit: contain;
+            transition: transform 0.1s ease-out;
+            transform-origin: center center;
+            position: relative;
+            user-select: none;
+            -webkit-user-drag: none;
+            pointer-events: none;   /* ← клики идут на родителя */
+        }
+        #imageViewer {
+            cursor: zoom-in;
+        }
+        #imageViewer.zoomed {
+            cursor: grab;
+        }
+        #imageViewer.zoomed:active {
+            cursor: grabbing;
+        }
         #imageViewer .save-btn { margin-top:15px; }
         #imageViewerClose { position:absolute; top:20px; right:20px; background:rgba(0,0,0,0.6); border:none; color:#fff; font-size:28px; width:40px; height:40px; border-radius:50%; cursor:pointer; z-index:2001; }
         
@@ -1229,6 +1248,15 @@ body.pc-layout .app-container {
 body.pc-layout .footer {
     margin-top: auto;
 }
+
+                /* Просмотрщик: блокируем прокрутку страницы за ним */
+        body.viewer-open {
+            overflow: hidden !important;
+            position: fixed;
+            width: 100%;
+        }
+
+        
         
     </style>
 </head>
@@ -7870,6 +7898,8 @@ function closeModal() {
             img.onerror = function() { viewer.style.display = 'none'; };
             img.src = src;
             if (img.complete) img.onload();
+
+            document.body.classList.add('viewer-open');
         }
 
 function closeImageViewer() {
@@ -7884,98 +7914,210 @@ function closeImageViewer() {
         img.style.left = '0px';
         img.style.top = '0px';
     }
+    
+    document.body.classList.remove('viewer-open');
 }
 
         function saveCurrentImage() {
             if (currentViewImageSrc) downloadImage(currentViewImageSrc, 'image.jpg');
         }
 
-        function applyViewerTransform() {
-            var img = document.getElementById('imageViewerImg');
-            if (!img) return;
-            
-            if (viewerScale <= 1) {
+function applyViewerTransform() {
+    var img = document.getElementById('imageViewerImg');
+    if (!img) return;
+
+    // Если зум <= 1 — сбрасываем трансформации
+    if (viewerScale <= 1) {
+        viewerScale = 1;
+        viewerPanX = 0;
+        viewerPanY = 0;
+        img.style.transform = 'scale(1)';
+        img.style.left = '0px';
+        img.style.top = '0px';
+
+        // Сбрасываем курсор
+        var viewer = document.getElementById('imageViewer');
+        if (viewer) viewer.classList.remove('zoomed');
+
+        return;
+    }
+
+    // Меняем курсор — увеличение
+    var viewer2 = document.getElementById('imageViewer');
+    if (viewer2) viewer2.classList.add('zoomed');
+
+    // Используем offsetWidth или naturalWidth — на случай, если элемент ещё не отрендерен
+    var imgW = img.offsetWidth || img.naturalWidth;
+    var imgH = img.offsetHeight || img.naturalHeight;
+    if (!imgW || !imgH) return;
+
+    var maxX = (imgW * viewerScale - imgW) / 2;
+    var maxY = (imgH * viewerScale - imgH) / 2;
+
+    viewerPanX = Math.max(-maxX, Math.min(maxX, viewerPanX));
+    viewerPanY = Math.max(-maxY, Math.min(maxY, viewerPanY));
+
+    img.style.transform = 'scale(' + viewerScale + ')';
+    img.style.left = viewerPanX + 'px';
+    img.style.top = viewerPanY + 'px';
+}
+
+function initImageViewerZoom() {
+    var imageViewer = document.getElementById('imageViewer');
+    var img = document.getElementById('imageViewerImg');
+    if (!imageViewer || !img) return;
+
+    // ===== ТАЧ: два пальца — зум, один палец (при увеличении) — панорама =====
+    imageViewer.addEventListener('touchstart', function(e) {
+        if (e.touches.length === 2) {
+            viewerStartDistance = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+            viewerStartScale = viewerScale;
+        } else if (e.touches.length === 1 && viewerScale > 1) {
+            viewerIsPanning = true;
+            viewerStartPanX = e.touches[0].clientX - viewerPanX;
+            viewerStartPanY = e.touches[0].clientY - viewerPanY;
+        }
+    }, { passive: true });
+
+    imageViewer.addEventListener('touchmove', function(e) {
+        if (e.touches.length === 2 && viewerStartDistance > 0) {
+            e.preventDefault();
+            var currentDistance = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+            viewerScale = Math.min(Math.max(viewerStartScale * currentDistance / viewerStartDistance, 1), 4);
+            applyViewerTransform();
+        } else if (e.touches.length === 1 && viewerIsPanning) {
+            e.preventDefault();
+            viewerPanX = e.touches[0].clientX - viewerStartPanX;
+            viewerPanY = e.touches[0].clientY - viewerStartPanY;
+            applyViewerTransform();
+        }
+    }, { passive: false });
+
+    imageViewer.addEventListener('touchend', function() {
+        viewerIsPanning = false;
+        viewerStartDistance = 0;
+    });
+
+    // ===== ДВОЙНОЙ ТАП (мобилка) =====
+    var lastTap = 0;
+    imageViewer.addEventListener('click', function(e) {
+        // Игнорируем клики по кнопкам
+        if (e.target.tagName === 'BUTTON') return;
+
+        var now = Date.now();
+        if (now - lastTap < 300) {
+            e.preventDefault();
+            if (viewerScale > 1) {
                 viewerScale = 1;
                 viewerPanX = 0;
                 viewerPanY = 0;
-                img.style.transform = 'scale(1)';
-                img.style.left = '0px';
-                img.style.top = '0px';
-                return;
+            } else {
+                viewerScale = 2;
             }
-            
-            var maxX = (img.offsetWidth * viewerScale - img.offsetWidth) / 2;
-            var maxY = (img.offsetHeight * viewerScale - img.offsetHeight) / 2;
-            
-            viewerPanX = Math.max(-maxX, Math.min(maxX, viewerPanX));
-            viewerPanY = Math.max(-maxY, Math.min(maxY, viewerPanY));
-            
-            img.style.transform = 'scale(' + viewerScale + ')';
-            img.style.left = viewerPanX + 'px';
-            img.style.top = viewerPanY + 'px';
+            applyViewerTransform();
+            lastTap = 0;
+        } else {
+            lastTap = now;
+        }
+    });
+
+    // ===== КОЛЕСО МЫШИ (ПК) =====
+    imageViewer.addEventListener('wheel', function(e) {
+        e.preventDefault();
+
+        // Дельта колеса: положительная — вниз (уменьшить), отрицательная — вверх (увеличить)
+        var delta = e.deltaY > 0 ? -0.15 : 0.15;
+
+        // Запоминаем позицию курсора относительно центра
+        var rect = imageViewer.getBoundingClientRect();
+        var cursorX = e.clientX - rect.left - rect.width / 2;
+        var cursorY = e.clientY - rect.top - rect.height / 2;
+
+        var oldScale = viewerScale;
+        viewerScale = Math.min(Math.max(viewerScale + delta, 1), 4);
+
+        // Если увеличение — смещаем панораму к курсору
+        if (viewerScale > 1 && viewerScale !== oldScale) {
+            var ratio = viewerScale / oldScale;
+            viewerPanX = (viewerPanX - cursorX) * ratio + cursorX;
+            viewerPanY = (viewerPanY - cursorY) * ratio + cursorY;
+        } else if (viewerScale === 1) {
+            viewerPanX = 0;
+            viewerPanY = 0;
         }
 
-        function initImageViewerZoom() {
-            var imageViewer = document.getElementById('imageViewer');
-            var img = document.getElementById('imageViewerImg');
-            
-            imageViewer.addEventListener('touchstart', function(e) {
-                if (e.touches.length === 2) {
-                    viewerStartDistance = Math.hypot(
-                        e.touches[0].clientX - e.touches[1].clientX,
-                        e.touches[0].clientY - e.touches[1].clientY
-                    );
-                    viewerStartScale = viewerScale;
-                } else if (e.touches.length === 1 && viewerScale > 1) {
-                    viewerIsPanning = true;
-                    viewerStartPanX = e.touches[0].clientX - viewerPanX;
-                    viewerStartPanY = e.touches[0].clientY - viewerPanY;
-                }
-            }, { passive: true });
-            
-            imageViewer.addEventListener('touchmove', function(e) {
-                if (e.touches.length === 2 && viewerStartDistance > 0) {
-                    e.preventDefault();
-                    var currentDistance = Math.hypot(
-                        e.touches[0].clientX - e.touches[1].clientX,
-                        e.touches[0].clientY - e.touches[1].clientY
-                    );
-                    viewerScale = Math.min(Math.max(viewerStartScale * currentDistance / viewerStartDistance, 1), 4);
-                    applyViewerTransform();
-                } else if (e.touches.length === 1 && viewerIsPanning) {
-                    e.preventDefault();
-                    viewerPanX = e.touches[0].clientX - viewerStartPanX;
-                    viewerPanY = e.touches[0].clientY - viewerStartPanY;
-                    applyViewerTransform();
-                }
-            }, { passive: false });
-            
-            imageViewer.addEventListener('touchend', function() {
-                viewerIsPanning = false;
-                viewerStartDistance = 0;
-            });
-            
-            // Двойной тап для зума
-            var lastTap = 0;
-            imageViewer.addEventListener('click', function(e) {
-                var now = Date.now();
-                if (now - lastTap < 300) {
-                    // Двойной тап
-                    e.preventDefault();
-                    if (viewerScale > 1) {
-                        viewerScale = 1;
-                        viewerPanX = 0;
-                        viewerPanY = 0;
-                    } else {
-                        viewerScale = 2;
-                    }
-                    applyViewerTransform();
-                    lastTap = 0;
-                } else {
-                    lastTap = now;
-                }
-            });
+        applyViewerTransform();
+    }, { passive: false });
+
+    // ===== ДВОЙНОЙ КЛИК МЫШЬЮ (ПК) =====
+    imageViewer.addEventListener('dblclick', function(e) {
+        if (e.target.tagName === 'BUTTON') return;
+        e.preventDefault();
+
+        if (viewerScale > 1) {
+            viewerScale = 1;
+            viewerPanX = 0;
+            viewerPanY = 0;
+        } else {
+            viewerScale = 2;
         }
+        applyViewerTransform();
+    });
+
+    // ===== ПЕРЕТАСКИВАНИЕ МЫШЬЮ (ПК) =====
+    var isDragging = false;
+    var dragStartX = 0;
+    var dragStartY = 0;
+    var dragStartPanX = 0;
+    var dragStartPanY = 0;
+
+    imageViewer.addEventListener('mousedown', function(e) {
+        if (e.target.tagName === 'BUTTON') return;
+        if (viewerScale <= 1) return;
+        e.preventDefault();
+
+        isDragging = true;
+        dragStartX = e.clientX;
+        dragStartY = e.clientY;
+        dragStartPanX = viewerPanX;
+        dragStartPanY = viewerPanY;
+        imageViewer.style.cursor = 'grabbing';
+    });
+
+    imageViewer.addEventListener('mousemove', function(e) {
+        if (!isDragging) return;
+        e.preventDefault();
+
+        viewerPanX = dragStartPanX + (e.clientX - dragStartX);
+        viewerPanY = dragStartPanY + (e.clientY - dragStartY);
+        applyViewerTransform();
+    });
+
+    imageViewer.addEventListener('mouseup', function() {
+        isDragging = false;
+        imageViewer.style.cursor = viewerScale > 1 ? 'grab' : 'default';
+    });
+
+    imageViewer.addEventListener('mouseleave', function() {
+        isDragging = false;
+        imageViewer.style.cursor = 'default';
+    });
+
+    // Курсор при увеличении
+    imageViewer.addEventListener('mouseenter', function() {
+        if (viewerScale > 1) {
+            imageViewer.style.cursor = 'grab';
+        }
+    });
+
+    console.log('✅ Зум просмотрщика настроен (тач + колесо + двойной клик)');
+}
 
         // Инициализация кнопок (только один раз)
         function initApp() {
@@ -7985,6 +8127,8 @@ function closeImageViewer() {
             // Привязываем обработчики кнопок
             document.getElementById('imageViewerSaveBtn').addEventListener('click', saveCurrentImage);
             document.getElementById('imageViewerClose').addEventListener('click', closeImageViewer);
+
+            initImageViewerZoom();
             
             console.log('✅ Приложение инициализировано');
         }
