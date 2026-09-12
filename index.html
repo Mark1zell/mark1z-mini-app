@@ -7910,30 +7910,30 @@ function closeModal() {
         var viewerStartDistance = 0;
         var viewerStartScale = 1;
 
-        function viewImage(src, title, allowSave) {
-            currentViewImageSrc = src;
-            var viewer = document.getElementById('imageViewer');
-            var img = document.getElementById('imageViewerImg');
-            
-            viewerScale = 1;
-            viewerPanX = 0;
-            viewerPanY = 0;
-            img.style.transform = 'scale(1)';
-            img.style.left = '0px';
-            img.style.top = '0px';
-            
-            img.onload = function() { viewer.style.display = 'flex'; };
-            img.onerror = function() { viewer.style.display = 'none'; };
-            img.src = src;
-            if (img.complete) img.onload();
+function viewImage(src, title, allowSave) {
+    currentViewImageSrc = src;
+    var viewer = document.getElementById('imageViewer');
+    var img = document.getElementById('imageViewerImg');
 
-            document.body.classList.add('viewer-open');
-        }
+    viewerScale = 1;
+    viewerPanX = 0;
+    viewerPanY = 0;
+    img.style.transform = 'scale(1)';
+    img.style.left = '0px';
+    img.style.top = '0px';
+
+    img.onload = function() { viewer.style.display = 'flex'; };
+    img.onerror = function() { viewer.style.display = 'none'; };
+    img.src = src;
+    if (img.complete) img.onload();
+
+    document.body.classList.add('viewer-open');
+}
 
 function closeImageViewer() {
     document.getElementById('imageViewer').style.display = 'none';
     currentViewImageSrc = null;
-    viewerScale = 1;      // не scale
+    viewerScale = 1;
     viewerPanX = 0;
     viewerPanY = 0;
     var img = document.getElementById('imageViewerImg');
@@ -7942,7 +7942,7 @@ function closeImageViewer() {
         img.style.left = '0px';
         img.style.top = '0px';
     }
-    
+
     document.body.classList.remove('viewer-open');
 }
 
@@ -7954,7 +7954,6 @@ function applyViewerTransform() {
     var img = document.getElementById('imageViewerImg');
     if (!img) return;
 
-    // Если зум <= 1 — сбрасываем трансформации
     if (viewerScale <= 1) {
         viewerScale = 1;
         viewerPanX = 0;
@@ -7963,18 +7962,15 @@ function applyViewerTransform() {
         img.style.left = '0px';
         img.style.top = '0px';
 
-        // Сбрасываем курсор
         var viewer = document.getElementById('imageViewer');
         if (viewer) viewer.classList.remove('zoomed');
 
         return;
     }
 
-    // Меняем курсор — увеличение
     var viewer2 = document.getElementById('imageViewer');
     if (viewer2) viewer2.classList.add('zoomed');
 
-    // Используем offsetWidth или naturalWidth — на случай, если элемент ещё не отрендерен
     var imgW = img.offsetWidth || img.naturalWidth;
     var imgH = img.offsetHeight || img.naturalHeight;
     if (!imgW || !imgH) return;
@@ -8153,7 +8149,6 @@ function initImageViewerZoom() {
     }, { passive: true });
 
     imageViewer.addEventListener('touchend', function(e) {
-        // Если пользователь увеличил — не закрываем по свайпу
         if (viewerScale > 1) return;
 
         var touch = e.changedTouches[0];
@@ -8163,7 +8158,6 @@ function initImageViewerZoom() {
         var deltaX = Math.abs(touch.clientX - viewerTouchStartX);
         var deltaTime = Date.now() - viewerTouchStartTime;
 
-        // Свайп вниз > 80px, по X < 60px, за < 500ms
         if (deltaY > 80 && deltaX < 60 && deltaTime < 500) {
             console.log('👇 Свайп вниз — закрываем просмотрщик');
             closeImageViewer();
@@ -8173,141 +8167,16 @@ function initImageViewerZoom() {
     console.log('✅ Зум просмотрщика настроен (тач + колесо + двойной клик + свайп вниз)');
 }
 
-    // ===== ДВОЙНОЙ ТАП (мобилка) =====
-    var lastTap = 0;
-    imageViewer.addEventListener('click', function(e) {
-        // Игнорируем клики по кнопкам
-        if (e.target.tagName === 'BUTTON') return;
+function initApp() {
+    init();
 
-        var now = Date.now();
-        if (now - lastTap < 300) {
-            e.preventDefault();
-            if (viewerScale > 1) {
-                viewerScale = 1;
-                viewerPanX = 0;
-                viewerPanY = 0;
-            } else {
-                viewerScale = 2;
-            }
-            applyViewerTransform();
-            lastTap = 0;
-        } else {
-            lastTap = now;
-        }
-    });
+    document.getElementById('imageViewerSaveBtn').addEventListener('click', saveCurrentImage);
+    document.getElementById('imageViewerClose').addEventListener('click', closeImageViewer);
 
-    // ===== КОЛЕСО МЫШИ (ПК) =====
-    imageViewer.addEventListener('wheel', function(e) {
-        e.preventDefault();
+    initImageViewerZoom();
 
-        // Дельта колеса: положительная — вниз (уменьшить), отрицательная — вверх (увеличить)
-        var delta = e.deltaY > 0 ? -0.15 : 0.15;
-
-        // Запоминаем позицию курсора относительно центра
-        var rect = imageViewer.getBoundingClientRect();
-        var cursorX = e.clientX - rect.left - rect.width / 2;
-        var cursorY = e.clientY - rect.top - rect.height / 2;
-
-        var oldScale = viewerScale;
-        viewerScale = Math.min(Math.max(viewerScale + delta, 1), 4);
-
-        // Если увеличение — смещаем панораму к курсору
-        if (viewerScale > 1 && viewerScale !== oldScale) {
-            var ratio = viewerScale / oldScale;
-            viewerPanX = (viewerPanX - cursorX) * ratio + cursorX;
-            viewerPanY = (viewerPanY - cursorY) * ratio + cursorY;
-        } else if (viewerScale === 1) {
-            viewerPanX = 0;
-            viewerPanY = 0;
-        }
-
-        applyViewerTransform();
-    }, { passive: false });
-
-    // ===== ДВОЙНОЙ КЛИК МЫШЬЮ (ПК) =====
-    imageViewer.addEventListener('dblclick', function(e) {
-        if (e.target.tagName === 'BUTTON') return;
-        e.preventDefault();
-
-        if (viewerScale > 1) {
-            viewerScale = 1;
-            viewerPanX = 0;
-            viewerPanY = 0;
-        } else {
-            viewerScale = 2;
-        }
-        applyViewerTransform();
-    });
-
-    // ===== ПЕРЕТАСКИВАНИЕ МЫШЬЮ (ПК) =====
-    var isDragging = false;
-    var dragStartX = 0;
-    var dragStartY = 0;
-    var dragStartPanX = 0;
-    var dragStartPanY = 0;
-
-    imageViewer.addEventListener('mousedown', function(e) {
-        if (e.target.tagName === 'BUTTON') return;
-        if (viewerScale <= 1) return;
-        e.preventDefault();
-
-        isDragging = true;
-        dragStartX = e.clientX;
-        dragStartY = e.clientY;
-        dragStartPanX = viewerPanX;
-        dragStartPanY = viewerPanY;
-        imageViewer.style.cursor = 'grabbing';
-    });
-
-    imageViewer.addEventListener('mousemove', function(e) {
-        if (!isDragging) return;
-        e.preventDefault();
-
-        viewerPanX = dragStartPanX + (e.clientX - dragStartX);
-        viewerPanY = dragStartPanY + (e.clientY - dragStartY);
-        applyViewerTransform();
-    });
-
-    imageViewer.addEventListener('mouseup', function() {
-        isDragging = false;
-        imageViewer.style.cursor = viewerScale > 1 ? 'grab' : 'default';
-    });
-
-    imageViewer.addEventListener('mouseleave', function() {
-        isDragging = false;
-        imageViewer.style.cursor = 'default';
-    });
-
-    // Курсор при увеличении
-    imageViewer.addEventListener('mouseenter', function() {
-        if (viewerScale > 1) {
-            imageViewer.style.cursor = 'grab';
-        }
-    });
-
-    console.log('✅ Зум просмотрщика настроен (тач + колесо + двойной клик)');
+    console.log('✅ Приложение инициализировано');
 }
-
-        // Инициализация кнопок (только один раз)
-        function initApp() {
-            // Вызываем основную инициализацию
-            init();
-            
-            // Привязываем обработчики кнопок
-            document.getElementById('imageViewerSaveBtn').addEventListener('click', saveCurrentImage);
-            document.getElementById('imageViewerClose').addEventListener('click', closeImageViewer);
-
-            initImageViewerZoom();
-            
-            console.log('✅ Приложение инициализировано');
-        }
-
-        // Запускаем приложение когда DOM готов
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initApp);
-        } else {
-            initApp();
-        }
 
 
         // ================================================================
