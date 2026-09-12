@@ -919,6 +919,226 @@
                 padding: 0 !important;
             }
         }
+
+                /* ================================================================ */
+        /* ===== ДЕСКТОПНЫЙ LAYOUT (ширина >= 900px) ===== */
+        /* ================================================================ */
+        body.pc-layout {
+            padding: 0;
+            background: linear-gradient(145deg, var(--bg-start), var(--bg-mid), var(--bg-end));
+        }
+
+        body.pc-layout .app-container {
+            max-width: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* ===== ШАПКА ===== */
+        body.pc-layout .header {
+            padding: 30px 60px;
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            text-align: left;
+            border-bottom: 1px solid rgba(124,58,237,0.2);
+            background: rgba(10,5,18,0.7);
+            backdrop-filter: blur(20px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        body.pc-layout .header .logo {
+            width: 64px;
+            height: 64px;
+            margin: 0;
+            border-radius: 18px;
+            flex-shrink: 0;
+        }
+
+        body.pc-layout .header .brand-name {
+            font-size: 28px;
+            margin-bottom: 2px;
+        }
+
+        body.pc-layout .header .tagline {
+            font-size: 12px;
+            letter-spacing: 1.5px;
+        }
+
+        body.pc-layout .header .faq-button,
+        body.pc-layout .header .wheel-button,
+        body.pc-layout .header .promo-button {
+            position: static;
+            width: 44px;
+            height: 44px;
+            margin-left: 10px;
+            order: 10;
+        }
+
+        /* ===== ТАБЫ ===== */
+        body.pc-layout .tabs {
+            max-width: 900px;
+            margin: 30px auto 20px;
+            padding: 8px;
+        }
+
+        body.pc-layout .tab-btn {
+            font-size: 15px;
+            padding: 14px 20px;
+        }
+
+        /* ===== КОНТЕНТ — полноэкранный ===== */
+        body.pc-layout .section {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 60px 60px;
+        }
+
+        /* ===== КАРТОЧКИ ===== */
+        body.pc-layout .card {
+            padding: 40px;
+            margin-bottom: 30px;
+            border-radius: 24px;
+        }
+
+        body.pc-layout .card h3 {
+            font-size: 26px;
+            margin-bottom: 20px;
+        }
+
+        /* ===== СЕТКИ ===== */
+        body.pc-layout .categories-grid {
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+        }
+
+        body.pc-layout .works-grid {
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+        }
+
+        body.pc-layout .category-card {
+            padding: 30px;
+        }
+
+        body.pc-layout .category-card .folder-icon {
+            font-size: 56px;
+        }
+
+        body.pc-layout .category-card .category-name {
+            font-size: 17px;
+        }
+
+        /* ===== БЫСТРЫЕ ДЕЙСТВИЯ ===== */
+        body.pc-layout .user-quick-actions {
+            grid-template-columns: repeat(3, 200px);
+            justify-content: center;
+            margin: 30px auto;
+        }
+
+        /* ===== ЗАКАЗЫ ===== */
+        body.pc-layout #ordersContent,
+        body.pc-layout #reviewsContainer,
+        body.pc-layout #portfolioCategories,
+        body.pc-layout #portfolioWorks {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        body.pc-layout .user-tabs,
+        body.pc-layout .admin-tabs {
+            max-width: 700px;
+            margin: 0 auto 24px;
+        }
+
+        /* ===== МОДАЛКА ===== */
+        body.pc-layout .modal-overlay {
+            padding: 40px;
+        }
+
+        body.pc-layout .modal {
+            max-width: 800px;
+            max-height: 85vh;
+            padding: 36px;
+            border-radius: 24px;
+        }
+
+        /* ===== КОНСТРУКТОР ===== */
+        body.pc-layout .order-constructor-wrapper {
+            max-height: 78vh;
+        }
+
+        body.pc-layout .order-constructor-scroll {
+            padding: 0 10px 20px;
+        }
+
+        body.pc-layout .fixed-bottom-bar {
+            padding: 20px 0 0;
+        }
+
+        body.pc-layout .fixed-bottom-bar .checkout-btn {
+            padding: 16px 30px;
+            font-size: 17px;
+        }
+
+        /* ===== FOOTER ===== */
+        body.pc-layout .footer {
+            padding: 40px 60px;
+            border-top: 1px solid rgba(124,58,237,0.15);
+            background: rgba(10,5,18,0.4);
+            font-size: 13px;
+            margin-top: 40px;
+        }
+
+        /* ===== СКРОЛЛБАР ===== */
+        body.pc-layout ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        body.pc-layout ::-webkit-scrollbar-track {
+            background: rgba(10,5,18,0.4);
+        }
+        body.pc-layout ::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #7c3aed, #be185d);
+            border-radius: 5px;
+        }
+        body.pc-layout ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #a855f7, #ec4899);
+        }
+
+        /* ===== HOVER-ЭФФЕКТЫ ===== */
+        body.pc-layout .category-card:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 12px 30px rgba(124,58,237,0.3);
+        }
+
+        body.pc-layout .work-item:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 30px rgba(124,58,237,0.3);
+        }
+
+        body.pc-layout .order-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(124,58,237,0.2);
+        }
+
+        /* ===== ШИРОКИЕ ЭКРАНЫ (>1300px) ===== */
+        body.pc-layout.wide-screen .section {
+            padding: 0 100px 60px;
+        }
+        body.pc-layout.wide-screen .categories-grid,
+        body.pc-layout.wide-screen .works-grid {
+            grid-template-columns: repeat(5, 1fr);
+        }
+        body.pc-layout.wide-screen .header {
+            padding: 30px 100px;
+        }
+        body.pc-layout.wide-screen .footer {
+            padding: 40px 100px;
+        }
         
     </style>
 </head>
@@ -1082,6 +1302,37 @@ function subscribeToBot() {
 }
 
         // ================================================================
+// АВТООПРЕДЕЛЕНИЕ LAYOUT (мобильный / ПК)
+// ================================================================
+function detectLayout() {
+    var width = window.innerWidth;
+    var body = document.body;
+
+    if (width >= 1300) {
+        body.classList.add('pc-layout');
+        body.classList.add('wide-screen');
+        console.log('🖥 ПК-layout (wide): ' + width + 'px');
+    } else if (width >= 900) {
+        body.classList.add('pc-layout');
+        body.classList.remove('wide-screen');
+        console.log('🖥 ПК-layout: ' + width + 'px');
+    } else {
+        body.classList.remove('pc-layout');
+        body.classList.remove('wide-screen');
+        console.log('📱 Мобильный layout: ' + width + 'px');
+    }
+}
+
+// Пересчёт при изменении окна (с дебаунсом)
+window.addEventListener('resize', function() {
+    clearTimeout(window._layoutTimer);
+    window._layoutTimer = setTimeout(detectLayout, 150);
+});
+
+// Вызов сразу после загрузки
+detectLayout();
+
+        // ================================================================
         // TELEGRAM INIT
         // ================================================================
 // В функции initTelegram() добавьте:
@@ -1096,6 +1347,24 @@ function initTelegram() {
     window.tg = tg;
     tg.ready();
     tg.expand();
+    detectLayout();
+
+    // Пытаемся развернуть WebApp на весь экран (для новых версий Telegram)
+try {
+    if (typeof tg.requestFullscreen === 'function') {
+        tg.requestFullscreen();
+        console.log('✅ Fullscreen mode запрошен');
+    }
+} catch (e) {
+    console.log('Fullscreen not supported:', e);
+}
+
+// Пытаемся установить максимальную высоту
+try {
+    if (typeof tg.setViewportHeight === 'function') {
+        tg.setViewportHeight(window.innerHeight);
+    }
+} catch (e) {}
 
     // setHeaderColor / setBackgroundColor — только если версия >= 6.1
     try {
